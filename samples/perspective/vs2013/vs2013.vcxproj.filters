@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\src\main.cpp" />
+    <ClCompile Include="..\..\..\solver\src\PrimalDualIPM.cpp">
+      <Filter>solver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\solver\src\SOCP.cpp">
+      <Filter>solver</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="opencv_2.4.9_lib.hpp" />
+    <ClInclude Include="..\..\..\solver\src\PrimalDualIPM.h">
+      <Filter>solver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\solver\src\SOCP.h">
+      <Filter>solver</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="solver">
+      <UniqueIdentifier>{e188e4c5-ea41-46d1-8ba2-146e554944da}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

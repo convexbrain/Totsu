@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="solver">
+      <UniqueIdentifier>{99e417f1-679a-4d3d-bd05-d71cd59375fe}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\main.cpp" />
+    <ClCompile Include="..\..\..\solver\src\PrimalDualIPM.cpp">
+      <Filter>solver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\solver\src\QCQP.cpp">
+      <Filter>solver</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\solver\src\PrimalDualIPM.h">
+      <Filter>solver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\solver\src\QCQP.h">
+      <Filter>solver</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
