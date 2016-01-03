@@ -1,0 +1,13 @@
+<map id="SOCP::solve" name="SOCP::solve">
+<area shape="rect" id="node2" href="$class_primal_dual_i_p_m.html#a0b9bc0d29c60af1be804478a303c2cdf" title="Starts to solve a optimization problem by primal&#45;dual interior&#45;point method. " alt="" coords="149,233,292,260"/>
+<area shape="rect" id="node3" href="$class_primal_dual_i_p_m.html#a9b94e0b86ac149e07a9895f3a82ade40" title="Produces the initial values of \(x\). " alt="" coords="347,5,523,32"/>
+<area shape="rect" id="node4" href="$class_primal_dual_i_p_m.html#a211f3126c68ba1ae5a11205c30a9fbfd" title="Produces the equality constraints affine parameters \(A\) and \(b\). " alt="" coords="354,56,515,83"/>
+<area shape="rect" id="node5" href="$class_primal_dual_i_p_m.html#ab2607a9a160f33f37463ac65e239c48a" title="Calculates first derivatives of the objective function \(\nabla f_{\rm obj}(x)\). ..." alt="" coords="347,107,522,133"/>
+<area shape="rect" id="node6" href="$class_primal_dual_i_p_m.html#aa4892f4fb214b7e2e69ba79bdc853482" title="Calculates the inequality constraint functions \(f_i(x)\). " alt="" coords="349,157,520,184"/>
+<area shape="rect" id="node7" href="$class_primal_dual_i_p_m.html#afc998418cc77c8cbf6fcf3edc78abcd1" title="Calculates first derivatives of the inequality constraint functions \(Df(x)\). " alt="" coords="345,208,525,235"/>
+<area shape="rect" id="node8" href="$class_primal_dual_i_p_m.html#a5f9289c5b897e715e68cc29e6c88eac0" title="Calculates second derivatives of the objective function \(\nabla^2 f_{\rm obj}(x)\). " alt="" coords="343,259,527,285"/>
+<area shape="rect" id="node9" href="$class_primal_dual_i_p_m.html#aebbf1fbd23d29a50dbae4182c4b47733" title="Calculates second derivatives of the inequality constraint functions \(\nabla^2 f_i(x)\). " alt="" coords="340,309,529,336"/>
+<area shape="rect" id="node10" href="$class_primal_dual_i_p_m.html#a5e930feba1307ab8d8eaf0205013e61d" title="Logs values of a vector, transposing if it is a colomn vector. " alt="" coords="349,360,520,387"/>
+<area shape="rect" id="node11" href="$class_primal_dual_i_p_m.html#aa109f2f14ecb665472dd84a9cfaf4557" title="Returns the smaller of a and b. " alt="" coords="366,411,503,437"/>
+<area shape="rect" id="node12" href="$class_primal_dual_i_p_m.html#a006c47390bfdbd7d74115ed49f21e122" title="Obtains the final solution values of \(x\). " alt="" coords="350,461,519,488"/>
+</map>
