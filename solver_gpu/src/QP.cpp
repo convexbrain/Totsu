@@ -17,7 +17,7 @@ QP::~QP()
 
 IPM_Error QP::initialPoint(IPM_Vector_IO x)
 {
-	const IPM_uint _n = x.size() - 1;
+	const IPM_uint _n = IPM_uint(x.size() - 1);
 
 	x.head(_n) = *m_p_x;
 
@@ -39,7 +39,7 @@ IPM_Error QP::initialPoint(IPM_Vector_IO x)
 
 IPM_Error QP::finalPoint(IPM_Vector_IN x, IPM_Vector_IN lmd, IPM_Vector_IN nu, bool converged)
 {
-	const IPM_uint _n = x.size() - 1;
+	const IPM_uint _n = IPM_uint(x.size() - 1);
 
 	*m_p_x = x.head(_n);
 
@@ -50,7 +50,7 @@ IPM_Error QP::finalPoint(IPM_Vector_IN x, IPM_Vector_IN lmd, IPM_Vector_IN nu, b
 
 IPM_Error QP::objective(IPM_Vector_IN x, IPM_Single_IO f_o)
 {
-	const IPM_uint _n = x.size() - 1;
+	const IPM_uint _n = IPM_uint(x.size() - 1);
 
 	f_o = x.head(_n).transpose() * (*m_p_P) * x.head(_n) / IPM_Scalar(2.0)
 		  + (*m_p_q).transpose() * x.head(_n)
@@ -61,7 +61,7 @@ IPM_Error QP::objective(IPM_Vector_IN x, IPM_Single_IO f_o)
 
 IPM_Error QP::Dobjective(IPM_Vector_IN x, IPM_Vector_IO Df_o)
 {
-	const IPM_uint _n = x.size() - 1;
+	const IPM_uint _n = IPM_uint(x.size() - 1);
 
 	Df_o.head(_n) = (*m_p_P) * x.head(_n) + (*m_p_q);
 
@@ -73,7 +73,7 @@ IPM_Error QP::Dobjective(IPM_Vector_IN x, IPM_Vector_IO Df_o)
 
 IPM_Error QP::DDobjective(IPM_Vector_IN x, IPM_Matrix_IO DDf_o)
 {
-	const IPM_uint _n = x.size() - 1;
+	const IPM_uint _n = IPM_uint(x.size() - 1);
 
 	DDf_o.topLeftCorner(_n, _n) = *m_p_P;
 
@@ -86,8 +86,8 @@ IPM_Error QP::DDobjective(IPM_Vector_IN x, IPM_Matrix_IO DDf_o)
 
 IPM_Error QP::inequality(IPM_Vector_IN x, IPM_Vector_IO f_i)
 {
-	const IPM_uint _n = x.size() - 1;
-	const IPM_uint _m = f_i.size();
+	const IPM_uint _n = IPM_uint(x.size() - 1);
+	const IPM_uint _m = IPM_uint(f_i.size());
 
 	f_i = (*m_p_G) * x.head(_n) - (*m_p_h)
 		  - x(_n) * IPM_Vector::Ones(_m); // minus a slack variable
@@ -97,8 +97,8 @@ IPM_Error QP::inequality(IPM_Vector_IN x, IPM_Vector_IO f_i)
 
 IPM_Error QP::Dinequality(IPM_Vector_IN x, IPM_Matrix_IO Df_i)
 {
-	const IPM_uint _n = x.size() - 1;
-	const IPM_uint _m = Df_i.rows();
+	const IPM_uint _n = IPM_uint(x.size() - 1);
+	const IPM_uint _m = IPM_uint(Df_i.rows());
 
 	Df_i.leftCols(_n) = *m_p_G;
 
@@ -117,8 +117,8 @@ IPM_Error QP::DDinequality(IPM_Vector_IN x, IPM_Matrix_IO DDf_i, const IPM_uint 
 
 IPM_Error QP::equality(IPM_Matrix_IO A, IPM_Vector_IO b)
 {
-	const IPM_uint _n = A.cols() - 1;
-	const IPM_uint _p = A.rows() - 1;
+	const IPM_uint _n = IPM_uint(A.cols() - 1);
+	const IPM_uint _p = IPM_uint(A.rows() - 1);
 
 	A.topLeftCorner(_p, _n) = *m_p_A;
 	b.head(_p) = *m_p_b;
@@ -137,9 +137,9 @@ IPM_Error QP::solve(IPM_Vector& x,
 	const IPM_Matrix& G, const IPM_Vector& h,
 	const IPM_Matrix& A, const IPM_Vector& b)
 {
-	const IPM_uint n = x.size();
-	const IPM_uint m = G.rows();
-	const IPM_uint p = A.rows();
+	const IPM_uint n = IPM_uint(x.size());
+	const IPM_uint m = IPM_uint(G.rows());
+	const IPM_uint p = IPM_uint(A.rows());
 
 	// ----- parameter check
 

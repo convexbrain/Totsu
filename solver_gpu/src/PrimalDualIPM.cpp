@@ -2,6 +2,10 @@
 
 #include "PrimalDualIPM.h"
 
+#define DEV_GPU // TODO
+#include "gpu/declarations.h"
+
+
 #ifndef IPM_DISABLE_LOG
 // iostream and std is just for logging
 #include <iostream>
@@ -110,13 +114,6 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 	IPM_Vector_IO lmd_p = y_p.segment(n, m);
 	IPM_Vector_IO nu_p = y_p.segment(n + m, p);
 
-	/***** KKT matrix decomposition solver *****/
-#ifdef IPM_DECOMP_TYPE
-	Eigen::IPM_DECOMP_TYPE<IPM_Matrix> decomp_kkt(n + m + p, n + m + p);
-#else
-	Eigen::JacobiSVD<IPM_Matrix> decomp_kkt(n + m + p, n + m + p, Eigen::ComputeThinU | Eigen::ComputeThinV);
-#endif
-
 	// initialize
 	if ((err = initialPoint(x)) != NULL) return err;
 	lmd.setOnes();
@@ -209,13 +206,8 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 
 		/***** calc search direction *****/
 
-		decomp_kkt.compute(kkt);
-		Dy = decomp_kkt.solve(-r_t);
 		logVector("y", y);
-		//logMatrix("kkt", kkt);
-#ifndef IPM_DECOMP_TYPE
-		IPM_LOG_EN({ if (m_pOuts) *m_pOuts << "kkt rank / full : " << decomp_kkt.rank() << " / " << n + m + p << endl; });
-#endif
+		gpu_calcSearchDirection(kkt, r_t, Dy);
 		logVector("r_t", r_t);
 		logVector("Dy", Dy);
 

@@ -11,9 +11,6 @@
 ** - \c IPM_USE_FLOAT uses single floating point precision instead of double.
 ** - \c IPM_ENABLE_ASSERT enables assertion when generating error string.
 **      This is useful when using debugger because it breaks.
-** - \c IPM_DECOMP_TYPE specifies which matrix decomposition is used for KKT matrix.
-**      \c FullPivLU, \c HouseholderQR, \c FullPivHouseholderQR and \c ColPivHouseholderQR are available.
-**      If not defined, \c JacobiSVD is used.
 **
 ** These are not defined by default.
 */
@@ -25,6 +22,7 @@
 #include <cfloat>
 
 #ifdef IPM_USE_FLOAT
+#error "!!!!! not implemented yet !!!!!"
 // float precision
 #define IPM_SCALAR_EPS   FLT_EPSILON
 #define IPM_SCALAR_MIN   FLT_MIN

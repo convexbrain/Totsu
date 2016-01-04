@@ -10,6 +10,9 @@
     <ClCompile Include="..\src\QP.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\gpu\cuSolverDn_LinearSolver.cpp">
+      <Filter>src\gpu</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\PrimalDualIPM.h">
@@ -18,10 +21,22 @@
     <ClInclude Include="..\src\QP.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\gpu\declarations.h">
+      <Filter>src\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gpu\helper_cuda.h">
+      <Filter>src\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gpu\helper_string.h">
+      <Filter>src\gpu</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">
       <UniqueIdentifier>{12c4f8ac-5b37-41cb-b821-dd3a17868dfd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\gpu">
+      <UniqueIdentifier>{36fbe008-7218-451b-9998-244bc56afae1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
