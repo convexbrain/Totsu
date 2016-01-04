@@ -7,7 +7,7 @@ Source code location: https://github.com/convexbrain/Totsu/tree/master/solver/
 This C++ package provides a basic **primal-dual interior-point method** solver: PrimalDualIPM.
 
 A common target problem is continuous scalar **convex optimization** such as
-LS, LP, QP, GP, QCQP and (approximately equivalent) SOCP.
+LP, QP, GP, QCQP and (approximately equivalent) SOCP.
 More specifically,
 \\[
 \\begin{array}{ll}
