@@ -4,6 +4,7 @@
 
 #define DEV_GPU // TODO
 #include "gpu/declarations.h"
+#include "gpu/NumCalc_GPU.h"
 
 
 #ifndef IPM_DISABLE_LOG
@@ -33,11 +34,14 @@ PrimalDualIPM::PrimalDualIPM()
 	m_beta = IPM_Scalar(0.8);
 
 	m_s_coef = IPM_Scalar(0.99);
+
+	m_pNumCalc = new NumCalc_GPU;
 }
 
 PrimalDualIPM::~PrimalDualIPM()
 {
-	// do nothing
+	delete m_pNumCalc;
+	NumCalc_GPU::resetDevice();
 }
 
 void PrimalDualIPM::logWarn(const char *str)
@@ -119,7 +123,6 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 	lmd.setOnes();
 	lmd *= m_margin;
 	nu.setZero();
-	kkt.setZero();
 	if ((err = equality(A, b)) != NULL) return err;
 
 	// initial Df_o, f_i, Df_i
@@ -172,6 +175,7 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 		}
 
 		/***** calc kkt matrix *****/
+		kkt.setZero(); // TODO
 
 		if ((err = DDobjective(x, DDf)) != NULL) return err;
 		kkt_x_dual = DDf;
@@ -207,7 +211,7 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 		/***** calc search direction *****/
 
 		logVector("y", y);
-		gpu_calcSearchDirection(kkt, r_t, Dy);
+		gpuwrap_calcSearchDirection(m_pNumCalc, kkt, r_t, Dy);
 		logVector("r_t", r_t);
 		logVector("Dy", Dy);
 

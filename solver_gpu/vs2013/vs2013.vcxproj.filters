@@ -10,7 +10,7 @@
     <ClCompile Include="..\src\QP.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\gpu\cuSolverDn_LinearSolver.cpp">
+    <ClCompile Include="..\src\gpu\NumCalc_GPU.cpp">
       <Filter>src\gpu</Filter>
     </ClCompile>
   </ItemGroup>
@@ -24,10 +24,7 @@
     <ClInclude Include="..\src\gpu\declarations.h">
       <Filter>src\gpu</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\gpu\helper_cuda.h">
-      <Filter>src\gpu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\gpu\helper_string.h">
+    <ClInclude Include="..\src\gpu\NumCalc_GPU.h">
       <Filter>src\gpu</Filter>
     </ClInclude>
   </ItemGroup>

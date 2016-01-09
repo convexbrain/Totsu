@@ -58,6 +58,9 @@ typedef const char*       IPM_Error; //!< error string
 #endif
 
 
+class NumCalc_GPU;
+
+
 /*!
 ** @brief A basic Primal-Dual Interior-Point Method solver class.
 **
@@ -246,6 +249,8 @@ private:
 #ifndef IPM_DISABLE_LOG
 	std::ostream *m_pOuts;
 #endif
+
+	NumCalc_GPU *m_pNumCalc;
 
 protected: // parameters
 	IPM_Scalar m_margin; //!< Initial margin value for dual variables of inequalities.

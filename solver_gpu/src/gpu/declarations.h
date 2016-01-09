@@ -12,93 +12,35 @@
 *
 */
 
-#include <cuda_runtime.h>
+#include "NumCalc_GPU.h"
 
-#include "cusolverDn.h"
-#include "helper_cuda.h"
-
-int linearSolverQR(
-	cusolverDnHandle_t handle,
-	int n,
-	const double *Acopy,
-	int lda,
-	const double *b,
-	double *x);
-
-/***********************************************/
-
-void gpu_calcSearchDirection(IPM_Matrix_IN kkt, IPM_Vector_IN r_t, IPM_Vector_IO Dy)
+void gpuwrap_calcSearchDirection(NumCalc_GPU *pNC, IPM_Matrix_IN _kkt, IPM_Vector_IN r_t, IPM_Vector_IO Dy)
 {
-	cusolverDnHandle_t handle = NULL;
-	cudaStream_t stream = NULL;
+	const NC_uint n = NC_uint(_kkt.rows());
+	NCMat_GPU kkt(n, n, n, n);
+	NCVec_GPU rtDy(n, n);
 
-	int rowsA = 0; // number of rows of A
-	int colsA = 0; // number of columns of A
-	int lda = 0; // leading dimension in dense matrix
+	NC_SCALAR *pH_kkt = kkt.hostPtr<NC_SCALAR*>();
+	NC_SCALAR *pH_rtDy = rtDy.hostPtr<NC_SCALAR*>();
 
-	double *h_A = NULL; // dense matrix from CSR(A)
-	double *h_x = NULL; // a copy of d_x
-	double *h_b = NULL; // b = ones(m,1)
-
-	double *d_A = NULL; // a copy of h_A
-	double *d_x = NULL; // x = A \ b
-	double *d_b = NULL; // a copy of h_b
-
-	lda = rowsA = colsA = int(kkt.rows());
-	assert(kkt.rows() == kkt.cols());
-	assert(kkt.cols() == r_t.size());
-	assert(kkt.rows() == Dy.size());
-
-	h_A = (double*)malloc(sizeof(double)*lda*colsA);
-	h_x = (double*)malloc(sizeof(double)*colsA);
-	h_b = (double*)malloc(sizeof(double)*rowsA);
-	assert(NULL != h_A);
-	assert(NULL != h_x);
-	assert(NULL != h_b);
-
-	memset(h_A, 0, sizeof(double)*lda*colsA);
-
-	for (int row = 0; row < rowsA; row++)
+	for (NC_uint row = 0; row < n; row++)
 	{
-		for (int col = 0; col < colsA; col++)
+		for (NC_uint col = 0; col < n; col++)
 		{
-			h_A[row + col*lda] = kkt(row, col);
+			pH_kkt[row + col * n] = _kkt(row, col);
 		}
-		h_b[row] = -r_t(row);
+		pH_rtDy[row] = r_t(row);
 	}
 
-	checkCudaErrors(cusolverDnCreate(&handle));
-	checkCudaErrors(cudaStreamCreate(&stream));
+	kkt.copyToDevice();
+	rtDy.copyToDevice();
 
-	checkCudaErrors(cusolverDnSetStream(handle, stream));
+	assert(pNC->calcSearchDirection(kkt, rtDy) == 0);
 
+	rtDy.copyToHost();
 
-	checkCudaErrors(cudaMalloc((void **)&d_A, sizeof(double)*lda*colsA));
-	checkCudaErrors(cudaMalloc((void **)&d_x, sizeof(double)*colsA));
-	checkCudaErrors(cudaMalloc((void **)&d_b, sizeof(double)*rowsA));
-
-	checkCudaErrors(cudaMemcpy(d_A, h_A, sizeof(double)*lda*colsA, cudaMemcpyHostToDevice));
-	checkCudaErrors(cudaMemcpy(d_b, h_b, sizeof(double)*rowsA, cudaMemcpyHostToDevice));
-
-	linearSolverQR(handle, rowsA, d_A, lda, d_b, d_x);
-
-	checkCudaErrors(cudaMemcpy(h_x, d_x, sizeof(double)*colsA, cudaMemcpyDeviceToHost));
-
-	for (int col = 0; col < colsA; col++)
+	for (NC_uint row = 0; row < n; row++)
 	{
-		Dy(col) = h_x[col];
+		Dy(row) = pH_rtDy[row];
 	}
-
-	if (handle) { checkCudaErrors(cusolverDnDestroy(handle)); }
-	if (stream) { checkCudaErrors(cudaStreamDestroy(stream)); }
-
-	if (h_A) { free(h_A); }
-	if (h_x) { free(h_x); }
-	if (h_b) { free(h_b); }
-
-	if (d_A) { checkCudaErrors(cudaFree(d_A)); }
-	if (d_x) { checkCudaErrors(cudaFree(d_x)); }
-	if (d_b) { checkCudaErrors(cudaFree(d_b)); }
-
-	cudaDeviceReset();
 }

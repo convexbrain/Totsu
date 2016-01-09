@@ -148,15 +148,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\gpu\cuSolverDn_LinearSolver.cpp" />
+    <ClCompile Include="..\src\gpu\NumCalc_GPU.cpp" />
     <ClCompile Include="..\src\QP.cpp" />
     <ClCompile Include="..\src\test.cpp" />
     <ClCompile Include="..\src\PrimalDualIPM.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\gpu\declarations.h" />
-    <ClInclude Include="..\src\gpu\helper_cuda.h" />
-    <ClInclude Include="..\src\gpu\helper_string.h" />
+    <ClInclude Include="..\src\gpu\NumCalc_GPU.h" />
     <ClInclude Include="..\src\PrimalDualIPM.h" />
     <ClInclude Include="..\src\QP.h" />
   </ItemGroup>
