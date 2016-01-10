@@ -173,6 +173,7 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 			IPM_LOG_EN({ if (m_pOuts) *m_pOuts << "termination criteria satisfied" << endl; });
 			break;
 		}
+		IPM_Scalar org_r_t_norm = r_t.norm();
 
 		/***** calc kkt matrix *****/
 		kkt.setZero(); // TODO
@@ -211,8 +212,8 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 		/***** calc search direction *****/
 
 		logVector("y", y);
-		gpuwrap_calcSearchDirection(m_pNumCalc, kkt, r_t, Dy);
 		logVector("r_t", r_t);
+		gpuwrap_calcSearchDirection(m_pNumCalc, kkt, r_t, Dy);
 		logVector("Dy", Dy);
 
 		/***** back tracking line search - from here *****/
@@ -250,8 +251,6 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 		{
 			IPM_LOG_EN({ if (m_pOuts) *m_pOuts << "infeasible in this direction" << endl; });
 		}
-
-		IPM_Scalar org_r_t_norm = r_t.norm();
 
 		for (; bloop < m_bloop; bloop++)
 		{

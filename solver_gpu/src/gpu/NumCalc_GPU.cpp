@@ -41,13 +41,16 @@ void NumCalc_GPU::resetDevice(void)
 
 int NumCalc_GPU::calcSearchDirection(NCMat_GPU &kkt, NCVec_GPU &rtDy)
 {
+	// Solve kkt * Dy = -r_t. Dy overwrites rtDy.
+	// Also kkt will be modified by QR factorization.
+
 	if (m_fatalErr) return m_fatalErr;
 
-	NC_uint n = kkt.m_nRows;
-	NC_uint lda = kkt.m_nRowsPitch;
+	NC_uint n = kkt.nRows();
+	NC_uint lda = kkt.nRowsPitch();
 
-	if (n != kkt.m_nCols) return __LINE__;
-	if (n != rtDy.m_nRows) return __LINE__;
+	if (n != kkt.nCols()) return __LINE__;
+	if (n != rtDy.nRows()) return __LINE__;
 
 	int bufferSize = 0;
 	if (cusolverDnDgeqrf_bufferSize(m_cuSolverDn, n, n, kkt.ptr<NC_SCALAR*>(), lda, &bufferSize)) {
@@ -60,7 +63,7 @@ int NumCalc_GPU::calcSearchDirection(NCMat_GPU &kkt, NCVec_GPU &rtDy)
 	m_devInfo.realloc(sizeof(int));
 	if (m_devInfo.setZero()) return __LINE__;
 
-	// compute QR factorization
+	// compute QR factorization: kkt -> Q * R
 	if (cusolverDnDgeqrf(m_cuSolverDn,
 		n, n, kkt.ptr<NC_SCALAR*>(), lda,
 		m_solverTau.ptr<NC_SCALAR*>(), m_solverBuf.ptr<NC_SCALAR*>(),
@@ -73,7 +76,7 @@ int NumCalc_GPU::calcSearchDirection(NCMat_GPU &kkt, NCVec_GPU &rtDy)
 	int *pinfo = m_devInfo.hostPtr<int*>();
 	if (0 != *pinfo) return __LINE__;
 
-	// compute Q^T*b
+	// compute Q^T * rtDy
 	if (cusolverDnDormqr(
 		m_cuSolverDn,
 		CUBLAS_SIDE_LEFT,
@@ -93,7 +96,7 @@ int NumCalc_GPU::calcSearchDirection(NCMat_GPU &kkt, NCVec_GPU &rtDy)
 		return __LINE__;
 	}
 
-	// x = R \ Q^T*b
+	// compute R \ (Q^T * -rtDy)
 	const NC_SCALAR minusone = -1.0;
 	if (cublasDtrsm(
 		m_cuBlas,

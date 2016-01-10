@@ -22,20 +22,24 @@
 typedef double NC_SCALAR;
 typedef unsigned int NC_uint;
 
+/********************************************************************/
+
 class NCBuf_GPU
 {
 public:
 	explicit NCBuf_GPU() :
 		m_nSize(0), m_pBuf(NULL), m_pBufHost(NULL)
-	{
-		// do nothing
-	}
-
+	{}
 	virtual ~NCBuf_GPU()
 	{
 		free();
 	}
+private:
+	// uncopyable
+	NCBuf_GPU(const NCBuf_GPU&);
+	NCBuf_GPU& operator=(const NCBuf_GPU&);
 
+public:
 	void realloc(NC_uint nSize)
 	{
 		if (m_nSize < nSize)
@@ -113,6 +117,8 @@ protected:
 	char    *m_pBufHost;
 };
 
+/********************************************************************/
+
 class NCMat_GPU : public NCBuf_GPU
 {
 public:
@@ -121,15 +127,26 @@ public:
 	{
 		realloc(sizeof(NC_SCALAR) * sRows * sCols);
 	}
-
 	virtual ~NCMat_GPU() {}
+private:
+	// uncopyable
+	NCMat_GPU(const NCMat_GPU&);
+	NCMat_GPU& operator=(const NCMat_GPU&);
 
-	// TODO: getter
+public:
+	NC_uint nRows(void) { return m_nRows; }
+	NC_uint nRowsPitch(void) { return m_nRowsPitch; }
+	NC_uint nCols(void) { return m_nCols; }
+	NC_uint nColsPitch(void) { return m_nColsPitch; }
+
+protected:
 	NC_uint m_nRows; // number of rows
 	NC_uint m_nRowsPitch;
 	NC_uint m_nCols; // number of columns
 	NC_uint m_nColsPitch;
 };
+
+/********************************************************************/
 
 class NCVec_GPU : public NCMat_GPU
 {
@@ -139,9 +156,13 @@ public:
 	{}
 
 	virtual ~NCVec_GPU() {}
+private:
+	// uncopyable
+	NCVec_GPU(const NCVec_GPU&);
+	NCVec_GPU& operator=(const NCVec_GPU&);
 };
 
-/////
+/********************************************************************/
 
 class NumCalc_GPU
 {
