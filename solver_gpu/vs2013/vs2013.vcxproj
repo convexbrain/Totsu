@@ -92,6 +92,9 @@
     <ClInclude Include="..\src\PrimalDualIPM.h" />
     <ClInclude Include="..\src\QP.h" />
   </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\src\gpu\NumCalc_GPU.cu" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 7.5.targets" />

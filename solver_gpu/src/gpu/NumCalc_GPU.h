@@ -18,8 +18,11 @@
 
 #include <cuda_runtime.h>
 #include <cusolverDn.h>
+#include <float.h>
 
-typedef double NC_SCALAR;
+typedef double NC_Scalar;
+#define NC_SCALAR_MIN DBL_MIN
+
 typedef unsigned int NC_uint;
 
 /********************************************************************/
@@ -125,7 +128,7 @@ public:
 	explicit NCMat_GPU(NC_uint nRows, NC_uint sRows, NC_uint nCols, NC_uint sCols) :
 		m_nRows(nRows), m_nRowsPitch(sRows), m_nCols(nCols), m_nColsPitch(sCols)
 	{
-		realloc(sizeof(NC_SCALAR) * sRows * sCols);
+		realloc(sizeof(NC_Scalar) * sRows * sCols);
 	}
 	virtual ~NCMat_GPU() {}
 private:
@@ -172,18 +175,24 @@ public:
 
 	static void resetDevice(void);
 
-	int calcSearchDirection(NCMat_GPU &kkt, NCVec_GPU &rtDy); // IO, IO
+	int calcSearchDir(NCMat_GPU &kkt, NCVec_GPU &rtDy); // IO, IO
+	int calcMaxScaleBTLS(NCVec_GPU &lmd, NCVec_GPU &Dlmd, NC_Scalar *pSclMax); // I, I, O
 
 private:
 	int m_fatalErr;
 
+	cudaDeviceProp     m_cuDevProp;
 	cudaStream_t       m_cuStream;
 	cusolverDnHandle_t m_cuSolverDn;
 	cublasHandle_t     m_cuBlas;
 
+	// calcSearchDir
 	NCBuf_GPU m_devInfo;
 	NCBuf_GPU m_solverBuf;
 	NCBuf_GPU m_solverTau;
+
+	// calcMaxScaleBTLS
+	NCBuf_GPU m_sMax;
 };
 
 #endif // end of ifndef _NUM_CALC_GPU_H_

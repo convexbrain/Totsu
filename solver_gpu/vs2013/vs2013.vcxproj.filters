@@ -36,4 +36,9 @@
       <UniqueIdentifier>{36fbe008-7218-451b-9998-244bc56afae1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\src\gpu\NumCalc_GPU.cu">
+      <Filter>src\gpu</Filter>
+    </CudaCompile>
+  </ItemGroup>
 </Project>

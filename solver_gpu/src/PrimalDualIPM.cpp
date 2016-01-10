@@ -213,20 +213,12 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 
 		logVector("y", y);
 		logVector("r_t", r_t);
-		gpuwrap_calcSearchDirection(m_pNumCalc, kkt, r_t, Dy);
+		gpuwrap_calcSearchDir(m_pNumCalc, kkt, r_t, Dy);
 		logVector("Dy", Dy);
 
 		/***** back tracking line search - from here *****/
 
-		IPM_Scalar s_max = 1.0;
-		for (IPM_uint i = 0; i < m; i++)
-		{
-			if (Dlmd(i, 0) < -IPM_SCALAR_MIN) // to avoid zero-division by Dlmd
-			{
-				s_max = min(s_max, -lmd(i, 0) / Dlmd(i, 0));
-			}
-		}
-		IPM_Scalar s = m_s_coef * s_max;
+		IPM_Scalar s = m_s_coef * gpuwrap_calcMaxScaleBTLS(m_pNumCalc, lmd, Dlmd);
 
 		y_p = y + s * Dy;
 

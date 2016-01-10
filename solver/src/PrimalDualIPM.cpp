@@ -213,7 +213,7 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 		Dy = decomp_kkt.solve(-r_t);
 		logVector("y", y);
 		//logMatrix("kkt", kkt);
-#ifndef IPM_DECOMP_TYPE
+#if 0 // TODO:revert #ifndef IPM_DECOMP_TYPE
 		IPM_LOG_EN({ if (m_pOuts) *m_pOuts << "kkt rank / full : " << decomp_kkt.rank() << " / " << n + m + p << endl; });
 #endif
 		logVector("r_t", r_t);

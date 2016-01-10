@@ -14,14 +14,14 @@
 
 #include "NumCalc_GPU.h"
 
-void gpuwrap_calcSearchDirection(NumCalc_GPU *pNC, IPM_Matrix_IN _kkt, IPM_Vector_IN r_t, IPM_Vector_IO Dy)
+void gpuwrap_calcSearchDir(NumCalc_GPU *pNC, IPM_Matrix_IN _kkt, IPM_Vector_IN r_t, IPM_Vector_IO Dy)
 {
 	const NC_uint n = NC_uint(_kkt.rows());
 	NCMat_GPU kkt(n, n, n, n);
 	NCVec_GPU rtDy(n, n);
 
-	NC_SCALAR *pH_kkt = kkt.hostPtr<NC_SCALAR*>();
-	NC_SCALAR *pH_rtDy = rtDy.hostPtr<NC_SCALAR*>();
+	NC_Scalar *pH_kkt = kkt.hostPtr<NC_Scalar*>();
+	NC_Scalar *pH_rtDy = rtDy.hostPtr<NC_Scalar*>();
 
 	for (NC_uint row = 0; row < n; row++)
 	{
@@ -35,7 +35,7 @@ void gpuwrap_calcSearchDirection(NumCalc_GPU *pNC, IPM_Matrix_IN _kkt, IPM_Vecto
 	kkt.copyToDevice();
 	rtDy.copyToDevice();
 
-	assert(pNC->calcSearchDirection(kkt, rtDy) == 0);
+	assert(pNC->calcSearchDir(kkt, rtDy) == 0);
 
 	rtDy.copyToHost();
 
@@ -44,3 +44,29 @@ void gpuwrap_calcSearchDirection(NumCalc_GPU *pNC, IPM_Matrix_IN _kkt, IPM_Vecto
 		Dy(row) = pH_rtDy[row];
 	}
 }
+
+IPM_Scalar gpuwrap_calcMaxScaleBTLS(NumCalc_GPU *pNC, IPM_Vector_IN _lmd, IPM_Vector_IN _Dlmd)
+{
+	const NC_uint m = NC_uint(_lmd.rows());
+	assert(m == _Dlmd.rows());
+
+	NCVec_GPU lmd(m, m);
+	NCVec_GPU Dlmd(m, m);
+
+	NC_Scalar *pH_lmd = lmd.hostPtr<NC_Scalar*>();
+	NC_Scalar *pH_Dlmd = Dlmd.hostPtr<NC_Scalar*>();
+
+	for (NC_uint row = 0; row < m; row++) {
+		pH_lmd[row] = _lmd(row);
+		pH_Dlmd[row] = _Dlmd(row);
+	}
+
+	lmd.copyToDevice();
+	Dlmd.copyToDevice();
+
+	IPM_Scalar s_max;
+	assert(pNC->calcMaxScaleBTLS(lmd, Dlmd, &s_max) == 0);
+
+	return s_max;
+}
+
