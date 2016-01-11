@@ -31,7 +31,7 @@ class NCMem_GPU
 {
 public:
 	explicit NCMem_GPU() :
-		m_nSize(0), m_pMem(NULL), m_pMemHost(NULL)
+		m_nMemSize(0), m_pMem(NULL), m_pMemHost(NULL)
 	{}
 	virtual ~NCMem_GPU() { free(); }
 private:
@@ -59,7 +59,7 @@ public:
 	int setZero(void)
 	{
 		if (m_pMem) {
-			if (!cudaMemset(m_pMem, 0, m_nSize)) return 0;
+			if (!cudaMemset(m_pMem, 0, m_nMemSize)) return 0;
 		}
 		return 1; // failed
 	}
@@ -70,7 +70,7 @@ protected:
 		if (m_pMem) cudaFree(m_pMem);
 		if (m_pMemHost) delete m_pMemHost;
 
-		m_nSize = 0;
+		m_nMemSize = 0;
 		m_pMem = NULL;
 		m_pMemHost = NULL;
 	}
@@ -79,7 +79,7 @@ protected:
 	char* _hostPtr(void)
 	{
 		if (!m_pMemHost) {
-			m_pMemHost = new char[m_nSize];
+			m_pMemHost = new char[m_nMemSize];
 		}
 
 		return m_pMemHost;
@@ -89,7 +89,7 @@ protected:
 	virtual int memcpyToDevice(void) = 0;
 
 protected:
-	NC_uint  m_nSize;
+	NC_uint  m_nMemSize;
 	void    *m_pMem;
 	char    *m_pMemHost;
 };
@@ -109,16 +109,22 @@ private:
 public:
 	void realloc(NC_uint nSize)
 	{
-		if (m_nSize < nSize)
+		if (m_nMemSize < nSize)
 		{
 			free();
 
+			int r = cudaMalloc(&m_pMem, nSize);
+			m_nMemSize = nSize;
+
 			m_nSize = nSize;
 
-			if (cudaMalloc(&m_pMem, nSize)) {
-				// failed
+			if (r) { // failed
 				free();
+				m_nSize = 0;
 			}
+		}
+		else {
+			m_nSize = nSize;
 		}
 	}
 
@@ -141,6 +147,9 @@ protected:
 	{
 		return cudaMemcpy(m_pMem, m_pMemHost, m_nSize, cudaMemcpyHostToDevice);
 	}
+
+protected:
+	NC_uint m_nSize;
 };
 
 /********************************************************************/
@@ -149,7 +158,7 @@ class NCMat_GPU : public NCMem_GPU
 {
 public:
 	explicit NCMat_GPU() :
-		m_nRows(0), m_nRowsPitch(0), m_nCols(0)
+		m_nRows(0), m_nRowsPitch(0), m_nCols(0), m_nColsPitch(0)
 	{}
 	virtual ~NCMat_GPU() {}
 private:
@@ -160,26 +169,31 @@ private:
 public:
 	void resize(NC_uint nRows, NC_uint nCols)
 	{
-		if ((m_nRowsPitch < nRows) || (m_nCols < nCols))
+		if ((m_nRowsPitch < nRows) || (m_nColsPitch < nCols))
 		{
-			size_t pitchInBytes;
-
 			free();
 
+			size_t pitchInBytes;
 			int r = cudaMallocPitch(&m_pMem, &pitchInBytes, sizeof(NC_Scalar) * nRows, nCols);
+			m_nMemSize = NC_uint(pitchInBytes * nCols);
+
 			m_nRowsPitch = NC_uint(pitchInBytes / sizeof(NC_Scalar));
+			m_nColsPitch = nCols;
 			m_nRows = nRows;
 			m_nCols = nCols;
 
-			if (r || (m_nRowsPitch * sizeof(NC_Scalar) != pitchInBytes)) {
-				// failed
+			if (r || (m_nRowsPitch * sizeof(NC_Scalar) != pitchInBytes)) { // failed
 				free();
+
 				m_nRowsPitch = 0;
+				m_nColsPitch = 0;
 				m_nRows = 0;
 				m_nCols = 0;
 			}
-
-			m_nSize = sizeof(NC_Scalar) * m_nRowsPitch * m_nCols;
+		}
+		else {
+			m_nRows = nRows;
+			m_nCols = nCols;
 		}
 	}
 
@@ -222,6 +236,7 @@ protected:
 	NC_uint m_nRows; // number of rows
 	NC_uint m_nRowsPitch;
 	NC_uint m_nCols; // number of columns
+	NC_uint m_nColsPitch;
 };
 
 /********************************************************************/
