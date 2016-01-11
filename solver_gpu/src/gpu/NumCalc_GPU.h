@@ -19,6 +19,7 @@
 #include <cuda_runtime.h>
 #include <cusolverDn.h>
 #include <float.h>
+#include <cassert>
 
 typedef double NC_Scalar;
 #define NC_SCALAR_MIN DBL_MIN
@@ -46,6 +47,7 @@ public:
 			_hostPtr();
 			if (!memcpyToHost()) return 0;
 		}
+		assert(0);
 		return 1; // failed
 	}
 	int copyToDevice(void)
@@ -53,6 +55,7 @@ public:
 		if (m_pMem && m_pMemHost) {
 			if (!memcpyToDevice()) return 0;
 		}
+		assert(0);
 		return 1; // failed
 	}
 
@@ -61,6 +64,7 @@ public:
 		if (m_pMem) {
 			if (!cudaMemset(m_pMem, 0, m_nMemSize)) return 0;
 		}
+		assert(0);
 		return 1; // failed
 	}
 
@@ -80,6 +84,7 @@ protected:
 	{
 		if (!m_pMemHost) {
 			m_pMemHost = new char[m_nMemSize];
+			assert(m_pMemHost);
 		}
 
 		return m_pMemHost;
@@ -119,6 +124,7 @@ public:
 			m_nSize = nSize;
 
 			if (r) { // failed
+				assert(0);
 				free();
 				m_nSize = 0;
 			}
@@ -183,6 +189,7 @@ public:
 			m_nCols = nCols;
 
 			if (r || (m_nRowsPitch * sizeof(NC_Scalar) != pitchInBytes)) { // failed
+				assert(0);
 				free();
 
 				m_nRowsPitch = 0;
