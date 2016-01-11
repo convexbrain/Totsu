@@ -54,8 +54,8 @@ int NumCalc_GPU::calcMaxScaleBTLS(NCVec_GPU &lmd, NCVec_GPU &Dlmd, NC_Scalar *pS
 	m_sMax.realloc(sizeof(NC_Scalar));
 
 	kernel_calcMaxScaleBTLS KPRMS2(1, 1) (
-		lmd.ptr<NC_Scalar*>(),
-		Dlmd.ptr<NC_Scalar*>(),
+		lmd.ptr(),
+		Dlmd.ptr(),
 		lmd.nRows(),
 		m_sMax.ptr<NC_Scalar*>()
 		);

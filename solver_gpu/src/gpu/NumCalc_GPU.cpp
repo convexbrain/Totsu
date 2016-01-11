@@ -53,12 +53,19 @@ int NumCalc_GPU::calcSearchDir(NCMat_GPU &kkt, NCVec_GPU &rtDy)
 
 	NC_uint n = kkt.nRows();
 	NC_uint lda = kkt.nRowsPitch();
+	NC_uint ldc = rtDy.nRowsPitch();
 
 	if (n != kkt.nCols()) return __LINE__;
 	if (n != rtDy.nRows()) return __LINE__;
 
 	int bufferSize = 0;
-	if (cusolverDnDgeqrf_bufferSize(m_cuSolverDn, n, n, kkt.ptr<NC_Scalar*>(), lda, &bufferSize)) {
+	if (cusolverDnDgeqrf_bufferSize(
+		m_cuSolverDn,
+		n, // rows of A
+		n, // cols of A
+		kkt.ptr(), // A
+		lda, // pitch of A
+		&bufferSize)) {
 		return __LINE__;
 	}
 
@@ -69,10 +76,16 @@ int NumCalc_GPU::calcSearchDir(NCMat_GPU &kkt, NCVec_GPU &rtDy)
 	if (m_devInfo.setZero()) return __LINE__;
 
 	// compute QR factorization: kkt -> Q * R
-	if (cusolverDnDgeqrf(m_cuSolverDn,
-		n, n, kkt.ptr<NC_Scalar*>(), lda,
-		m_solverTau.ptr<NC_Scalar*>(), m_solverBuf.ptr<NC_Scalar*>(),
-		bufferSize, m_devInfo.ptr<int*>()))
+	if (cusolverDnDgeqrf(
+		m_cuSolverDn,
+		n, // rows of A
+		n, // cols of A
+		kkt.ptr(), // A
+		lda, // pitch of A
+		m_solverTau.ptr<NC_Scalar*>(),
+		m_solverBuf.ptr<NC_Scalar*>(),
+		bufferSize,
+		m_devInfo.ptr<int*>()))
 	{
 		return __LINE__;
 	}
@@ -86,14 +99,14 @@ int NumCalc_GPU::calcSearchDir(NCMat_GPU &kkt, NCVec_GPU &rtDy)
 		m_cuSolverDn,
 		CUBLAS_SIDE_LEFT,
 		CUBLAS_OP_T,
-		n,
-		1,
-		n,
-		kkt.ptr<NC_Scalar*>(),
-		lda,
+		n, // rows of A
+		1, // cols of C??
+		n, // cols of A??
+		kkt.ptr(), // A
+		lda, // pitch of A
 		m_solverTau.ptr<NC_Scalar*>(),
-		rtDy.ptr<NC_Scalar*>(),
-		n,
+		rtDy.ptr(), // C
+		ldc, // pitch of C
 		m_solverBuf.ptr<NC_Scalar*>(),
 		bufferSize,
 		m_devInfo.ptr<int*>()))
@@ -109,13 +122,13 @@ int NumCalc_GPU::calcSearchDir(NCMat_GPU &kkt, NCVec_GPU &rtDy)
 		CUBLAS_FILL_MODE_UPPER,
 		CUBLAS_OP_N,
 		CUBLAS_DIAG_NON_UNIT,
-		n,
-		1,
+		n, // rows of B
+		1, // cols of B
 		&minusone,
-		kkt.ptr<NC_Scalar*>(),
-		lda,
-		rtDy.ptr<NC_Scalar*>(),
-		n))
+		kkt.ptr(), // A
+		lda, // pitch of A
+		rtDy.ptr(), // B
+		ldc)) // pitch of B
 	{
 		return __LINE__;
 	}

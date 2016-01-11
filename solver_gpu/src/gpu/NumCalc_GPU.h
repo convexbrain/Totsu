@@ -27,16 +27,80 @@ typedef unsigned int NC_uint;
 
 /********************************************************************/
 
-class NCBuf_GPU
+class NCMem_GPU
 {
 public:
-	explicit NCBuf_GPU() :
-		m_nSize(0), m_pBuf(NULL), m_pBufHost(NULL)
+	explicit NCMem_GPU() :
+		m_nSize(0), m_pMem(NULL), m_pMemHost(NULL)
 	{}
-	virtual ~NCBuf_GPU()
+	virtual ~NCMem_GPU() { free(); }
+private:
+	// uncopyable
+	NCMem_GPU(const NCMem_GPU&);
+	NCMem_GPU& operator=(const NCMem_GPU&);
+
+public:
+	int copyToHost(void)
 	{
-		free();
+		if (m_pMem) {
+			_hostPtr();
+			if (!memcpyToHost()) return 0;
+		}
+		return 1; // failed
 	}
+	int copyToDevice(void)
+	{
+		if (m_pMem && m_pMemHost) {
+			if (!memcpyToDevice()) return 0;
+		}
+		return 1; // failed
+	}
+
+	int setZero(void)
+	{
+		if (m_pMem) {
+			if (!cudaMemset(m_pMem, 0, m_nSize)) return 0;
+		}
+		return 1; // failed
+	}
+
+protected:
+	void free()
+	{
+		if (m_pMem) cudaFree(m_pMem);
+		if (m_pMemHost) delete m_pMemHost;
+
+		m_nSize = 0;
+		m_pMem = NULL;
+		m_pMemHost = NULL;
+	}
+
+	void* _ptr(void) { return m_pMem; }
+	char* _hostPtr(void)
+	{
+		if (!m_pMemHost) {
+			m_pMemHost = new char[m_nSize];
+		}
+
+		return m_pMemHost;
+	}
+
+	virtual int memcpyToHost(void) = 0;
+	virtual int memcpyToDevice(void) = 0;
+
+protected:
+	NC_uint  m_nSize;
+	void    *m_pMem;
+	char    *m_pMemHost;
+};
+
+/********************************************************************/
+
+class NCBuf_GPU : public NCMem_GPU
+{
+public:
+	explicit NCBuf_GPU() {}
+	virtual ~NCBuf_GPU() {}
 private:
 	// uncopyable
 	NCBuf_GPU(const NCBuf_GPU&);
@@ -48,88 +112,45 @@ public:
 		if (m_nSize < nSize)
 		{
 			free();
+
 			m_nSize = nSize;
-			if (cudaMalloc(&m_pBuf, nSize)) {
-				m_nSize = 0;
-				m_pBuf = NULL;
+
+			if (cudaMalloc(&m_pMem, nSize)) {
+				// failed
+				free();
 			}
 		}
 	}
 
 	template < class TYPE = void* > TYPE ptr(void)
 	{
-		return reinterpret_cast<TYPE>(m_pBuf);
+		return reinterpret_cast<TYPE>(_ptr());
 	}
 
 	template < class TYPE = void* > TYPE hostPtr(void)
 	{
-		if (!m_pBufHost) {
-			m_pBufHost = new char[m_nSize];
-		}
-
-		return reinterpret_cast<TYPE>(m_pBufHost);
-	}
-
-	int copyToHost(void)
-	{
-		if (m_pBuf) {
-			void *pHost = hostPtr();
-			if (!cudaMemcpy(pHost, m_pBuf, m_nSize, cudaMemcpyDeviceToHost)) {
-				return 0;
-			}
-		}
-		return 1;
-	}
-
-	int copyToDevice(void)
-	{
-		if (m_pBuf && m_pBufHost) {
-			if (!cudaMemcpy(m_pBuf, m_pBufHost, m_nSize, cudaMemcpyHostToDevice)) {
-				return 0;
-			}
-		}
-		return 1;
-	}
-
-	int setZero(void)
-	{
-		if (m_pBuf) {
-			if (!cudaMemset(m_pBuf, 0, m_nSize)) {
-				return 0;
-			}
-		}
-		return 1;
+		return reinterpret_cast<TYPE>(_hostPtr());
 	}
 
 protected:
-	void free()
+	virtual int memcpyToHost(void)
 	{
-		if (m_pBuf) {
-			cudaFree(m_pBuf);
-			m_pBuf = NULL;
-		}
-		if (m_pBufHost) {
-			delete m_pBufHost;
-			m_pBufHost = NULL;
-		}
-		m_nSize = 0;
+		return cudaMemcpy(m_pMemHost, m_pMem, m_nSize, cudaMemcpyDeviceToHost);
 	}
-
-	NC_uint  m_nSize;
-	void    *m_pBuf;
-	char    *m_pBufHost;
+	virtual int memcpyToDevice(void)
+	{
+		return cudaMemcpy(m_pMem, m_pMemHost, m_nSize, cudaMemcpyHostToDevice);
+	}
 };
 
 /********************************************************************/
 
-class NCMat_GPU : public NCBuf_GPU
+class NCMat_GPU : public NCMem_GPU
 {
 public:
-	explicit NCMat_GPU(NC_uint nRows, NC_uint sRows, NC_uint nCols, NC_uint sCols) :
-		m_nRows(nRows), m_nRowsPitch(sRows), m_nCols(nCols), m_nColsPitch(sCols)
-	{
-		realloc(sizeof(NC_Scalar) * sRows * sCols);
-	}
+	explicit NCMat_GPU() :
+		m_nRows(0), m_nRowsPitch(0), m_nCols(0)
+	{}
 	virtual ~NCMat_GPU() {}
 private:
 	// uncopyable
@@ -137,16 +158,70 @@ private:
 	NCMat_GPU& operator=(const NCMat_GPU&);
 
 public:
+	void resize(NC_uint nRows, NC_uint nCols)
+	{
+		if ((m_nRowsPitch < nRows) || (m_nCols < nCols))
+		{
+			size_t pitchInBytes;
+
+			free();
+
+			int r = cudaMallocPitch(&m_pMem, &pitchInBytes, sizeof(NC_Scalar) * nRows, nCols);
+			m_nRowsPitch = NC_uint(pitchInBytes / sizeof(NC_Scalar));
+			m_nRows = nRows;
+			m_nCols = nCols;
+
+			if (r || (m_nRowsPitch * sizeof(NC_Scalar) != pitchInBytes)) {
+				// failed
+				free();
+				m_nRowsPitch = 0;
+				m_nRows = 0;
+				m_nCols = 0;
+			}
+
+			m_nSize = sizeof(NC_Scalar) * m_nRowsPitch * m_nCols;
+		}
+	}
+
+	NC_Scalar* ptr(void)
+	{
+		return reinterpret_cast<NC_Scalar*>(_ptr());
+	}
+
+	NC_Scalar* hostPtr(void)
+	{
+		return reinterpret_cast<NC_Scalar*>(_hostPtr());
+	}
+
 	NC_uint nRows(void) { return m_nRows; }
 	NC_uint nRowsPitch(void) { return m_nRowsPitch; }
 	NC_uint nCols(void) { return m_nCols; }
-	NC_uint nColsPitch(void) { return m_nColsPitch; }
+
+protected:
+	virtual int memcpyToHost(void)
+	{
+		return cudaMemcpy2D(
+			m_pMemHost, sizeof(NC_Scalar) * m_nRowsPitch,
+			m_pMem, sizeof(NC_Scalar) * m_nRowsPitch,
+			sizeof(NC_Scalar) * m_nRows,
+			m_nCols,
+			cudaMemcpyDeviceToHost);
+	}
+
+	virtual int memcpyToDevice(void)
+	{
+		return cudaMemcpy2D(
+			m_pMem, sizeof(NC_Scalar) * m_nRowsPitch,
+			m_pMemHost, sizeof(NC_Scalar) * m_nRowsPitch,
+			sizeof(NC_Scalar) * m_nRows,
+			m_nCols,
+			cudaMemcpyHostToDevice);
+	}
 
 protected:
 	NC_uint m_nRows; // number of rows
 	NC_uint m_nRowsPitch;
 	NC_uint m_nCols; // number of columns
-	NC_uint m_nColsPitch;
 };
 
 /********************************************************************/
@@ -154,15 +229,19 @@ protected:
 class NCVec_GPU : public NCMat_GPU
 {
 public:
-	explicit NCVec_GPU(NC_uint nRows, NC_uint sRows) :
-		NCMat_GPU(nRows, sRows, 1, 1)
-	{}
-
+	explicit NCVec_GPU() {}
 	virtual ~NCVec_GPU() {}
 private:
 	// uncopyable
 	NCVec_GPU(const NCVec_GPU&);
 	NCVec_GPU& operator=(const NCVec_GPU&);
+
+public:
+	void resize(NC_uint nRows) { NCMat_GPU::resize(nRows, 1); }
+
+private:
+	// uncallable
+	void resize(NC_uint nRows, NC_uint nCols);
 };
 
 /********************************************************************/

@@ -17,17 +17,22 @@
 void gpuwrap_calcSearchDir(NumCalc_GPU *pNC, IPM_Matrix_IN _kkt, IPM_Vector_IN r_t, IPM_Vector_IO Dy)
 {
 	const NC_uint n = NC_uint(_kkt.rows());
-	NCMat_GPU kkt(n, n, n, n);
-	NCVec_GPU rtDy(n, n);
 
-	NC_Scalar *pH_kkt = kkt.hostPtr<NC_Scalar*>();
-	NC_Scalar *pH_rtDy = rtDy.hostPtr<NC_Scalar*>();
+	NCMat_GPU kkt;
+	NCVec_GPU rtDy;
+	kkt.resize(n, n);
+	rtDy.resize(n);
+
+	const NC_uint pitch = kkt.nRowsPitch();
+
+	NC_Scalar *pH_kkt = kkt.hostPtr();
+	NC_Scalar *pH_rtDy = rtDy.hostPtr();
 
 	for (NC_uint row = 0; row < n; row++)
 	{
 		for (NC_uint col = 0; col < n; col++)
 		{
-			pH_kkt[row + col * n] = _kkt(row, col);
+			pH_kkt[row + col * pitch] = _kkt(row, col);
 		}
 		pH_rtDy[row] = r_t(row);
 	}
@@ -50,11 +55,13 @@ IPM_Scalar gpuwrap_calcMaxScaleBTLS(NumCalc_GPU *pNC, IPM_Vector_IN _lmd, IPM_Ve
 	const NC_uint m = NC_uint(_lmd.rows());
 	assert(m == _Dlmd.rows());
 
-	NCVec_GPU lmd(m, m);
-	NCVec_GPU Dlmd(m, m);
+	NCVec_GPU lmd;
+	NCVec_GPU Dlmd;
+	lmd.resize(m);
+	Dlmd.resize(m);
 
-	NC_Scalar *pH_lmd = lmd.hostPtr<NC_Scalar*>();
-	NC_Scalar *pH_Dlmd = Dlmd.hostPtr<NC_Scalar*>();
+	NC_Scalar *pH_lmd = lmd.hostPtr();
+	NC_Scalar *pH_Dlmd = Dlmd.hostPtr();
 
 	for (NC_uint row = 0; row < m; row++) {
 		pH_lmd[row] = _lmd(row);
