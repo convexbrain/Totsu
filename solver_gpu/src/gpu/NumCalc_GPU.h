@@ -32,7 +32,7 @@ class NCMem_GPU
 {
 public:
 	explicit NCMem_GPU() :
-		m_nMemSize(0), m_pMem(NULL), m_pMemHost(NULL)
+		m_nMemSize(0), m_pMem(NULL), m_pMemHost(NULL), m_isRef(false)
 	{}
 	virtual ~NCMem_GPU() { free(); }
 private:
@@ -62,7 +62,7 @@ public:
 	int setZero(void)
 	{
 		if (m_pMem) {
-			if (!cudaMemset(m_pMem, 0, m_nMemSize)) return 0;
+			if (!memsetZero()) return 0;
 		}
 		assert(0);
 		return 1; // failed
@@ -71,12 +71,13 @@ public:
 protected:
 	void free()
 	{
-		if (m_pMem) cudaFree(m_pMem);
+		if (!m_isRef && m_pMem) cudaFree(m_pMem);
 		if (m_pMemHost) delete m_pMemHost;
 
 		m_nMemSize = 0;
 		m_pMem = NULL;
 		m_pMemHost = NULL;
+		m_isRef = false;
 	}
 
 	void* _ptr(void) { return m_pMem; }
@@ -92,11 +93,13 @@ protected:
 
 	virtual int memcpyToHost(void) = 0;
 	virtual int memcpyToDevice(void) = 0;
+	virtual int memsetZero(void) = 0;
 
 protected:
 	NC_uint  m_nMemSize;
 	void    *m_pMem;
 	char    *m_pMemHost;
+	bool     m_isRef;
 };
 
 /********************************************************************/
@@ -149,9 +152,15 @@ protected:
 	{
 		return cudaMemcpy(m_pMemHost, m_pMem, m_nSize, cudaMemcpyDeviceToHost);
 	}
+
 	virtual int memcpyToDevice(void)
 	{
 		return cudaMemcpy(m_pMem, m_pMemHost, m_nSize, cudaMemcpyHostToDevice);
+	}
+
+	virtual int memsetZero(void)
+	{
+		return cudaMemset(m_pMem, 0, m_nMemSize);
 	}
 
 protected:
@@ -204,6 +213,25 @@ public:
 		}
 	}
 
+	void sub(NCMat_GPU &m, NC_uint startRow, NC_uint startCol, NC_uint nRows, NC_uint nCols)
+	{
+		free();
+
+		if ((m.m_nRows <= startRow) || (m.m_nCols <= startCol) || (m.m_nRows < nRows) || (m.m_nCols < nCols)) {
+			assert(0);
+			return;
+		}
+
+		m_nRows = nRows;
+		m_nRowsPitch = m.m_nRowsPitch;
+		m_nCols = nCols;
+		m_nColsPitch = m.m_nColsPitch - startCol;
+
+		m_nMemSize = sizeof(NC_Scalar) * m_nRowsPitch * m_nColsPitch;
+		m_pMem = ptr() + startRow + startCol * m_nRowsPitch;
+		m_isRef = true;
+	}
+
 	NC_Scalar* ptr(void)
 	{
 		return reinterpret_cast<NC_Scalar*>(_ptr());
@@ -239,6 +267,15 @@ protected:
 			cudaMemcpyHostToDevice);
 	}
 
+	virtual int memsetZero(void)
+	{
+		return cudaMemset2D(
+			m_pMem, sizeof(NC_Scalar) * m_nRowsPitch,
+			0,
+			sizeof(NC_Scalar) * m_nRows,
+			m_nCols);
+	}
+
 protected:
 	NC_uint m_nRows; // number of rows
 	NC_uint m_nRowsPitch;
@@ -260,10 +297,13 @@ private:
 
 public:
 	void resize(NC_uint nRows) { NCMat_GPU::resize(nRows, 1); }
+	void sub(NCVec_GPU &m, NC_uint startRow, NC_uint nRows) { NCMat_GPU::sub(m, startRow, 0, nRows, 1); }
+	void sub(NCMat_GPU &m, NC_uint startCol) { NCMat_GPU::sub(m, 0, startCol, m_nRows, 1); }
 
 private:
 	// uncallable
 	void resize(NC_uint nRows, NC_uint nCols);
+	void sub(NCMat_GPU &m, NC_uint startRow, NC_uint startCol, NC_uint nRows, NC_uint nCols);
 };
 
 /********************************************************************/
