@@ -227,8 +227,8 @@ public:
 		m_nCols = nCols;
 		m_nColsPitch = m.m_nColsPitch - startCol;
 
+		m_pMem = m.ptr() + startRow + startCol * m_nRowsPitch;
 		m_nMemSize = sizeof(NC_Scalar) * m_nRowsPitch * m_nColsPitch;
-		m_pMem = ptr() + startRow + startCol * m_nRowsPitch;
 		m_isRef = true;
 	}
 
@@ -318,6 +318,10 @@ public:
 
 	int calcSearchDir(NCMat_GPU &kkt, NCVec_GPU &rtDy); // IO, IO
 	int calcMaxScaleBTLS(NCVec_GPU &lmd, NCVec_GPU &Dlmd, NC_Scalar *pSclMax); // I, I, O
+	int calcAddKKT(NCMat_GPU &kkt, NCMat_GPU &B, bool Btr, NCVec_GPU &beta, NC_uint betaIdx); // IO, I, I, I, I
+
+public:
+	static NCVec_GPU nullVec;
 
 private:
 	int m_fatalErr;

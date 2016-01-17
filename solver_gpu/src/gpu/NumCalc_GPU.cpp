@@ -16,6 +16,9 @@
 #include "NumCalc_GPU.h"
 
 
+NCVec_GPU NumCalc_GPU::nullVec;
+
+
 NumCalc_GPU::NumCalc_GPU()
 {
 	m_fatalErr = 0;
@@ -134,6 +137,32 @@ int NumCalc_GPU::calcSearchDir(NCMat_GPU &kkt, NCVec_GPU &rtDy)
 	}
 
 	if (cudaDeviceSynchronize()) { // TODO
+		return __LINE__;
+	}
+
+	return 0;
+}
+
+int NumCalc_GPU::calcAddKKT(NCMat_GPU &kkt, NCMat_GPU &B, bool Btr, NCVec_GPU &beta, NC_uint betaIdx)
+{
+	if (m_fatalErr) return m_fatalErr;
+
+	const NC_Scalar one = 1.0;
+	if (cublasDgeam(
+		m_cuBlas,
+		CUBLAS_OP_N,
+		(Btr) ? CUBLAS_OP_T : CUBLAS_OP_N,
+		kkt.nRows(),
+		kkt.nCols(),
+		&one,
+		kkt.ptr(),
+		kkt.nRowsPitch(),
+		(beta.nRows() == 0) ? &one : beta.ptr() + betaIdx,
+		B.ptr(),
+		B.nRowsPitch(),
+		kkt.ptr(),
+		kkt.nRowsPitch()))
+	{
 		return __LINE__;
 	}
 
