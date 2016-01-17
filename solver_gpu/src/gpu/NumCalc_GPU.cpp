@@ -168,3 +168,64 @@ int NumCalc_GPU::calcAddKKT(NCMat_GPU &kkt, NCMat_GPU &B, bool Btr, NCVec_GPU &b
 
 	return 0;
 }
+
+int NumCalc_GPU::calcMinusDiagMulKKT(NCMat_GPU &kkt, NCMat_GPU &A, NCVec_GPU &X)
+{
+	if (m_fatalErr) return m_fatalErr;
+
+	if (cublasDdgmm(
+		m_cuBlas,
+		CUBLAS_SIDE_LEFT,
+		kkt.nRows(),
+		kkt.nCols(),
+		A.ptr(),
+		A.nRowsPitch(),
+		X.ptr(),
+		1,
+		kkt.ptr(),
+		kkt.nRowsPitch()))
+	{
+		return __LINE__;
+	}
+
+	// TODO: minus X is better to optimize?
+	const NC_Scalar minusone = -1.0;
+	const NC_Scalar zero = 0.0;
+	if (cublasDgeam(
+		m_cuBlas,
+		CUBLAS_OP_N,
+		CUBLAS_OP_N,
+		kkt.nRows(),
+		kkt.nCols(),
+		&minusone,
+		kkt.ptr(),
+		kkt.nRowsPitch(),
+		&zero,
+		kkt.ptr(),
+		kkt.nRowsPitch(),
+		kkt.ptr(),
+		kkt.nRowsPitch()))
+	{
+		return __LINE__;
+	}
+
+	return 0;
+}
+
+int NumCalc_GPU::calcMinusDiagKKT(NCMat_GPU &kkt, NCVec_GPU &X)
+{
+	const NC_Scalar minusone = -1.0;
+	if (cublasDaxpy(
+		m_cuBlas,
+		kkt.nRows(),
+		&minusone,
+		X.ptr(),
+		1,
+		kkt.ptr(),
+		kkt.nRowsPitch() + 1))
+	{
+		return __LINE__;
+	}
+
+	return 0;
+}

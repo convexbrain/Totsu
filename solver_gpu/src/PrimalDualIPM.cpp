@@ -95,7 +95,7 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 	IPM_Vector b(p);
 	// loop variable
 	IPM_Vector y(n + m + p), Dy(n + m + p);
-	IPM_Matrix kkt(n + m + p, n + m + p);
+	//IPM_Matrix kkt(n + m + p, n + m + p);
 	// temporal in loop
 	IPM_Vector Df_o(n), f_i(m), r_t(n + m + p), y_p(n + m + p);
 	IPM_Matrix Df_i(m, n), DDf(n, n);
@@ -107,12 +107,12 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 	IPM_Vector_IO r_dual = r_t.segment(0, n);
 	IPM_Vector_IO r_cent = r_t.segment(n, m);
 	IPM_Vector_IO r_pri = r_t.segment(n + m, p);
-	IPM_Matrix_IO kkt_x_dual = kkt.block(0, 0, n, n);
-	IPM_Matrix_IO kkt_lmd_dual = kkt.block(0, n, n, m);
-	IPM_Matrix_IO kkt_nu_dual = kkt.block(0, n + m, n, p);
-	IPM_Matrix_IO kkt_x_cent = kkt.block(n, 0, m, n);
-	IPM_Matrix_IO kkt_lmd_cent = kkt.block(n, n, m, m);
-	IPM_Matrix_IO kkt_x_pri = kkt.block(n + m, 0, p, n);
+	//IPM_Matrix_IO kkt_x_dual = kkt.block(0, 0, n, n);
+	//IPM_Matrix_IO kkt_lmd_dual = kkt.block(0, n, n, m);
+	//IPM_Matrix_IO kkt_nu_dual = kkt.block(0, n + m, n, p);
+	//IPM_Matrix_IO kkt_x_cent = kkt.block(n, 0, m, n);
+	//IPM_Matrix_IO kkt_lmd_cent = kkt.block(n, n, m, m);
+	//IPM_Matrix_IO kkt_x_pri = kkt.block(n + m, 0, p, n);
 	IPM_Vector_IO Dlmd = Dy.segment(n, m);
 	IPM_Vector_IO x_p = y_p.segment(0, n);
 	IPM_Vector_IO lmd_p = y_p.segment(n, m);
@@ -155,7 +155,8 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 		// inequality feasibility check
 		if (eta < 0) return IPM_ERR_STR;
 
-		inv_t = eta / (m_mu * m);
+		inv_t = 0;
+		if (m > 0) inv_t = eta / (m_mu * m);
 
 		/***** update residual - central *****/
 
@@ -176,49 +177,38 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 		IPM_Scalar org_r_t_norm = r_t.norm();
 
 		/***** calc kkt matrix *****/
-		kkt.setZero(); // TODO
+		gpuwrap_clearKKT(m_pNumCalc, n, m, p);
+		gpuwrap_set_y(y, n, m, p);
 
 		if ((err = DDobjective(x, DDf)) != NULL) return err;
-		kkt_x_dual = DDf;
+		gpuwrap_addKKT_x_dual(m_pNumCalc, DDf, -1);
 		for (IPM_uint i = 0; i < m; i++)
 		{
 			if ((err = DDinequality(x, DDf, i)) != NULL) return err;
-			kkt_x_dual += lmd(i) * DDf;
+			gpuwrap_addKKT_x_dual(m_pNumCalc, DDf, i);
 		}
 
 		if (m > 0)
 		{
-			kkt_lmd_dual = Df_i.transpose();
-
-			kkt_x_cent = Df_i;
-			for (IPM_uint i = 0; i < m; i++)
-			{
-				kkt_x_cent.row(i) *= -lmd(i, 0);
-			}
-
-			for (IPM_uint i = 0; i < m; i++)
-			{
-				kkt_lmd_cent(i, i) = -f_i(i, 0);
-			}
+			gpuwrap_setKKT_Df_i(m_pNumCalc, Df_i);
+			gpuwrap_setKKT_f_i(m_pNumCalc, f_i);
 		}
 
 		if (p > 0)
 		{
-			kkt_nu_dual = A.transpose();
-
-			kkt_x_pri = A;
+			gpuwrap_setKKT_A(m_pNumCalc, A);
 		}
 
 		/***** calc search direction *****/
 
 		logVector("y", y);
 		logVector("r_t", r_t);
-		gpuwrap_calcSearchDir(m_pNumCalc, kkt, r_t, Dy);
+		gpuwrap_calcSearchDir(m_pNumCalc, r_t, Dy);
 		logVector("Dy", Dy);
 
 		/***** back tracking line search - from here *****/
 
-		IPM_Scalar s = m_s_coef * gpuwrap_calcMaxScaleBTLS(m_pNumCalc, lmd, Dlmd);
+		IPM_Scalar s = m_s_coef * gpuwrap_calcMaxScaleBTLS(m_pNumCalc, Dlmd);
 
 		y_p = y + s * Dy;
 

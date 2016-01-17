@@ -319,6 +319,8 @@ public:
 	int calcSearchDir(NCMat_GPU &kkt, NCVec_GPU &rtDy); // IO, IO
 	int calcMaxScaleBTLS(NCVec_GPU &lmd, NCVec_GPU &Dlmd, NC_Scalar *pSclMax); // I, I, O
 	int calcAddKKT(NCMat_GPU &kkt, NCMat_GPU &B, bool Btr, NCVec_GPU &beta, NC_uint betaIdx); // IO, I, I, I, I
+	int calcMinusDiagMulKKT(NCMat_GPU &kkt, NCMat_GPU &A, NCVec_GPU &X); // O, I, I
+	int calcMinusDiagKKT(NCMat_GPU &kkt, NCVec_GPU &X); // IO, I
 
 public:
 	static NCVec_GPU nullVec;
