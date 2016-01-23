@@ -244,3 +244,20 @@ int NumCalc_GPU::calcNorm(NCVec_GPU &X, NC_Scalar *pNorm)
 
 	return 0;
 }
+
+int NumCalc_GPU::calcDot(NCVec_GPU &X, NCVec_GPU &Y, NC_Scalar *pDot)
+{
+	if (cublasDdot(
+		m_cuBlas,
+		X.nRows(),
+		X.ptr(),
+		1,
+		Y.ptr(),
+		1,
+		pDot))
+	{
+		return __LINE__;
+	}
+
+	return 0;
+}

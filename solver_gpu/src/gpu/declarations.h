@@ -28,6 +28,10 @@ static struct {
 	NCVec_GPU r_dual;
 	NCVec_GPU r_cent;
 	NCVec_GPU r_pri;
+	
+	NCVec_GPU Dy; // TODO: aliasing
+	// sub vector
+	NCVec_GPU Dlmd;
 
 	NCMat_GPU kkt;
 	// sub matrix
@@ -43,8 +47,6 @@ static struct {
 	NCMat_GPU Df_i;
 	NCVec_GPU f_i;
 	NCMat_GPU A;
-	NCVec_GPU rtDy;
-	NCVec_GPU Dlmd;
 } g;
 
 void gpuwrap_clearKKT(NumCalc_GPU *pNC, IPM_uint n, IPM_uint m, IPM_uint p)
@@ -137,7 +139,7 @@ void gpuwrap_setKKT_Df_i(NumCalc_GPU *pNC, IPM_Matrix_IN Df_i)
 	assert(pNC->calcMinusDiagMulKKT(g.kkt_x_cent, g.Df_i, g.lmd) == 0); // TODO: error
 }
 
-void gpuwrap_setKKT_f_i(NumCalc_GPU *pNC, IPM_Vector_IN f_i)
+void gpuwrap_set_f_i(IPM_Vector_IN f_i)
 {
 	const NC_uint m = NC_uint(f_i.rows());
 
@@ -151,7 +153,10 @@ void gpuwrap_setKKT_f_i(NumCalc_GPU *pNC, IPM_Vector_IN f_i)
 	}
 
 	g.f_i.copyToDevice();
+}
 
+void gpuwrap_setKKT_f_i(NumCalc_GPU *pNC)
+{
 	assert(pNC->calcMinusDiagKKT(g.kkt_lmd_cent, g.f_i) == 0); // TODO: error
 }
 
@@ -180,47 +185,27 @@ void gpuwrap_setKKT_A(NumCalc_GPU *pNC, IPM_Matrix_IN A)
 	assert(pNC->calcAddKKT(g.kkt_x_pri, g.A, false, NumCalc_GPU::nullVec, 0) == 0); // TODO: error
 }
 
-void gpuwrap_calcSearchDir(NumCalc_GPU *pNC, IPM_Vector_IN r_t, IPM_Vector_IO Dy)
+void gpuwrap_calcSearchDir(NumCalc_GPU *pNC, IPM_Vector_IO Dy)
 {
-	const NC_uint nmp = NC_uint(r_t.rows());
-	assert(nmp == NC_uint(Dy.rows()));
+	assert(pNC->calcSearchDir(g.kkt, g.r_t) == 0); // TODO: error
 
-	g.rtDy.resize(nmp);
+	const NC_uint nmp = NC_uint(Dy.rows());
+	g.Dy.resize(nmp);
+	cudaMemcpy(g.Dy.ptr(), g.r_t.ptr(), sizeof(NC_Scalar) * g.Dy.nRows(), cudaMemcpyDeviceToDevice); // TODO: aliasing
 
-	NC_Scalar *pH_rtDy = g.rtDy.hostPtr();
-
-	for (NC_uint row = 0; row < nmp; row++)
-	{
-		pH_rtDy[row] = r_t(row);
-	}
-
-	g.rtDy.copyToDevice();
-
-	// g.kkt will be corrupted
-	assert(pNC->calcSearchDir(g.kkt, g.rtDy) == 0); // TODO: error
-
-	g.rtDy.copyToHost();
+	NC_Scalar *pH_Dy = g.Dy.hostPtr();
+	g.Dy.copyToHost();
 
 	for (NC_uint row = 0; row < nmp; row++)
 	{
-		Dy(row) = pH_rtDy[row];
+		Dy(row) = pH_Dy[row];
 	}
 }
 
-IPM_Scalar gpuwrap_calcMaxScaleBTLS(NumCalc_GPU *pNC, IPM_Vector_IN Dlmd)
+IPM_Scalar gpuwrap_calcMaxScaleBTLS(NumCalc_GPU *pNC, IPM_uint n, IPM_uint m)
 {
-	// TODO: subMat, subVec
-	const NC_uint m = NC_uint(Dlmd.rows());
-
-	g.Dlmd.resize(m);
-
-	NC_Scalar *pH_Dlmd = g.Dlmd.hostPtr();
-
-	for (NC_uint row = 0; row < m; row++) {
-		pH_Dlmd[row] = Dlmd(row);
-	}
-
-	g.Dlmd.copyToDevice();
+	// sub vectors
+	g.Dlmd.sub(g.Dy, n, m);
 
 	IPM_Scalar s_max;
 	assert(pNC->calcMaxScaleBTLS(g.lmd, g.Dlmd, &s_max) == 0); // TODO: error
@@ -273,3 +258,27 @@ IPM_Scalar gpuwrap_r_t_norm(NumCalc_GPU *pNC)
 	return norm;
 }
 
+void gpuwrap_r_cent(NumCalc_GPU *pNC, IPM_Vector_IO r_cent, IPM_Scalar inv_t)
+{
+	const NC_uint m = NC_uint(r_cent.rows());
+	NCVec_GPU _r_cent;
+
+	_r_cent.resize(m);
+	assert(pNC->calcCentResidual(g.lmd, g.f_i, inv_t, _r_cent) == 0); // TODO: error
+
+	NC_Scalar *pH_r_cent = _r_cent.hostPtr();
+	_r_cent.copyToHost();
+
+	for (NC_uint row = 0; row < m; row++)
+	{
+		r_cent(row) = pH_r_cent[row];
+	}
+}
+
+IPM_Scalar gpuwrap_eta(NumCalc_GPU *pNC)
+{
+	IPM_Scalar minus_eta;
+	assert(pNC->calcDot(g.f_i, g.lmd, &minus_eta) == 0); // TODO: error
+
+	return -minus_eta;
+}

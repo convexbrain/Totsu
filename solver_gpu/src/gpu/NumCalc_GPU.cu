@@ -68,3 +68,31 @@ int NumCalc_GPU::calcMaxScaleBTLS(NCVec_GPU &lmd, NCVec_GPU &Dlmd, NC_Scalar *pS
 
 	return 0; // TODO: error check
 }
+
+__global__ void
+kernel_calcCentResidual(const NC_Scalar *lmd, const NC_Scalar *f_i, NC_Scalar inv_t, NC_uint m, NC_Scalar *r_cent)
+{
+	// TODO: parallelize
+	// int tid = threadIdx.x;
+
+	for (NC_uint i = 0; i < m; i++)
+	{
+		r_cent[i] = -lmd[i] * f_i[i] - inv_t * m;
+	}
+}
+
+int NumCalc_GPU::calcCentResidual(NCVec_GPU &lmd, NCVec_GPU &f_i, NC_Scalar inv_t, NCVec_GPU &r_cent)
+{
+	if (m_fatalErr) return m_fatalErr;
+
+	kernel_calcCentResidual KPRMS2(1, 1) (
+		lmd.ptr(),
+		f_i.ptr(),
+		inv_t,
+		lmd.nRows(),
+		r_cent.ptr()
+		);
+
+	return 0; // TODO: error check
+}
+

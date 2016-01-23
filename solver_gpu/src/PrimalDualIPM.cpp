@@ -147,10 +147,13 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 
 		IPM_LOG_EN({ if (m_pOuts) *m_pOuts << endl << "===== ===== ===== ===== loop : " << loop << endl; });
 
+		gpuwrap_set_y(y, n, m, p);
+		gpuwrap_set_f_i(f_i);
+
 		/***** calc t *****/
 
 		eta = m_eps;
-		if (m > 0) eta = IPM_Scalar(-f_i.dot(lmd));
+		if (m > 0) eta = gpuwrap_eta(m_pNumCalc);
 
 		// inequality feasibility check
 		if (eta < 0) return IPM_ERR_STR;
@@ -160,11 +163,12 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 
 		/***** update residual - central *****/
 
-		if (m > 0) r_cent = -lmd.cwiseProduct(f_i) - inv_t * IPM_Vector::Ones(m);
+		if (m > 0) gpuwrap_r_cent(m_pNumCalc, r_cent, inv_t);
 
 		/***** termination criteria *****/
 
 		gpuwrap_set_r_t(r_t, n, m, p);
+		IPM_Scalar org_r_t_norm = gpuwrap_r_t_norm(m_pNumCalc); // used in back tracking line search
 
 		IPM_Scalar r_dual_norm = gpuwrap_r_dual_norm(m_pNumCalc);
 		IPM_Scalar r_pri_norm = gpuwrap_r_pri_norm(m_pNumCalc);
@@ -176,12 +180,10 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 			IPM_LOG_EN({ if (m_pOuts) *m_pOuts << "termination criteria satisfied" << endl; });
 			break;
 		}
-		IPM_Scalar org_r_t_norm = gpuwrap_r_t_norm(m_pNumCalc);
 
 		/***** calc kkt matrix *****/
 
 		gpuwrap_clearKKT(m_pNumCalc, n, m, p);
-		gpuwrap_set_y(y, n, m, p);
 
 		if ((err = DDobjective(x, DDf)) != NULL) return err;
 		gpuwrap_addKKT_x_dual(m_pNumCalc, DDf, -1);
@@ -194,7 +196,7 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 		if (m > 0)
 		{
 			gpuwrap_setKKT_Df_i(m_pNumCalc, Df_i);
-			gpuwrap_setKKT_f_i(m_pNumCalc, f_i);
+			gpuwrap_setKKT_f_i(m_pNumCalc);
 		}
 
 		if (p > 0)
@@ -206,12 +208,12 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 
 		logVector("y", y);
 		logVector("r_t", r_t);
-		gpuwrap_calcSearchDir(m_pNumCalc, r_t, Dy);
+		gpuwrap_calcSearchDir(m_pNumCalc, Dy); // kkt and r_t will be corrupted
 		logVector("Dy", Dy);
 
 		/***** back tracking line search - from here *****/
 
-		IPM_Scalar s = m_s_coef * gpuwrap_calcMaxScaleBTLS(m_pNumCalc, Dlmd);
+		IPM_Scalar s = m_s_coef * gpuwrap_calcMaxScaleBTLS(m_pNumCalc, n, m);
 
 		y_p = y + s * Dy;
 
