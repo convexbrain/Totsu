@@ -229,3 +229,18 @@ int NumCalc_GPU::calcMinusDiagKKT(NCMat_GPU &kkt, NCVec_GPU &X)
 
 	return 0;
 }
+
+int NumCalc_GPU::calcNorm(NCVec_GPU &X, NC_Scalar *pNorm)
+{
+	if (cublasDnrm2(
+		m_cuBlas,
+		X.nRows(),
+		X.ptr(),
+		1,
+		pNorm))
+	{
+		return __LINE__;
+	}
+
+	return 0;
+}

@@ -23,6 +23,12 @@ static struct {
 	NCVec_GPU lmd;
 	NCVec_GPU nu;
 
+	NCVec_GPU r_t;
+	// sub vector
+	NCVec_GPU r_dual;
+	NCVec_GPU r_cent;
+	NCVec_GPU r_pri;
+
 	NCMat_GPU kkt;
 	// sub matrix
 	NCMat_GPU kkt_x_dual;
@@ -190,6 +196,7 @@ void gpuwrap_calcSearchDir(NumCalc_GPU *pNC, IPM_Vector_IN r_t, IPM_Vector_IO Dy
 
 	g.rtDy.copyToDevice();
 
+	// g.kkt will be corrupted
 	assert(pNC->calcSearchDir(g.kkt, g.rtDy) == 0); // TODO: error
 
 	g.rtDy.copyToHost();
@@ -219,5 +226,50 @@ IPM_Scalar gpuwrap_calcMaxScaleBTLS(NumCalc_GPU *pNC, IPM_Vector_IN Dlmd)
 	assert(pNC->calcMaxScaleBTLS(g.lmd, g.Dlmd, &s_max) == 0); // TODO: error
 
 	return s_max;
+}
+
+void gpuwrap_set_r_t(IPM_Vector_IN r_t, IPM_uint n, IPM_uint m, IPM_uint p)
+{
+	const NC_uint nmp = NC_uint(r_t.rows());
+
+	g.r_t.resize(nmp);
+
+	NC_Scalar *pH_r_t = g.r_t.hostPtr();
+
+	for (NC_uint row = 0; row < nmp; row++)
+	{
+		pH_r_t[row] = r_t(row);
+	}
+
+	g.r_t.copyToDevice();
+
+	// sub vectors
+	g.r_dual.sub(g.r_t, 0, n);
+	g.r_cent.sub(g.r_t, n, m);
+	g.r_pri.sub(g.r_t, n + m, p);
+}
+
+IPM_Scalar gpuwrap_r_dual_norm(NumCalc_GPU *pNC)
+{
+	IPM_Scalar norm;
+	assert(pNC->calcNorm(g.r_dual, &norm) == 0); // TODO: error
+
+	return norm;
+}
+
+IPM_Scalar gpuwrap_r_pri_norm(NumCalc_GPU *pNC)
+{
+	IPM_Scalar norm;
+	assert(pNC->calcNorm(g.r_pri, &norm) == 0); // TODO: error
+
+	return norm;
+}
+
+IPM_Scalar gpuwrap_r_t_norm(NumCalc_GPU *pNC)
+{
+	IPM_Scalar norm;
+	assert(pNC->calcNorm(g.r_t, &norm) == 0); // TODO: error
+
+	return norm;
 }
 

@@ -164,8 +164,10 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 
 		/***** termination criteria *****/
 
-		IPM_Scalar r_dual_norm = r_dual.norm();
-		IPM_Scalar r_pri_norm = r_pri.norm();
+		gpuwrap_set_r_t(r_t, n, m, p);
+
+		IPM_Scalar r_dual_norm = gpuwrap_r_dual_norm(m_pNumCalc);
+		IPM_Scalar r_pri_norm = gpuwrap_r_pri_norm(m_pNumCalc);
 		IPM_LOG_EN({ if (m_pOuts) *m_pOuts << "|| r_dual || : " << r_dual_norm << endl; });
 		IPM_LOG_EN({ if (m_pOuts) *m_pOuts << "|| r_pri  || : " << r_pri_norm << endl; });
 		IPM_LOG_EN({ if (m_pOuts) *m_pOuts << "   eta       : " << eta << endl; });
@@ -174,9 +176,10 @@ IPM_Error PrimalDualIPM::start(const IPM_uint n, const IPM_uint m, const IPM_uin
 			IPM_LOG_EN({ if (m_pOuts) *m_pOuts << "termination criteria satisfied" << endl; });
 			break;
 		}
-		IPM_Scalar org_r_t_norm = r_t.norm();
+		IPM_Scalar org_r_t_norm = gpuwrap_r_t_norm(m_pNumCalc);
 
 		/***** calc kkt matrix *****/
+
 		gpuwrap_clearKKT(m_pNumCalc, n, m, p);
 		gpuwrap_set_y(y, n, m, p);
 
