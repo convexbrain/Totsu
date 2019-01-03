@@ -38,7 +38,6 @@ pub struct Mat<'a>
     stride: usize,
     //
     transposed: bool,
-    diagonal: bool,
     //
     view: View<'a>
 }
@@ -53,7 +52,6 @@ impl<'a> Mat<'a>
             offset: 0,
             stride: nrows,
             transposed: false,
-            diagonal: false,
             view: View::Own(vec![0.0; nrows * ncols])
         }
     }
