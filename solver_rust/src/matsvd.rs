@@ -68,13 +68,14 @@ impl<'a> MatSVD<'a>
             let c = 1.0 / FP::sqrt(1.0 + t * t);
             let s = c * t;
 
-            let tmp1 = self.u.col(c1) * c - self.u.col(c2) * s;
-            let tmp2 = self.u.col(c1) * s + self.u.col(c2) * c;
+            let (nr, _) = self.u.size(); // TODO: workaround
+            let tmp1 = Mat::new1(nr) + self.u.col(c1) * c - self.u.col(c2) * s;
+            let tmp2 = Mat::new1(nr) + self.u.col(c1) * s + self.u.col(c2) * c;
             self.u.col_mut(c1).assign(&tmp1);
             self.u.col_mut(c2).assign(&tmp2);
 
-            let tmp1 = self.v.col(c1) * c - self.v.col(c2) * s;
-            let tmp2 = self.v.col(c1) * s + self.v.col(c2) * c;
+            let tmp1 = Mat::new1(nr) + self.v.col(c1) * c - self.v.col(c2) * s;
+            let tmp2 = Mat::new1(nr) + self.v.col(c1) * s + self.v.col(c2) * c;
             self.v.col_mut(c1).assign(&tmp1);
             self.v.col_mut(c2).assign(&tmp2);
         }
@@ -94,7 +95,8 @@ impl<'a> MatSVD<'a>
                 continue;
             }
 
-            let tmp = self.u.col(i) / s;
+            let (nr, _) = self.u.size(); // TODO: workaround
+            let tmp = (Mat::new1(nr) + self.u.col(i)) / s;
 
             self.u.col_mut(i).assign(&tmp);
         }

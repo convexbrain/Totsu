@@ -96,15 +96,15 @@ impl<'a> Mat<'a>
         }
     }
     //
-    pub fn slice<RR, CR>(&self, rows: RR, cols: CR) -> Mat
+    pub fn slice<'b, RR, CR>(&'b self, rows: RR, cols: CR) -> Mat<'b>
     where RR: RangeBounds<usize>,  CR: RangeBounds<usize>
     {
         let (row_range, col_range) = self.tr_bound(rows, cols);
 
         let view = match &self.view {
-            View::Own(v) => View::Borrow(&v),
-            View::Borrow(v) => View::Borrow(&v),
-            View::BorrowMut(v) => View::Borrow(&v)
+            View::Own(v) => View::Borrow(v),
+            View::Borrow(v) => View::Borrow(v),
+            View::BorrowMut(v) => View::Borrow(v)
         };
 
         Mat {
@@ -116,7 +116,7 @@ impl<'a> Mat<'a>
         }
     }
     //
-    pub fn slice_mut<RR, CR>(&mut self, rows: RR, cols: CR) -> Mat
+    pub fn slice_mut<'b, RR, CR>(&'b mut self, rows: RR, cols: CR) -> Mat<'b>
     where RR: RangeBounds<usize>,  CR: RangeBounds<usize>
     {
         let (row_range, col_range) = self.tr_bound(rows, cols);
@@ -136,22 +136,22 @@ impl<'a> Mat<'a>
         }
     }
     //
-    pub fn row(&self, r: usize) -> Mat
+    pub fn row<'b>(&'b self, r: usize) -> Mat<'b>
     {
         self.slice(r ..= r, ..)
     }
     //
-    pub fn col(&self, c: usize) -> Mat
+    pub fn col<'b>(&'b self, c: usize) -> Mat<'b>
     {
         self.slice(.., c ..= c)
     }
     //
-    pub fn row_mut(&mut self, r: usize) -> Mat
+    pub fn row_mut<'b>(&'b mut self, r: usize) -> Mat<'b>
     {
         self.slice_mut(r ..= r, ..)
     }
     //
-    pub fn col_mut(&mut self, c: usize) -> Mat
+    pub fn col_mut<'b>(&'b mut self, c: usize) -> Mat<'b>
     {
         self.slice_mut(.., c ..= c)
     }
@@ -225,7 +225,33 @@ impl<'a> Mat<'a>
         }
     }
     //
-    pub fn t(&self) -> Mat
+    fn clone_shrink(&self) -> Mat<'a>
+    {
+        let sz = match &self.view {
+            View::Own(v) => v.len(),
+            View::Borrow(v) => v.len(),
+            View::BorrowMut(v) => v.len()
+        };
+
+        if sz == self.nrows * self.ncols {
+            self.clone()
+        }
+        else {
+            let (l_nrows, l_ncols) = self.size();
+            let mut mat = Mat::new(l_nrows, l_ncols);
+            mat.assign(self);
+            mat
+        }
+    }
+    fn to_own(self) -> Mat<'a>
+    {
+        match &self.view {
+            View::Own(_) => self,
+            _ => self.clone_shrink()
+        }
+    }
+    //
+    pub fn t(&'a self) -> Mat<'a>
     {
         let view = match &self.view {
             View::Own(v) => View::Borrow(&v),
@@ -240,7 +266,7 @@ impl<'a> Mat<'a>
         }
     }
     //
-    pub fn diag(&self) -> Mat
+    pub fn diag(&self) -> Mat<'a>
     {
         let (l_nrows, _) = self.size();
 
@@ -379,19 +405,18 @@ impl<'a> MatAcc for &Mat<'a>
 
 //
 
-impl<'a> Neg for &Mat<'a>
+impl<'a> Neg for Mat<'a>
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn neg(self) -> Mat<'static>
+    fn neg(self) -> Mat<'a>
     {
-        let (l_nrows, l_ncols) = self.size();
-
-        let mut mat = Mat::new(l_nrows, l_ncols);
+        let mut mat = self.to_own();
+        let (l_nrows, l_ncols) = mat.size();
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                mat[(r, c)] = -self.get(r, c);
+                mat[(r, c)] = -mat[(r, c)];
             }
         }
 
@@ -399,34 +424,63 @@ impl<'a> Neg for &Mat<'a>
     }
 }
 
-impl<'a> Neg for Mat<'a>
+impl<'a> Neg for &Mat<'a>
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn neg(self) -> Mat<'static>
+    fn neg(self) -> Mat<'a>
     {
-        -&self
+        self.clone_shrink().neg()
     }
 }
 
 //
 
-impl<'a, T> Add<T> for &Mat<'a>
+impl<'a, T> Add<T> for Mat<'a>
 where T: MatAcc
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn add(self, rhs: T) -> Mat<'static>
+    fn add(self, rhs: T) -> Mat<'a>
     {
-        let (l_nrows, l_ncols) = self.size();
+        let mut mat = self.to_own();
+        let (l_nrows, l_ncols) = mat.size();
 
         assert_eq!((l_nrows, l_ncols), rhs.size());
 
-        let mut mat = Mat::new(l_nrows, l_ncols);
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                mat[(r, c)] += rhs.get(r, c);
+            }
+        }
+
+        mat
+    }
+}
+
+impl<'a, T> Add<T> for &Mat<'a>
+where T: MatAcc
+{
+    type Output = Mat<'a>;
+
+    fn add(self, rhs: T) -> Mat<'a>
+    {
+        self.clone_shrink().add(rhs)
+    }
+}
+
+impl<'a> Add<FP> for Mat<'a>
+{
+    type Output = Mat<'a>;
+
+    fn add(self, rhs: FP) -> Mat<'a>
+    {
+        let mut mat = self.to_own();
+        let (l_nrows, l_ncols) = mat.size();
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                mat[(r, c)] = self.get(r, c) + rhs.get(r, c);
+                mat[(r, c)] += rhs;
             }
         }
 
@@ -436,60 +490,29 @@ where T: MatAcc
 
 impl<'a> Add<FP> for &Mat<'a>
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn add(self, rhs: FP) -> Mat<'static>
+    fn add(self, rhs: FP) -> Mat<'a>
     {
-        let (l_nrows, l_ncols) = self.size();
-
-        let mut mat = Mat::new(l_nrows, l_ncols);
-
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                mat[(r, c)] = self.get(r, c) + rhs;
-            }
-        }
-
-        mat
-    }
-}
-
-impl<'a, T> Add<T> for Mat<'a>
-where T: MatAcc
-{
-    type Output = Mat<'static>;
-
-    fn add(self, rhs: T) -> Mat<'static>
-    {
-        &self + rhs
-    }
-}
-
-impl<'a> Add<FP> for Mat<'a>
-{
-    type Output = Mat<'static>;
-
-    fn add(self, rhs: FP) -> Mat<'static>
-    {
-        &self + rhs
-    }
-}
-
-impl<'a> Add<&Mat<'a>> for FP
-{
-    type Output = Mat<'static>;
-
-    fn add(self, rhs: &Mat) -> Mat<'static>
-    {
-        rhs.add(self)
+        self.clone_shrink().add(rhs)
     }
 }
 
 impl<'a> Add<Mat<'a>> for FP
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn add(self, rhs: Mat) -> Mat<'static>
+    fn add(self, rhs: Mat<'a>) -> Mat<'a>
+    {
+        rhs.add(self)
+    }
+}
+
+impl<'a> Add<&Mat<'a>> for FP
+{
+    type Output = Mat<'a>;
+
+    fn add(self, rhs: &Mat<'a>) -> Mat<'a>
     {
         rhs.add(self)
     }
@@ -497,22 +520,52 @@ impl<'a> Add<Mat<'a>> for FP
 
 //
 
-impl<'a, T> Sub<T> for &Mat<'a>
+impl<'a, T> Sub<T> for Mat<'a>
 where T: MatAcc
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn sub(self, rhs: T) -> Mat<'static>
+    fn sub(self, rhs: T) -> Mat<'a>
     {
-        let (l_nrows, l_ncols) = self.size();
+        let mut mat = self.to_own();
+        let (l_nrows, l_ncols) = mat.size();
 
         assert_eq!((l_nrows, l_ncols), rhs.size());
 
-        let mut mat = Mat::new(l_nrows, l_ncols);
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                mat[(r, c)] -= rhs.get(r, c);
+            }
+        }
+
+        mat
+    }
+}
+
+impl<'a, T> Sub<T> for &Mat<'a>
+where T: MatAcc
+{
+    type Output = Mat<'a>;
+
+    fn sub(self, rhs: T) -> Mat<'a>
+    {
+        self.clone_shrink().sub(rhs)
+    }
+}
+
+impl<'a> Sub<FP> for Mat<'a>
+{
+    type Output = Mat<'a>;
+
+    fn sub(self, rhs: FP) -> Mat<'a>
+    {
+        let mut mat = self.to_own();
+
+        let (l_nrows, l_ncols) = mat.size();
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                mat[(r, c)] = self.get(r, c) - rhs.get(r, c);
+                mat[(r, c)] -= rhs;
             }
         }
 
@@ -522,73 +575,53 @@ where T: MatAcc
 
 impl<'a> Sub<FP> for &Mat<'a>
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn sub(self, rhs: FP) -> Mat<'static>
+    fn sub(self, rhs: FP) -> Mat<'a>
     {
-        let (l_nrows, l_ncols) = self.size();
-
-        let mut mat = Mat::new(l_nrows, l_ncols);
-
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                mat[(r, c)] = self.get(r, c) - rhs;
-            }
-        }
-
-        mat
-    }
-}
-
-impl<'a, T> Sub<T> for Mat<'a>
-where T: MatAcc
-{
-    type Output = Mat<'static>;
-
-    fn sub(self, rhs: T) -> Mat<'static>
-    {
-        &self - rhs
-    }
-}
-
-impl<'a> Sub<FP> for Mat<'a>
-{
-    type Output = Mat<'static>;
-
-    fn sub(self, rhs: FP) -> Mat<'static>
-    {
-        &self - rhs
-    }
-}
-
-impl<'a> Sub<&Mat<'a>> for FP
-{
-    type Output = Mat<'static>;
-
-    fn sub(self, rhs: &Mat) -> Mat<'static>
-    {
-        -rhs + self
+        self.clone_shrink().sub(rhs)
     }
 }
 
 impl<'a> Sub<Mat<'a>> for FP
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn sub(self, rhs: Mat) -> Mat<'static>
+    fn sub(self, rhs: Mat<'a>) -> Mat<'a>
     {
-        -rhs + self
+        rhs.neg().add(self)
+    }
+}
+
+impl<'a> Sub<&Mat<'a>> for FP
+{
+    type Output = Mat<'a>;
+
+    fn sub(self, rhs: &Mat<'a>) -> Mat<'a>
+    {
+        rhs.neg().add(self)
     }
 }
 
 //
 
+impl<'a, T> Mul<T> for Mat<'a>
+where T: MatAcc
+{
+    type Output = Mat<'a>;
+
+    fn mul(self, rhs: T) -> Mat<'a>
+    {
+        (&self).mul(rhs)
+    }
+}
+
 impl<'a, T> Mul<T> for &Mat<'a>
 where T: MatAcc
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn mul(self, rhs: T) -> Mat<'static>
+    fn mul(self, rhs: T) -> Mat<'a>
     {
         let (l_nrows, l_ncols) = self.size();
         let (r_nrows, r_ncols) = rhs.size();
@@ -611,19 +644,19 @@ where T: MatAcc
     }
 }
 
-impl<'a> Mul<FP> for &Mat<'a>
+impl<'a> Mul<FP> for Mat<'a>
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn mul(self, rhs: FP) -> Mat<'static>
+    fn mul(self, rhs: FP) -> Mat<'a>
     {
-        let (l_nrows, l_ncols) = self.size();
+        let mut mat = self.to_own();
 
-        let mut mat = Mat::new(l_nrows, l_ncols);
+        let (l_nrows, l_ncols) = mat.size();
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                mat[(r, c)] = self.get(r, c) * rhs;
+                mat[(r, c)] *= rhs;
             }
         }
 
@@ -631,42 +664,31 @@ impl<'a> Mul<FP> for &Mat<'a>
     }
 }
 
-impl<'a, T> Mul<T> for Mat<'a>
-where T: MatAcc
+impl<'a> Mul<FP> for &Mat<'a>
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn mul(self, rhs: T) -> Mat<'static>
+    fn mul(self, rhs: FP) -> Mat<'a>
     {
-        &self * rhs
-    }
-}
-
-impl<'a> Mul<FP> for Mat<'a>
-{
-    type Output = Mat<'static>;
-
-    fn mul(self, rhs: FP) -> Mat<'static>
-    {
-        &self * rhs
-    }
-}
-
-impl<'a> Mul<&Mat<'a>> for FP
-{
-    type Output = Mat<'static>;
-
-    fn mul(self, rhs: &Mat) -> Mat<'static>
-    {
-        rhs.mul(self)
+        self.clone_shrink().mul(rhs)
     }
 }
 
 impl<'a> Mul<Mat<'a>> for FP
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn mul(self, rhs: Mat) -> Mat<'static>
+    fn mul(self, rhs: Mat<'a>) -> Mat<'a>
+    {
+        rhs.mul(self)
+    }
+}
+
+impl<'a> Mul<&Mat<'a>> for FP
+{
+    type Output = Mat<'a>;
+
+    fn mul(self, rhs: &Mat<'a>) -> Mat<'a>
     {
         rhs.mul(self)
     }
@@ -674,75 +696,31 @@ impl<'a> Mul<Mat<'a>> for FP
 
 //
 
-impl<'a, T> Div<T> for &Mat<'a>
-where T: MatAcc
+impl<'a> Div<FP> for Mat<'a>
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn div(self, _rhs: T) -> Mat<'static>
+    fn div(mut self, rhs: FP) -> Mat<'a>
     {
-        panic!("not supported");
+        let (l_nrows, l_ncols) = self.size();
+
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                self[(r, c)] /= rhs;
+            }
+        }
+
+        self
     }
 }
 
 impl<'a> Div<FP> for &Mat<'a>
 {
-    type Output = Mat<'static>;
+    type Output = Mat<'a>;
 
-    fn div(self, rhs: FP) -> Mat<'static>
+    fn div(self, rhs: FP) -> Mat<'a>
     {
-        let (l_nrows, l_ncols) = self.size();
-
-        let mut mat = Mat::new(l_nrows, l_ncols);
-
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                mat[(r, c)] = self.get(r, c) / rhs;
-            }
-        }
-
-        mat
-    }
-}
-
-impl<'a, T> Div<T> for Mat<'a>
-where T: MatAcc
-{
-    type Output = Mat<'static>;
-
-    fn div(self, _rhs: T) -> Mat<'static>
-    {
-        panic!("not supported");
-    }
-}
-
-impl<'a> Div<FP> for Mat<'a>
-{
-    type Output = Mat<'static>;
-
-    fn div(self, rhs: FP) -> Mat<'static>
-    {
-        &self / rhs
-    }
-}
-
-impl<'a> Div<&Mat<'a>> for FP
-{
-    type Output = Mat<'static>;
-
-    fn div(self, _rhs: &Mat) -> Mat<'static>
-    {
-        panic!("not supported");
-    }
-}
-
-impl<'a> Div<Mat<'a>> for FP
-{
-    type Output = Mat<'static>;
-
-    fn div(self, _rhs: Mat) -> Mat<'static>
-    {
-        panic!("not supported");
+        self.clone_shrink().div(rhs)
     }
 }
 
