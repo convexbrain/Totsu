@@ -354,6 +354,20 @@ impl<V: View> Mat<V>
     }
     //
     // assign methods
+    pub fn assign_by<F>(&mut self, f: F)
+    where F: Fn(usize, usize) -> Option<FP>
+    {
+        let (l_nrows, l_ncols) = self.size();
+
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                if let Some(value) = f(r, c) {
+                    self[(r, c)] = value;
+                }
+            }
+        }
+    }
+    //
     pub fn assign<V2: View>(&mut self, rhs: &Mat<V2>)
     {
         let (l_nrows, l_ncols) = self.size();
@@ -362,24 +376,7 @@ impl<V: View> Mat<V>
         assert_eq!(l_nrows, r_nrows);
         assert_eq!(l_ncols, r_ncols);
         
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                self[(r, c)] = rhs[(r, c)];
-            }
-        }
-    }
-    pub fn assign_diag<V2: View>(&mut self, rhs: &Mat<V2>)
-    {
-        let (l_nrows, l_ncols) = self.size();
-        let (r_nrows, r_ncols) = rhs.size();
-        assert_eq!(r_ncols, 1);
-
-        let nmin = if l_nrows < l_ncols {l_nrows} else {l_ncols};
-        assert_eq!(nmin, r_nrows);
-
-        for r in 0 .. nmin {
-            self[(r, r)] = rhs[(r, 0)];
-        }
+        self.assign_by(|r, c| {Some(rhs[(r, c)])});
     }
     //
     // size methods

@@ -177,9 +177,7 @@ fn test_decomp()
     println!("u' * u = {}", utu);
 
     let utu_size = utu.size();
-    for k in 0 .. utu_size.0 {
-        utu[(k, k)] = 0.;
-    }
+    utu.assign_by(|r, c| {if r == c {Some(0.)} else {None}});
     let utu_err = utu.norm_p2sq() / ((utu_size.0 * utu_size.1) as FP);
     println!("utu_err = {:e}", utu_err);
     assert!(utu_err < TOL_RMSE);
@@ -190,9 +188,7 @@ fn test_decomp()
     println!("v * v' = {}", vvt);
 
     let vvt_size = vvt.size();
-    for k in 0 .. vvt_size.0 {
-        vvt[(k, k)] = 0.;
-    }
+    vvt.assign_by(|r, c| {if r == c {Some(0.)} else {None}});
     let vvt_err = vvt.norm_p2sq() / ((vvt_size.0 * vvt_size.1) as FP);
     println!("vvt_err = {:e}", vvt_err);
     assert!(vvt_err < TOL_RMSE);
