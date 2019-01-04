@@ -1,7 +1,8 @@
 pub type FP = f64;
 pub use std::f64::EPSILON as FP_EPSILON;
 pub use std::f64::MIN as FP_MIN;
-type MatOwn = Mat<Vec<FP>>;
+
+pub type MatOwn = Mat<Vec<FP>>;
 
 use std::cmp::PartialEq;
 use std::ops::{Range, RangeBounds, Bound};

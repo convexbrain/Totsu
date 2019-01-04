@@ -1,5 +1,5 @@
 mod mat;
-//mod matsvd; // TODO: activate
+mod matsvd;
 
 #[cfg(test)]
 mod tests {
