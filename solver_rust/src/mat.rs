@@ -270,8 +270,8 @@ impl<V: View> Mat<V>
     }
     //
     // set methods
-    pub fn set_by<F>(mut self, f: F) -> Mat<V>
-    where F: Fn(usize, usize) -> FP
+    pub fn set_by<F>(mut self, mut f: F) -> Mat<V>
+    where F: FnMut(usize, usize) -> FP
     {
         let (nrows, ncols) = self.size();
 
@@ -824,6 +824,21 @@ impl<V: View> Div<FP> for &Mat<V>
         self.clone().div(rhs)
     }
 }
+
+//
+
+pub const XOR64_INIT: u64 = 88172645463325252;
+
+pub fn xor64(state: &mut u64) -> FP
+{
+    const MAX: FP = (1_u128 << 64) as FP;
+    *state = *state ^ (*state << 7);
+    *state = *state ^ (*state >> 9);
+
+    // [0.0, 1.0)
+    (*state as FP) / MAX
+}
+
 //
 
 #[test]
@@ -863,8 +878,9 @@ fn test_misc()
         assert_eq!(a, b);
     }
     {
+        let mut r = XOR64_INIT;
         let mut a = MatOwn::new(4, 4);
-        let b = MatOwn::new_like(&a).set_by(|_, _| {rand::random()});
+        let b = MatOwn::new_like(&a).set_by(|_, _| {xor64(&mut r)});
         a.assign(&b);
         assert_eq!(a, b);
     }

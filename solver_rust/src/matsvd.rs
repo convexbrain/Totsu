@@ -1,4 +1,4 @@
-use super::mat::{Mat, MatOwn, FP, FP_EPSILON, FP_MIN}; // TODO: prelude
+use super::mat::{Mat, MatOwn, FP, FP_EPSILON, FP_MIN, xor64, XOR64_INIT}; // TODO: prelude
 
 const TOL_CNV2: FP = FP_EPSILON * FP_EPSILON;
 const TOL_DIV0: FP = FP_MIN;
@@ -149,7 +149,8 @@ fn test_decomp()
 {
     const TOL_RMSE: FP = 1.0 / (1u64 << 32) as FP;
 
-    let mat = MatOwn::new(4, 4).set_by(|_, _| {rand::random()});
+    let mut r = XOR64_INIT;
+    let mat = MatOwn::new(4, 4).set_by(|_, _| {xor64(&mut r)});
     println!("mat = {}", mat);
 
     let mut svd = MatSVD::new(&mat);
