@@ -3,6 +3,8 @@ pub use std::f64::EPSILON as FP_EPSILON;
 pub use std::f64::MIN as FP_MIN;
 
 pub type MatOwn = Mat<Vec<FP>>;
+pub type MatSliRef<'a> = Mat<&'a [FP]>;
+pub type MatSliMut<'a> = Mat<&'a mut[FP]>;
 
 use std::cmp::PartialEq;
 use std::ops::{Range, RangeBounds, Bound};
@@ -300,12 +302,12 @@ impl<V: View> Mat<V>
     //
     pub fn set_eye(self) -> Mat<V>
     {
-        self.set_by(|r, c| {if r == c {1.} else {0.}})
+        self.set_by(|r, c| if r == c {1.} else {0.})
     }
     //
     pub fn set_all(self, value: FP) -> Mat<V>
     {
-        self.set_by(|_, _| {value})
+        self.set_by(|_, _| value)
     }
     //
     pub fn set_t(mut self) -> Mat<V>
@@ -376,7 +378,7 @@ impl<V: View> Mat<V>
         assert_eq!(l_nrows, r_nrows);
         assert_eq!(l_ncols, r_ncols);
         
-        self.assign_by(|r, c| {Some(rhs[(r, c)])});
+        self.assign_by(|r, c| Some(rhs[(r, c)]));
     }
     //
     // size methods
@@ -854,7 +856,7 @@ fn test_set()
         assert_eq!(a, b);
     }
     {
-        let a = MatOwn::new(2, 4).set_by(|r, c| {(r * 4 + c) as FP});
+        let a = MatOwn::new(2, 4).set_by(|r, c| (r * 4 + c) as FP);
         let b = MatOwn::new_like(&a).set_iter(&[
             0., 1., 2., 3.,
             4., 5., 6., 7.
@@ -880,7 +882,7 @@ fn test_misc()
     {
         let mut r = XOR64_INIT;
         let mut a = MatOwn::new(4, 4);
-        let b = MatOwn::new_like(&a).set_by(|_, _| {xor64(&mut r)});
+        let b = MatOwn::new_like(&a).set_by(|_, _| xor64(&mut r));
         a.assign(&b);
         assert_eq!(a, b);
     }
