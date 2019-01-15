@@ -370,6 +370,11 @@ impl<V: View> MatGen<V>
         }
     }
     //
+    pub fn assign_all(&mut self, value: FP)
+    {
+        self.assign_by(|_, _| Some(value));
+    }
+    //
     pub fn assign<V2: View>(&mut self, rhs: &MatGen<V2>)
     {
         let (l_nrows, l_ncols) = self.size();
@@ -411,6 +416,37 @@ impl<V: View> MatGen<V>
     pub fn norm_p2(&self) -> FP
     {
         FP::sqrt(self.norm_p2sq())
+    }
+    //
+    // max/min methods
+    pub fn max(&self) -> FP
+    {
+        let (l_nrows, l_ncols) = self.size();
+
+        let mut m = self[(0, 0)];
+
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                m = if self[(r, c)] > m {self[(r, c)]} else {m};
+            }
+        }
+
+        m
+    }
+    //
+    pub fn min(&self) -> FP
+    {
+        let (l_nrows, l_ncols) = self.size();
+        
+        let mut m = self[(0, 0)];
+
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                m = if self[(r, c)] < m {self[(r, c)]} else {m};
+            }
+        }
+
+        m
     }
 }
 
