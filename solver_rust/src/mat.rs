@@ -2,9 +2,9 @@ pub type FP = f64;
 pub use std::f64::EPSILON as FP_EPSILON;
 pub use std::f64::MIN as FP_MIN;
 
-pub type MatOwn = Mat<Vec<FP>>;
-pub type MatSliRef<'a> = Mat<&'a [FP]>;
-pub type MatSliMut<'a> = Mat<&'a mut[FP]>;
+pub type Mat = MatGen<Vec<FP>>;
+pub type MatSlice<'a> = MatGen<&'a [FP]>;
+pub type MatSliMu<'a> = MatGen<&'a mut[FP]>;
 
 use std::cmp::PartialEq;
 use std::ops::{Range, RangeBounds, Bound};
@@ -93,7 +93,7 @@ impl View for &mut[FP]
 }
 
 #[derive(Debug)]
-pub struct Mat<V: View>
+pub struct MatGen<V: View>
 {
     nrows: usize,
     ncols: usize,
@@ -106,7 +106,7 @@ pub struct Mat<V: View>
     view: V
 }
 
-impl<V: View> Mat<V>
+impl<V: View> MatGen<V>
 {
     // private helper methods
     fn h_index(&self, index: (usize, usize)) -> usize
@@ -154,10 +154,10 @@ impl<V: View> Mat<V>
         }
     }
     //
-    fn h_own(self) -> MatOwn
+    fn h_own(self) -> Mat
     {
         if self.view.is_own() {
-            Mat {
+            MatGen {
                 nrows: self.nrows,
                 ncols: self.ncols,
                 offset: self.offset,
@@ -172,9 +172,9 @@ impl<V: View> Mat<V>
     }
     //
     // new methods
-    pub fn new(nrows: usize, ncols: usize) -> MatOwn
+    pub fn new(nrows: usize, ncols: usize) -> Mat
     {
-        Mat {
+        MatGen {
             nrows,
             ncols,
             offset: 0,
@@ -184,25 +184,25 @@ impl<V: View> Mat<V>
         }
     }
     //
-    pub fn new_like<V2: View>(mat: &Mat<V2>) -> MatOwn
+    pub fn new_like<V2: View>(mat: &MatGen<V2>) -> Mat
     {
         let (nrows, ncols) = mat.size();
 
-        MatOwn::new(nrows, ncols)
+        Mat::new(nrows, ncols)
     }
     //
-    pub fn new_vec(nrows: usize) -> MatOwn
+    pub fn new_vec(nrows: usize) -> Mat
     {
-        MatOwn::new(nrows, 1)
+        Mat::new(nrows, 1)
     }
     //
     // refer methods
-    pub fn slice<RR, CR>(&self, rows: RR, cols: CR) -> Mat<&[FP]>
+    pub fn slice<RR, CR>(&self, rows: RR, cols: CR) -> MatSlice
     where RR: RangeBounds<usize>,  CR: RangeBounds<usize>
     {
         let (row_range, col_range) = self.h_bound(rows, cols);
 
-        Mat {
+        MatGen {
             nrows: row_range.end - row_range.start,
             ncols: col_range.end - col_range.start,
             offset: self.offset + self.stride * col_range.start + row_range.start,
@@ -212,12 +212,12 @@ impl<V: View> Mat<V>
         }
     }
     //
-    pub fn slice_mut<'b, RR, CR>(&'b mut self, rows: RR, cols: CR) -> Mat<&mut[FP]>
+    pub fn slice_mut<'b, RR, CR>(&'b mut self, rows: RR, cols: CR) -> MatSliMu
     where RR: RangeBounds<usize>,  CR: RangeBounds<usize>
     {
         let (row_range, col_range) = self.h_bound(rows, cols);
 
-        Mat {
+        MatGen {
             nrows: row_range.end - row_range.start,
             ncols: col_range.end - col_range.start,
             offset: self.offset + self.stride * col_range.start + row_range.start,
@@ -227,29 +227,29 @@ impl<V: View> Mat<V>
         }
     }
     //
-    pub fn row(&self, r: usize) -> Mat<&[FP]>
+    pub fn row(&self, r: usize) -> MatSlice
     {
         self.slice(r ..= r, ..)
     }
     //
-    pub fn col(&self, c: usize) -> Mat<&[FP]>
+    pub fn col(&self, c: usize) -> MatSlice
     {
         self.slice(.., c ..= c)
     }
     //
-    pub fn row_mut(&mut self, r: usize) -> Mat<&mut[FP]>
+    pub fn row_mut(&mut self, r: usize) -> MatSliMu
     {
         self.slice_mut(r ..= r, ..)
     }
     //
-    pub fn col_mut(&mut self, c: usize) -> Mat<&mut[FP]>
+    pub fn col_mut(&mut self, c: usize) -> MatSliMu
     {
         self.slice_mut(.., c ..= c)
     }
     //
-    pub fn t(&self) -> Mat<&[FP]>
+    pub fn t(&self) -> MatSlice
     {
-        Mat {
+        MatGen {
             nrows: self.nrows,
             ncols: self.ncols,
             offset: self.offset,
@@ -259,9 +259,9 @@ impl<V: View> Mat<V>
         }
     }
     //
-    pub fn t_mut(&mut self) -> Mat<&mut[FP]>
+    pub fn t_mut(&mut self) -> MatSliMu
     {
-        Mat {
+        MatGen {
             nrows: self.nrows,
             ncols: self.ncols,
             offset: self.offset,
@@ -272,7 +272,7 @@ impl<V: View> Mat<V>
     }
     //
     // set methods
-    pub fn set_by<F>(mut self, mut f: F) -> Mat<V>
+    pub fn set_by<F>(mut self, mut f: F) -> MatGen<V>
     where F: FnMut(usize, usize) -> FP
     {
         let (nrows, ncols) = self.size();
@@ -285,7 +285,7 @@ impl<V: View> Mat<V>
         self
     }
     //
-    pub fn set_iter<'b, T>(mut self, iter: T) -> Mat<V>
+    pub fn set_iter<'b, T>(mut self, iter: T) -> MatGen<V>
     where T: IntoIterator<Item=&'b FP>
     {
         let (nrows, ncols) = self.size();
@@ -300,31 +300,31 @@ impl<V: View> Mat<V>
         self
     }
     //
-    pub fn set_eye(self) -> Mat<V>
+    pub fn set_eye(self) -> MatGen<V>
     {
         self.set_by(|r, c| if r == c {1.} else {0.})
     }
     //
-    pub fn set_all(self, value: FP) -> Mat<V>
+    pub fn set_all(self, value: FP) -> MatGen<V>
     {
         self.set_by(|_, _| value)
     }
     //
-    pub fn set_t(mut self) -> Mat<V>
+    pub fn set_t(mut self) -> MatGen<V>
     {
         self.transposed = !self.transposed;
         self
     }
     //
     // clone methods
-    pub fn clone(&self) -> MatOwn
+    pub fn clone(&self) -> Mat
     {
         // NOTE: this is not std::clone::Clone trait
 
         let sz = self.view.get_len();
 
         if sz == self.nrows * self.ncols {
-            Mat {
+            MatGen {
                 nrows: self.nrows,
                 ncols: self.ncols,
                 offset: self.offset,
@@ -335,18 +335,18 @@ impl<V: View> Mat<V>
         }
         else {
             let (l_nrows, l_ncols) = self.size();
-            let mut mat = MatOwn::new(l_nrows, l_ncols);
+            let mut mat = Mat::new(l_nrows, l_ncols);
             mat.assign(self);
             mat
         }
     }
     //
-    pub fn clone_diag(&self) -> MatOwn
+    pub fn clone_diag(&self) -> Mat
     {
         let (l_nrows, l_ncols) = self.size();
         assert_eq!(l_ncols, 1);
 
-        let mut mat = MatOwn::new(l_nrows, l_nrows);
+        let mut mat = Mat::new(l_nrows, l_nrows);
 
         for r in 0 .. l_nrows {
             mat[(r, r)] = self[(r, 0)];
@@ -370,7 +370,7 @@ impl<V: View> Mat<V>
         }
     }
     //
-    pub fn assign<V2: View>(&mut self, rhs: &Mat<V2>)
+    pub fn assign<V2: View>(&mut self, rhs: &MatGen<V2>)
     {
         let (l_nrows, l_ncols) = self.size();
         let (r_nrows, r_ncols) = rhs.size();
@@ -416,7 +416,7 @@ impl<V: View> Mat<V>
 
 //
 
-impl<V: View> Index<(usize, usize)> for Mat<V>
+impl<V: View> Index<(usize, usize)> for MatGen<V>
 {
     type Output = FP;
     fn index(&self, index: (usize, usize)) -> &FP
@@ -427,7 +427,7 @@ impl<V: View> Index<(usize, usize)> for Mat<V>
     }
 }
 
-impl<V: View> IndexMut<(usize, usize)> for Mat<V>
+impl<V: View> IndexMut<(usize, usize)> for MatGen<V>
 {
     fn index_mut(&mut self, index: (usize, usize)) -> &mut FP
     {
@@ -439,7 +439,7 @@ impl<V: View> IndexMut<(usize, usize)> for Mat<V>
 
 //
 
-impl<V: View> fmt::Display for Mat<V>
+impl<V: View> fmt::Display for MatGen<V>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
     {
@@ -458,9 +458,9 @@ impl<V: View> fmt::Display for Mat<V>
 
 //
 
-impl<V: View, V2: View> PartialEq<Mat<V2>> for Mat<V>
+impl<V: View, V2: View> PartialEq<MatGen<V2>> for MatGen<V>
 {
-    fn eq(&self, other: &Mat<V2>) -> bool
+    fn eq(&self, other: &MatGen<V2>) -> bool
     {
         let (l_nrows, l_ncols) = self.size();
 
@@ -488,7 +488,7 @@ pub trait MatAcc
     fn acc_get(&self, row: usize, col: usize) -> FP;
 }
 
-impl<V: View> MatAcc for Mat<V>
+impl<V: View> MatAcc for MatGen<V>
 {
     fn acc_size(&self) -> (usize, usize)
     {
@@ -501,7 +501,7 @@ impl<V: View> MatAcc for Mat<V>
     }
 }
 
-impl<V: View> MatAcc for &Mat<V>
+impl<V: View> MatAcc for &MatGen<V>
 {
     fn acc_size(&self) -> (usize, usize)
     {
@@ -515,11 +515,11 @@ impl<V: View> MatAcc for &Mat<V>
 }
 
 //
-impl<V: View> Neg for Mat<V>
+impl<V: View> Neg for MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn neg(self) -> MatOwn
+    fn neg(self) -> Mat
     {
         let mut mat = self.h_own();
         let (l_nrows, l_ncols) = mat.size();
@@ -534,11 +534,11 @@ impl<V: View> Neg for Mat<V>
     }
 }
 
-impl<V: View> Neg for &Mat<V>
+impl<V: View> Neg for &MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn neg(self) -> MatOwn
+    fn neg(self) -> Mat
     {
         self.clone().neg()
     }
@@ -546,11 +546,11 @@ impl<V: View> Neg for &Mat<V>
 
 //
 
-impl<V: View, T: MatAcc> Add<T> for Mat<V>
+impl<V: View, T: MatAcc> Add<T> for MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn add(self, rhs: T) -> MatOwn
+    fn add(self, rhs: T) -> Mat
     {
         let mut mat = self.h_own();
         let (l_nrows, l_ncols) = mat.size();
@@ -567,21 +567,21 @@ impl<V: View, T: MatAcc> Add<T> for Mat<V>
     }
 }
 
-impl<V: View, T: MatAcc> Add<T> for &Mat<V>
+impl<V: View, T: MatAcc> Add<T> for &MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn add(self, rhs: T) -> MatOwn
+    fn add(self, rhs: T) -> Mat
     {
         self.clone().add(rhs)
     }
 }
 
-impl<V: View> Add<FP> for Mat<V>
+impl<V: View> Add<FP> for MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn add(self, rhs: FP) -> MatOwn
+    fn add(self, rhs: FP) -> Mat
     {
         let mut mat = self.h_own();
         let (l_nrows, l_ncols) = mat.size();
@@ -596,31 +596,31 @@ impl<V: View> Add<FP> for Mat<V>
     }
 }
 
-impl<V: View> Add<FP> for &Mat<V>
+impl<V: View> Add<FP> for &MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn add(self, rhs: FP) -> MatOwn
+    fn add(self, rhs: FP) -> Mat
     {
         self.clone().add(rhs)
     }
 }
 
-impl<V: View> Add<Mat<V>> for FP
+impl<V: View> Add<MatGen<V>> for FP
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn add(self, rhs: Mat<V>) -> MatOwn
+    fn add(self, rhs: MatGen<V>) -> Mat
     {
         rhs.add(self)
     }
 }
 
-impl<V: View> Add<&Mat<V>> for FP
+impl<V: View> Add<&MatGen<V>> for FP
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn add(self, rhs: &Mat<V>) -> MatOwn
+    fn add(self, rhs: &MatGen<V>) -> Mat
     {
         rhs.add(self)
     }
@@ -628,11 +628,11 @@ impl<V: View> Add<&Mat<V>> for FP
 
 //
 
-impl<V: View, T: MatAcc> Sub<T> for Mat<V>
+impl<V: View, T: MatAcc> Sub<T> for MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn sub(self, rhs: T) -> MatOwn
+    fn sub(self, rhs: T) -> Mat
     {
         let mut mat = self.h_own();
         let (l_nrows, l_ncols) = mat.size();
@@ -649,21 +649,21 @@ impl<V: View, T: MatAcc> Sub<T> for Mat<V>
     }
 }
 
-impl<V: View, T: MatAcc> Sub<T> for &Mat<V>
+impl<V: View, T: MatAcc> Sub<T> for &MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn sub(self, rhs: T) -> MatOwn
+    fn sub(self, rhs: T) -> Mat
     {
         self.clone().sub(rhs)
     }
 }
 
-impl<V: View> Sub<FP> for Mat<V>
+impl<V: View> Sub<FP> for MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn sub(self, rhs: FP) -> MatOwn
+    fn sub(self, rhs: FP) -> Mat
     {
         let mut mat = self.h_own();
         let (l_nrows, l_ncols) = mat.size();
@@ -678,31 +678,31 @@ impl<V: View> Sub<FP> for Mat<V>
     }
 }
 
-impl<V: View> Sub<FP> for &Mat<V>
+impl<V: View> Sub<FP> for &MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn sub(self, rhs: FP) -> MatOwn
+    fn sub(self, rhs: FP) -> Mat
     {
         self.clone().sub(rhs)
     }
 }
 
-impl<V: View> Sub<Mat<V>> for FP
+impl<V: View> Sub<MatGen<V>> for FP
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn sub(self, rhs: Mat<V>) -> MatOwn
+    fn sub(self, rhs: MatGen<V>) -> Mat
     {
         rhs.neg().add(self)
     }
 }
 
-impl<V: View> Sub<&Mat<V>> for FP
+impl<V: View> Sub<&MatGen<V>> for FP
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn sub(self, rhs: &Mat<V>) -> MatOwn
+    fn sub(self, rhs: &MatGen<V>) -> Mat
     {
         rhs.neg().add(self)
     }
@@ -710,28 +710,28 @@ impl<V: View> Sub<&Mat<V>> for FP
 
 //
 
-impl<V: View, T: MatAcc> Mul<T> for Mat<V>
+impl<V: View, T: MatAcc> Mul<T> for MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn mul(self, rhs: T) -> MatOwn
+    fn mul(self, rhs: T) -> Mat
     {
         (&self).mul(rhs)
     }
 }
 
-impl<V: View, T: MatAcc> Mul<T> for &Mat<V>
+impl<V: View, T: MatAcc> Mul<T> for &MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn mul(self, rhs: T) -> MatOwn
+    fn mul(self, rhs: T) -> Mat
     {
         let (l_nrows, l_ncols) = self.size();
         let (r_nrows, r_ncols) = rhs.acc_size();
 
         assert_eq!(l_ncols, r_nrows);
 
-        let mut mat = MatOwn::new(l_nrows, r_ncols);
+        let mut mat = Mat::new(l_nrows, r_ncols);
 
         for c in 0 .. r_ncols {
             for r in 0 .. l_nrows {
@@ -747,11 +747,11 @@ impl<V: View, T: MatAcc> Mul<T> for &Mat<V>
     }
 }
 
-impl<V: View> Mul<FP> for Mat<V>
+impl<V: View> Mul<FP> for MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn mul(self, rhs: FP) -> MatOwn
+    fn mul(self, rhs: FP) -> Mat
     {
         let mut mat = self.h_own();
         let (l_nrows, l_ncols) = mat.size();
@@ -766,31 +766,31 @@ impl<V: View> Mul<FP> for Mat<V>
     }
 }
 
-impl<V: View> Mul<FP> for &Mat<V>
+impl<V: View> Mul<FP> for &MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn mul(self, rhs: FP) -> MatOwn
+    fn mul(self, rhs: FP) -> Mat
     {
         self.clone().mul(rhs)
     }
 }
 
-impl<V: View> Mul<Mat<V>> for FP
+impl<V: View> Mul<MatGen<V>> for FP
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn mul(self, rhs: Mat<V>) -> MatOwn
+    fn mul(self, rhs: MatGen<V>) -> Mat
     {
         rhs.mul(self)
     }
 }
 
-impl<V: View> Mul<&Mat<V>> for FP
+impl<V: View> Mul<&MatGen<V>> for FP
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn mul(self, rhs: &Mat<V>) -> MatOwn
+    fn mul(self, rhs: &MatGen<V>) -> Mat
     {
         rhs.mul(self)
     }
@@ -798,11 +798,11 @@ impl<V: View> Mul<&Mat<V>> for FP
 
 //
 
-impl<V: View> Div<FP> for Mat<V>
+impl<V: View> Div<FP> for MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn div(self, rhs: FP) -> MatOwn
+    fn div(self, rhs: FP) -> Mat
     {
         let mut mat = self.h_own();
         let (l_nrows, l_ncols) = mat.size();
@@ -817,11 +817,11 @@ impl<V: View> Div<FP> for Mat<V>
     }
 }
 
-impl<V: View> Div<FP> for &Mat<V>
+impl<V: View> Div<FP> for &MatGen<V>
 {
-    type Output = MatOwn;
+    type Output = Mat;
 
-    fn div(self, rhs: FP) -> MatOwn
+    fn div(self, rhs: FP) -> Mat
     {
         self.clone().div(rhs)
     }
@@ -847,8 +847,8 @@ pub fn xor64(state: &mut u64) -> FP
 fn test_set()
 {
     {
-        let a = MatOwn::new(3, 3).set_eye();
-        let b = MatOwn::new_like(&a).set_iter(&[
+        let a = Mat::new(3, 3).set_eye();
+        let b = Mat::new_like(&a).set_iter(&[
             1., 0., 0.,
             0., 1., 0.,
             0., 0., 1.
@@ -856,8 +856,8 @@ fn test_set()
         assert_eq!(a, b);
     }
     {
-        let a = MatOwn::new(2, 4).set_by(|r, c| (r * 4 + c) as FP);
-        let b = MatOwn::new_like(&a).set_iter(&[
+        let a = Mat::new(2, 4).set_by(|r, c| (r * 4 + c) as FP);
+        let b = Mat::new_like(&a).set_iter(&[
             0., 1., 2., 3.,
             4., 5., 6., 7.
         ]);
@@ -869,20 +869,20 @@ fn test_set()
 fn test_misc()
 {
     {
-        let a = MatOwn::new_vec(3);
+        let a = Mat::new_vec(3);
         let a = a.t();
-        let b = MatOwn::new(1, 3);
+        let b = Mat::new(1, 3);
         assert_eq!(a, b);
     }
     {
-        let a = MatOwn::new_vec(3).set_t();
-        let b = MatOwn::new(1, 3);
+        let a = Mat::new_vec(3).set_t();
+        let b = Mat::new(1, 3);
         assert_eq!(a, b);
     }
     {
         let mut r = XOR64_INIT;
-        let mut a = MatOwn::new(4, 4);
-        let b = MatOwn::new_like(&a).set_by(|_, _| xor64(&mut r));
+        let mut a = Mat::new(4, 4);
+        let b = Mat::new_like(&a).set_by(|_, _| xor64(&mut r));
         a.assign(&b);
         assert_eq!(a, b);
     }
@@ -892,27 +892,27 @@ fn test_misc()
 fn test_slice()
 {
     {
-        let a = MatOwn::new(4, 4).set_eye();
+        let a = Mat::new(4, 4).set_eye();
         let a = a.slice(1 ..= 2, 1 ..= 2);
-        let b = MatOwn::new(2, 2).set_eye();
+        let b = Mat::new(2, 2).set_eye();
         assert_eq!(a, b);
     }
     {
-        let mut a = MatOwn::new(4, 4).set_eye();
-        let b = MatOwn::new(4, 4).set_iter(&[
+        let mut a = Mat::new(4, 4).set_eye();
+        let b = Mat::new(4, 4).set_iter(&[
             1., 0., 0., 0.,
             0., 2., 2., 0.,
             0., 2., 2., 0.,
             0., 0., 0., 1.
         ]);
         let mut a1 = a.slice_mut(1 ..= 2, 1 ..= 2);
-        let a2 = MatOwn::new(2, 2).set_all(2.);
+        let a2 = Mat::new(2, 2).set_all(2.);
         a1.assign(&a2);
         assert_eq!(a, b);
     }
     {
-        let mut a = MatOwn::new(4, 4).set_eye();
-        let b = MatOwn::new(4, 4).set_iter(&[
+        let mut a = Mat::new(4, 4).set_eye();
+        let b = Mat::new(4, 4).set_iter(&[
             0., 0., 0., 0.,
             0., 1., 0., 0.,
             0., 0., 1., 0.,
@@ -928,8 +928,8 @@ fn test_slice()
 fn test_ops()
 {
     {
-        let a = MatOwn::new(2, 2).set_eye();
-        let b = MatOwn::new(2, 2).set_iter(&[
+        let a = Mat::new(2, 2).set_eye();
+        let b = Mat::new(2, 2).set_iter(&[
             -1., 0.,
             0., -1.
         ]);
@@ -937,8 +937,8 @@ fn test_ops()
         assert_eq!(c, b);
     }
     {
-        let a = MatOwn::new(2, 2).set_eye();
-        let b = MatOwn::new(2, 2).set_iter(&[
+        let a = Mat::new(2, 2).set_eye();
+        let b = Mat::new(2, 2).set_iter(&[
             -1., 0.,
             0., -1.
         ]);
@@ -947,9 +947,9 @@ fn test_ops()
         println!("{}", a);
     }
     {
-        let a1 = MatOwn::new(2, 2).set_eye();
-        let a2 = MatOwn::new(2, 2).set_all(1.);
-        let b = MatOwn::new(2, 2).set_iter(&[
+        let a1 = Mat::new(2, 2).set_eye();
+        let a2 = Mat::new(2, 2).set_all(1.);
+        let b = Mat::new(2, 2).set_iter(&[
             2., 1.,
             1., 2.
         ]);
@@ -957,9 +957,9 @@ fn test_ops()
         assert_eq!(c, b);
     }
     {
-        let a1 = MatOwn::new(2, 2).set_eye();
-        let a2 = MatOwn::new(2, 2).set_all(1.);
-        let b = MatOwn::new(2, 2).set_iter(&[
+        let a1 = Mat::new(2, 2).set_eye();
+        let a2 = Mat::new(2, 2).set_all(1.);
+        let b = Mat::new(2, 2).set_iter(&[
             2., 1.,
             1., 2.
         ]);

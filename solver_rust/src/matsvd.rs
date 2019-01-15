@@ -1,4 +1,4 @@
-use super::mat::{Mat, MatOwn, FP, FP_EPSILON, FP_MIN, xor64, XOR64_INIT}; // TODO: prelude
+use super::mat::{Mat, FP, FP_EPSILON, FP_MIN, xor64, XOR64_INIT}; // TODO: prelude
 
 const TOL_CNV2: FP = FP_EPSILON * FP_EPSILON;
 const TOL_DIV0: FP = FP_MIN;
@@ -9,14 +9,14 @@ pub struct MatSVD
 {
     transposed: bool,
     //
-    u: MatOwn,
-    s: MatOwn,
-    v: MatOwn
+    u: Mat,
+    s: Mat,
+    v: Mat
 }
 
 impl MatSVD
 {
-    pub fn new(g: &MatOwn) -> MatSVD
+    pub fn new(g: &Mat) -> MatSVD
     {
         let (nrows, ncols) = g.size();
         let transposed = nrows < ncols;
@@ -30,9 +30,9 @@ impl MatSVD
 
         let mut svd = MatSVD {
             transposed,
-            u: MatOwn::new(u_nrows, u_ncols),
-            s: MatOwn::new_vec(u_ncols),
-            v: MatOwn::new(u_ncols, u_ncols)
+            u: Mat::new(u_nrows, u_ncols),
+            s: Mat::new_vec(u_ncols),
+            v: Mat::new(u_ncols, u_ncols)
         };
 
         // TODO: re-initialize
@@ -119,7 +119,7 @@ impl MatSVD
         self.norm_singular();
     }
     //
-    pub fn solve(&self, h: &MatOwn) -> MatOwn
+    pub fn solve(&self, h: &Mat) -> Mat
     {
         let mut sinv = self.s.clone_diag();
         let (nrows, _) = self.s.size();
@@ -150,7 +150,7 @@ fn test_decomp()
     const TOL_RMSE: FP = 1.0 / (1u64 << 32) as FP;
 
     let mut r = XOR64_INIT;
-    let mat = MatOwn::new(4, 4).set_by(|_, _| xor64(&mut r));
+    let mat = Mat::new(4, 4).set_by(|_, _| xor64(&mut r));
     println!("mat = {}", mat);
 
     let mut svd = MatSVD::new(&mat);
@@ -200,7 +200,7 @@ fn test_solve()
 {
     const TOL_RMSE: FP = 1.0 / (1u64 << 32) as FP;
 
-    let mat = MatOwn::new(2, 2).set_iter(&[
+    let mat = Mat::new(2, 2).set_iter(&[
         1., 2.,
         3., 4.
     ]);
@@ -209,7 +209,7 @@ fn test_solve()
 
     svd.decomp();
 
-    let vec = MatOwn::new_vec(2).set_iter(&[
+    let vec = Mat::new_vec(2).set_iter(&[
         5., 6.
     ]);
 
