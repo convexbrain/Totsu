@@ -1,5 +1,13 @@
-use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MIN, FP_EPSILON}; // TODO: prelude
+use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON}; // TODO: prelude
 use super::matsvd::MatSVD; // TODO: prelude
+
+use std::io::Write;
+
+macro_rules! writeln_or {
+    ( $( $arg: expr ),* ) => {
+        writeln!( $( $arg ),* ).or(Err("log: I/O Error"))
+    };
+}
 
 const MARGIN: FP = 1.;
 const NLOOP: usize = 256;
@@ -13,8 +21,9 @@ const S_COEF: FP = 0.99;
 
 // TODO: log, debug, module, optimize
 
-pub fn solve<Fo1, Fo2, Fi0, Fi1, Fi2, Fe, Fs>(
+pub fn solve<L, Fo1, Fo2, Fi0, Fi1, Fi2, Fe, Fs>(
     n: usize, m: usize, p: usize,
+    mut log: L,
     d_objective: Fo1,
     dd_objective: Fo2,
     inequality: Fi0,
@@ -23,7 +32,8 @@ pub fn solve<Fo1, Fo2, Fi0, Fi1, Fi2, Fe, Fs>(
     equality: Fe,
     start_point: Fs
 ) -> Result<Mat, &'static str>
-where Fo1: Fn(&MatSlice, &mut Mat),
+where L: Write,
+      Fo1: Fn(&MatSlice, &mut Mat),
       Fo2: Fn(&MatSlice, &mut Mat),
       Fi0: Fn(&MatSlice, &mut Mat),
       Fi1: Fn(&MatSlice, &mut Mat),
@@ -85,6 +95,8 @@ where Fo1: Fn(&MatSlice, &mut Mat),
 
     let mut cnt = 0;
     while cnt < NLOOP {
+        writeln_or!(log)?;
+        writeln_or!(log, "===== ===== ===== ===== loop : {}", cnt)?;
 
         /***** calc t *****/
 
@@ -117,7 +129,12 @@ where Fo1: Fn(&MatSlice, &mut Mat),
         let r_dual_norm = r_dual.norm_p2();
         let r_pri_norm = r_pri.norm_p2();
 
+        writeln_or!(log, "|| r_dual || : {:.3e}", r_dual_norm)?;
+        writeln_or!(log, "|| r_pri  || : {:.3e}", r_pri_norm)?;
+        writeln_or!(log, "   eta       : {:.3e}", eta)?;
+
         if (r_dual_norm <= EPS_FEAS) && (r_pri_norm <= EPS_FEAS) && (eta <= EPS_ETA) {
+            writeln_or!(log, "termination criteria satisfied")?;
             break;
         }
 
@@ -157,14 +174,22 @@ where Fo1: Fn(&MatSlice, &mut Mat),
         svd.decomp();
         let dy = svd.solve(&(-&vec_r_t));
 
+        writeln_or!(log, "y : {}", vec_y.t())?;
+        //writeln_or!(log, "kkt : {}", kkt)?;
+        writeln_or!(log, "r_t : {}", vec_r_t.t())?;
+        writeln_or!(log, "dy : {}", dy.t())?;
+
         /***** back tracking line search - from here *****/
 
-        let lmd = vec_y.rows(n .. n + m);
-        let dlmd = dy.rows(n .. n + m);
-        let mut s_max = 1.;
-        for i in 0 .. m {
-            if dlmd[(i, 0)] < -FP_MIN { // to avoid zero-division by Dlmd
-                s_max = FP::min(s_max, -lmd[(i, 0)] / dlmd[(i, 0)]);
+        let mut s_max: FP = 1.;
+        {
+            let lmd = vec_y.rows(n .. n + m);
+            let dlmd = dy.rows(n .. n + m);
+
+            for i in 0 .. m {
+                if dlmd[(i, 0)] < -FP_MINPOS { // to avoid zero-division by Dlmd
+                    s_max = s_max.min(-lmd[(i, 0)] / dlmd[(i, 0)]);
+                }
             }
         }
         let mut s = S_COEF * s_max;
@@ -184,6 +209,15 @@ where Fo1: Fn(&MatSlice, &mut Mat),
             y_p = &vec_y + s * &dy;
 
             bcnt += 1;
+        }
+
+        writeln_or!(log, "s : {:.3e}", s)?;
+
+        if bcnt < BLOOP {
+            writeln_or!(log, "feasible points found")?;
+        }
+        else {
+            writeln_or!(log, "infeasible in this direction")?;
         }
 
         let org_r_t_norm = vec_r_t.norm_p2();
@@ -223,11 +257,15 @@ where Fo1: Fn(&MatSlice, &mut Mat),
             bcnt += 1;
         }
 
+        writeln_or!(log, "s : {:.3e}", s)?;
+
         if (bcnt < BLOOP) && ((&y_p - &vec_y).norm_p2() >= FP_EPSILON) {
+            writeln_or!(log, "update")?;
             // update y
             vec_y.assign(&y_p);
         }
         else {
+            writeln_or!(log, "no more improvement")?;
             return Err("line search: not converged");
         }
 
@@ -237,8 +275,18 @@ where Fo1: Fn(&MatSlice, &mut Mat),
     }
 
     if !(cnt < NLOOP) {
+        writeln_or!(log, "iteration limit")?;
         return Err("iteration: not converged");
     }
+
+    writeln_or!(log)?;
+    writeln_or!(log, "===== ===== ===== ===== result")?;
+    let x = vec_y.rows(0 .. n);
+    let lmd = vec_y.rows(n .. n + m);
+    let nu = vec_y.rows(n + m .. n + m + p);
+    writeln_or!(log, "x : {}", x.t())?;
+    writeln_or!(log, "lmd : {}", lmd.t())?;
+    writeln_or!(log, "nu : {}", nu.t())?;
 
     Ok(vec_y)
 }
@@ -293,38 +341,39 @@ pub fn solve_qp(mat_p: &Mat, vec_q: &Mat,
     // ----- start to solve
 
     let rslt = solve(n + 1, m, p + 1, // '+ 1' is for a slack variable
-          |x, df_o| {
-              df_o.rows_mut(0 .. n).assign(
-                  &(mat_p * x.rows(0 .. n) + vec_q)
-              );
-              df_o[(n, 0)] = 0.;
-          },
-          |_, ddf_o| {
-              ddf_o.slice_mut(0 .. n, 0 .. n).assign(mat_p);
-              ddf_o.row_mut(n).assign_all(0.);
-              ddf_o.col_mut(n).assign_all(0.);
-          },
-          |x, f_i| {
-              f_i.assign(
-                  &(mat_g * x.rows(0 .. n) - vec_h - x[(n, 0)] * (m as FP))
-              )
-          },
-          |_, df_i| {
-              df_i.cols_mut(0 .. n).assign(&mat_g);
-              df_i.col_mut(n).assign_all(-(m as FP));
-          },
-          |_, ddf_i, _| {
-              ddf_i.assign_all(0.);
-          },
-          |a, b| {
-              a.slice_mut(0 .. p, 0 .. n).assign(mat_a);
-              b.rows_mut(0 .. p).assign(vec_b);
-              // for a slack variable
-              a[(p, n)] = 1.;
-          },
-          |mut x| {
-              x[(n, 0)] = s_inital;
-          }
+        std::io::stdout(),
+        |x, df_o| {
+            df_o.rows_mut(0 .. n).assign(
+                &(mat_p * x.rows(0 .. n) + vec_q)
+            );
+            df_o[(n, 0)] = 0.;
+        },
+        |_, ddf_o| {
+            ddf_o.slice_mut(0 .. n, 0 .. n).assign(mat_p);
+            ddf_o.row_mut(n).assign_all(0.);
+            ddf_o.col_mut(n).assign_all(0.);
+        },
+        |x, f_i| {
+            f_i.assign(
+                &(mat_g * x.rows(0 .. n) - vec_h - x[(n, 0)] * (m as FP))
+            )
+        },
+        |_, df_i| {
+            df_i.cols_mut(0 .. n).assign(&mat_g);
+            df_i.col_mut(n).assign_all(-(m as FP));
+        },
+        |_, ddf_i, _| {
+            ddf_i.assign_all(0.);
+        },
+        |a, b| {
+            a.slice_mut(0 .. p, 0 .. n).assign(mat_a);
+            b.rows_mut(0 .. p).assign(vec_b);
+            // for a slack variable
+            a[(p, n)] = 1.;
+        },
+        |mut x| {
+            x[(n, 0)] = s_inital;
+        }
     );
 
     match rslt {
@@ -339,8 +388,6 @@ fn test_qp()
     let n: usize = 2; // x0, x1
     let m: usize = 1;
     let p: usize = 0;
-
-    let vec_x = Mat::new_vec(n);
 
     // (1/2)(x - a)^2 + const
     let mat_p = Mat::new(n, n).set_iter(&[

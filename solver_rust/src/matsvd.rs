@@ -1,7 +1,7 @@
-use super::mat::{Mat, FP, FP_EPSILON, FP_MIN, xor64, XOR64_INIT}; // TODO: prelude
+use super::mat::{Mat, FP, FP_EPSILON, FP_MINPOS, xor64, XOR64_INIT}; // TODO: prelude
 
 const TOL_CNV2: FP = FP_EPSILON * FP_EPSILON;
-const TOL_DIV0: FP = FP_MIN;
+const TOL_DIV0: FP = FP_MINPOS;
 const TOL_SINV: FP = FP_EPSILON;
 
 #[derive(Debug)]
