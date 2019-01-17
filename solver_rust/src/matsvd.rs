@@ -1,4 +1,4 @@
-use super::mat::{Mat, FP, FP_EPSILON, FP_MINPOS}; // TODO: prelude
+use super::mat::{Mat, FP, FP_EPSILON, FP_MINPOS};
 
 const TOL_CNV2: FP = FP_EPSILON * FP_EPSILON;
 const TOL_DIV0: FP = FP_MINPOS;
