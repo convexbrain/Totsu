@@ -16,9 +16,8 @@ pub struct MatSVD
 
 impl MatSVD
 {
-    pub fn new(g: &Mat) -> MatSVD
+    pub fn new((nrows, ncols): (usize, usize)) -> MatSVD
     {
-        let (nrows, ncols) = g.size();
         let transposed = nrows < ncols;
 
         let (u_nrows, u_ncols) = if !transposed {
@@ -28,23 +27,12 @@ impl MatSVD
             (ncols, nrows)
         };
 
-        let mut svd = MatSVD {
+        let svd = MatSVD {
             transposed,
             u: Mat::new(u_nrows, u_ncols),
             s: Mat::new_vec(u_ncols),
-            v: Mat::new(u_ncols, u_ncols)
+            v: Mat::new(u_ncols, u_ncols).set_eye()
         };
-
-        // TODO: re-initialize
-
-        if !transposed {
-            svd.u.assign(&g);
-        }
-        else {
-            svd.u.assign(&g.t());
-        }
-
-        svd.v = svd.v.set_eye();
 
         svd
     }
@@ -101,7 +89,7 @@ impl MatSVD
         }
     }
     //
-    pub fn decomp(&mut self)
+    fn do_decomp(&mut self)
     {
         let (_, n) = self.u.size();
 
@@ -117,6 +105,32 @@ impl MatSVD
         }
 
         self.norm_singular();
+    }
+    //
+    pub fn decomp(&mut self, g: &Mat)
+    {
+        if !self.transposed {
+            self.u.assign(g);
+        }
+        else {
+            self.u.assign(&g.t());
+        }
+
+        self.v.assign_eye();
+
+        self.do_decomp();
+    }
+    //
+    pub fn decomp_warm(&mut self, g: &Mat)
+    {
+        if !self.transposed {
+            self.u.assign(&(g * &self.v));
+        }
+        else {
+            self.u.assign(&(g.t() * &self.v));
+        }
+
+        self.do_decomp();
     }
     //
     pub fn solve(&self, h: &Mat) -> Mat
@@ -153,9 +167,9 @@ fn test_decomp()
     let mat = Mat::new(4, 4).set_by(|_, _| xor64(&mut r));
     println!("mat = {}", mat);
 
-    let mut svd = MatSVD::new(&mat);
+    let mut svd = MatSVD::new(mat.size());
 
-    svd.decomp();
+    svd.decomp(&mat);
 
     //
 
@@ -205,9 +219,9 @@ fn test_solve()
         3., 4.
     ]);
 
-    let mut svd = MatSVD::new(&mat);
+    let mut svd = MatSVD::new(mat.size());
 
-    svd.decomp();
+    svd.decomp(&mat);
 
     let vec = Mat::new_vec(2).set_iter(&[
         5., 6.

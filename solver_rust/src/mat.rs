@@ -394,6 +394,11 @@ impl<V: View> MatGen<V>
         }
     }
     //
+    pub fn assign_eye(&mut self)
+    {
+        self.assign_by(|r, c| Some(if r == c {1.} else {0.}));
+    }
+    //
     pub fn assign_all(&mut self, value: FP)
     {
         self.assign_by(|_, _| Some(value));

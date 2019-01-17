@@ -58,6 +58,9 @@ where L: Write,
     let mut mat_df_i = Mat::new(m, n);
     let mut mat_ddf = Mat::new(n, n);
 
+    /***** KKT matrix decomposition solver *****/
+    let mut svd = MatSVD::new(kkt.size());
+    
     // initialize
     let x = vec_y.rows_mut(0 .. n);
     start_point(x);
@@ -98,11 +101,13 @@ where L: Write,
         writeln_or!(log)?;
         writeln_or!(log, "===== ===== ===== ===== loop : {}", cnt)?;
 
+        let x = vec_y.rows(0 .. n);
+        let lmd = vec_y.rows(n .. n + m);
+
         /***** calc t *****/
 
         let eta = if m > 0 {
-            let lmd = vec_y.rows(n .. n + m);
-            -(vec_f_i.t() * lmd)[(0, 0)]
+            -(vec_f_i.t() * &lmd)[(0, 0)]
         }
         else {
             EPS_ETA
@@ -117,7 +122,6 @@ where L: Write,
 
         if m > 0 {
             let mut r_cent = vec_r_t.rows_mut(n .. n + m);
-            let lmd = vec_y.rows(n .. n + m);
             r_cent.assign(&(-lmd.clone_diag() * &vec_f_i - m_inv_t));
         }
 
@@ -140,7 +144,6 @@ where L: Write,
 
         /***** calc kkt matrix *****/
         
-        let x = vec_y.rows(0 .. n);
         let mut kkt_x_dual = kkt.slice_mut(0 .. n, 0 .. n);
         dd_objective(&x, &mut mat_ddf);
         kkt_x_dual.assign(&mat_ddf);
@@ -153,7 +156,6 @@ where L: Write,
             kkt_lmd_dual.assign(&mat_df_i.t());
 
             let mut kkt_x_cent = kkt.slice_mut(n .. n + m, 0 .. n);
-            let lmd = vec_y.rows(n .. n + m);
             kkt_x_cent.assign(&(-lmd.clone_diag() * &mat_df_i));
 
             let mut kkt_lmd_cent = kkt.slice_mut(n .. n + m, n .. n + m);
@@ -170,8 +172,9 @@ where L: Write,
 
         /***** calc search direction *****/
 
-        let mut svd = MatSVD::new(&kkt);
-        svd.decomp();
+        //svd.decomp(&kkt);
+        svd.decomp_warm(&kkt);
+        
         let dy = svd.solve(&(-&vec_r_t));
 
         writeln_or!(log, "y : {}", vec_y.t())?;
@@ -183,7 +186,6 @@ where L: Write,
 
         let mut s_max: FP = 1.;
         {
-            let lmd = vec_y.rows(n .. n + m);
             let dlmd = dy.rows(n .. n + m);
 
             for i in 0 .. m {
@@ -341,7 +343,7 @@ pub fn solve_qp(mat_p: &Mat, vec_q: &Mat,
     // ----- start to solve
 
     let rslt = solve(n + 1, m, p + 1, // '+ 1' is for a slack variable
-        std::io::stdout(),
+        std::io::sink(),
         |x, df_o| {
             df_o.rows_mut(0 .. n).assign(
                 &(mat_p * x.rows(0 .. n) + vec_q)
