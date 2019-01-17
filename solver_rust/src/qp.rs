@@ -1,4 +1,5 @@
-use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_EPSILON}; // TODO: prelude
+use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MIN, FP_EPSILON}; // TODO: prelude
+use super::matsvd::MatSVD; // TODO: prelude
 
 const MARGIN: FP = 1.;
 const NLOOP: usize = 256;
@@ -9,6 +10,8 @@ const MU: FP = 10.;
 const ALPHA: FP = 0.1;
 const BETA: FP = 0.8;
 const S_COEF: FP = 0.99;
+
+// TODO: log, debug, module, optimize
 
 pub fn solve<Fo1, Fo2, Fi0, Fi1, Fi2, Fe, Fs>(
     n: usize, m: usize, p: usize,
@@ -37,13 +40,11 @@ where Fo1: Fn(&MatSlice, &mut Mat),
     let mut vec_b = Mat::new_vec(p);
     // loop variable
     let mut vec_y = Mat::new_vec(n + m + p);
-    let mut vec_dy = Mat::new_vec(n + m + p);
     let mut kkt = Mat::new(n + m + p, n + m + p);
     // temporal in loop
     let mut vec_df_o = Mat::new_vec(n);
     let mut vec_f_i = Mat::new_vec(m);
     let mut vec_r_t = Mat::new_vec(n + m + p);
-    let mut vec_y_p = Mat::new_vec(n + m + p);
     let mut mat_df_i = Mat::new(m, n);
     let mut mat_ddf = Mat::new(n, n);
 
@@ -77,12 +78,13 @@ where Fo1: Fn(&MatSlice, &mut Mat),
     let mut r_pri = vec_r_t.rows_mut(n + m .. n + m + p);
     if p > 0 {
         let x = vec_y.rows(0 .. n);
-        r_pri.assign(&(&mat_a * x - vec_b));
+        r_pri.assign(&(&mat_a * x - &vec_b));
     }
 
     //
 
-    for _ in 0 .. NLOOP {
+    let mut cnt = 0;
+    while cnt < NLOOP {
 
         /***** calc t *****/
 
@@ -149,7 +151,93 @@ where Fo1: Fn(&MatSlice, &mut Mat),
             kkt_x_pri.assign(&mat_a);
         }
 
-        return Err("not implemented yet");
+        /***** calc search direction *****/
+
+        let mut svd = MatSVD::new(&kkt);
+        svd.decomp();
+        let dy = svd.solve(&(-&vec_r_t));
+
+        /***** back tracking line search - from here *****/
+
+        let lmd = vec_y.rows(n .. n + m);
+        let dlmd = dy.rows(n .. n + m);
+        let mut s_max = 1.;
+        for i in 0 .. m {
+            if dlmd[(i, 0)] < -FP_MIN { // to avoid zero-division by Dlmd
+                s_max = FP::min(s_max, -lmd[(i, 0)] / dlmd[(i, 0)]);
+            }
+        }
+        let mut s = S_COEF * s_max;
+
+        let mut y_p = &vec_y + s * &dy;
+
+        let mut bcnt = 0;
+        while bcnt < BLOOP {
+            let x_p = y_p.rows(0 .. n);
+            let lmd_p = y_p.rows(n .. n + m);
+            
+            // update f_i
+            inequality(&x_p, &mut vec_f_i);
+
+            if (vec_f_i.max().2 < 0.) && (lmd_p.min().2 > 0.) {break;}
+            s = BETA * s;
+            y_p = &vec_y + s * &dy;
+
+            bcnt += 1;
+        }
+
+        let org_r_t_norm = vec_r_t.norm_p2();
+
+        while bcnt < BLOOP {
+            let x_p = y_p.rows(0 .. n);
+            let lmd_p = y_p.rows(n .. n + m);
+            let nu_p = y_p.rows(n + m .. n + m + p);
+
+            // update df_o, f_i, df_i
+            d_objective(&x_p, &mut vec_df_o);
+            inequality(&x_p, &mut vec_f_i);
+            d_inequality(&x_p, &mut mat_df_i);
+
+            // update residual
+            let mut r_dual = vec_r_t.rows_mut(0 .. n);
+            r_dual.assign(&vec_df_o);
+            if m > 0 {
+                r_dual.assign(&(&r_dual + mat_df_i.t() * &lmd_p));
+            }
+            if p > 0 {
+                r_dual.assign(&(&r_dual + mat_a.t() * nu_p));
+            }
+            if m > 0 {
+                let mut r_cent = vec_r_t.rows_mut(n .. n + m);
+                r_cent.assign(&(-lmd_p.clone_diag() * &vec_f_i - m_inv_t));
+            }
+            if p > 0 {
+                let mut r_pri = vec_r_t.rows_mut(n + m .. n + m + p);
+                r_pri.assign(&(&mat_a * x_p - &vec_b));
+            }
+
+            if vec_r_t.norm_p2() <= (1. - ALPHA * s) * org_r_t_norm {break;}
+            s = BETA * s;
+            y_p = &vec_y + s * &dy;
+
+            bcnt += 1;
+        }
+
+        if (bcnt < BLOOP) && ((&y_p - &vec_y).norm_p2() >= FP_EPSILON) {
+            // update y
+            vec_y.assign(&y_p);
+        }
+        else {
+            return Err("line search: not converged");
+        }
+
+        /***** back tracking line search - to here *****/
+
+        cnt += 1;
+    }
+
+    if !(cnt < NLOOP) {
+        return Err("iteration: not converged");
     }
 
     Ok(vec_y)
