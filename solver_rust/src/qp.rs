@@ -5,20 +5,20 @@ use std::io::Write;
 
 pub trait QP {
     fn solve_qp<L>(&self, log: L,
-                       mat_p: &Mat, vec_q: &Mat,
-                       mat_g: &Mat, vec_h: &Mat,
-                       mat_a: &Mat, vec_b: &Mat)
-                       -> Result<Mat, &'static str>
+                   mat_p: &Mat, vec_q: &Mat,
+                   mat_g: &Mat, vec_h: &Mat,
+                   mat_a: &Mat, vec_b: &Mat)
+                   -> Result<Mat, &'static str>
     where L: Write;
 }
 
 impl QP for PDIPM
 {
     fn solve_qp<L>(&self, log: L,
-                       mat_p: &Mat, vec_q: &Mat,
-                       mat_g: &Mat, vec_h: &Mat,
-                       mat_a: &Mat, vec_b: &Mat)
-                       -> Result<Mat, &'static str>
+                   mat_p: &Mat, vec_q: &Mat,
+                   mat_g: &Mat, vec_h: &Mat,
+                   mat_a: &Mat, vec_b: &Mat)
+                   -> Result<Mat, &'static str>
     where L: Write
     {
         // ----- parameter check
@@ -59,8 +59,8 @@ impl QP for PDIPM
         let mut margin = self.margin;
         let mut s_inital = s + margin;
         while s_inital <= s {
-            s_inital = s + margin;
             margin *= 2.;
+            s_inital = s + margin;
         }
 
         // ----- start to solve
@@ -68,23 +68,27 @@ impl QP for PDIPM
         let rslt = self.solve(n + 1, m, p + 1, // '+ 1' is for a slack variable
             log,
             |x, df_o| {
-                df_o.rows_mut(0 .. n).assign(
-                    &(mat_p * x.rows(0 .. n) + vec_q)
-                );
+                df_o.rows_mut(0 .. n).assign(&(
+                    mat_p * x.rows(0 .. n) + vec_q
+                ));
+                // for a slack variable
                 df_o[(n, 0)] = 0.;
             },
             |_, ddf_o| {
                 ddf_o.slice_mut(0 .. n, 0 .. n).assign(mat_p);
+                // for a slack variable
                 ddf_o.row_mut(n).assign_all(0.);
                 ddf_o.col_mut(n).assign_all(0.);
             },
             |x, f_i| {
-                f_i.assign(
-                    &(mat_g * x.rows(0 .. n) - vec_h - x[(n, 0)] * (m as FP))
-                )
+                f_i.assign(&(
+                    mat_g * x.rows(0 .. n) - vec_h
+                    - x[(n, 0)] * (m as FP) // minus a slack variable
+                ))
             },
             |_, df_i| {
                 df_i.cols_mut(0 .. n).assign(&mat_g);
+                // for a slack variable
                 df_i.col_mut(n).assign_all(-(m as FP));
             },
             |_, ddf_i, _| {
@@ -102,7 +106,7 @@ impl QP for PDIPM
         );
 
         match rslt {
-            Ok(y) => Ok(y.rows(0 .. n).clone()),
+            Ok(y) => Ok(y.rows(0 .. n).clone_sz()),
             Err(s) => Err(s)
         }
     }

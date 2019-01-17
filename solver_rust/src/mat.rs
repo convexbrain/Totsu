@@ -167,7 +167,7 @@ impl<V: View> MatGen<V>
             }
         }
         else {
-            self.clone()
+            self.clone_sz()
         }
     }
     //
@@ -341,10 +341,8 @@ impl<V: View> MatGen<V>
     }
     //
     // clone methods
-    pub fn clone(&self) -> Mat
+    pub fn clone_sz(&self) -> Mat
     {
-        // NOTE: this is not std::clone::Clone trait
-
         let (l_nrows, l_ncols) = self.size();
         let sz = self.view.get_len();
 
@@ -390,6 +388,20 @@ impl<V: View> MatGen<V>
                 if let Some(value) = f(r, c) {
                     self[(r, c)] = value;
                 }
+            }
+        }
+    }
+    //
+    pub fn assign_iter<'b, T>(&mut self, iter: T)
+    where T: IntoIterator<Item=&'b FP>
+    {
+        let (nrows, ncols) = self.size();
+        let mut i = iter.into_iter();
+
+        // NOTE: contents of iter is row-wise
+        for r in 0 .. nrows {
+            for c in 0 .. ncols {
+                self[(r, c)] = *i.next().unwrap_or(&0.);
             }
         }
     }
@@ -563,6 +575,16 @@ impl<V: View, V2: View> PartialEq<MatGen<V2>> for MatGen<V>
 
 //
 
+impl Clone for Mat
+{
+    fn clone(&self) -> Mat
+    {
+        self.clone_sz()
+    }
+}
+
+//
+
 pub trait MatAcc
 {
     fn acc_size(&self) -> (usize, usize);
@@ -621,7 +643,7 @@ impl<V: View> Neg for &MatGen<V>
 
     fn neg(self) -> Mat
     {
-        self.clone().neg()
+        self.clone_sz().neg()
     }
 }
 
@@ -654,7 +676,7 @@ impl<V: View, T: MatAcc> Add<T> for &MatGen<V>
 
     fn add(self, rhs: T) -> Mat
     {
-        self.clone().add(rhs)
+        self.clone_sz().add(rhs)
     }
 }
 
@@ -683,7 +705,7 @@ impl<V: View> Add<FP> for &MatGen<V>
 
     fn add(self, rhs: FP) -> Mat
     {
-        self.clone().add(rhs)
+        self.clone_sz().add(rhs)
     }
 }
 
@@ -736,7 +758,7 @@ impl<V: View, T: MatAcc> Sub<T> for &MatGen<V>
 
     fn sub(self, rhs: T) -> Mat
     {
-        self.clone().sub(rhs)
+        self.clone_sz().sub(rhs)
     }
 }
 
@@ -765,7 +787,7 @@ impl<V: View> Sub<FP> for &MatGen<V>
 
     fn sub(self, rhs: FP) -> Mat
     {
-        self.clone().sub(rhs)
+        self.clone_sz().sub(rhs)
     }
 }
 
@@ -853,7 +875,7 @@ impl<V: View> Mul<FP> for &MatGen<V>
 
     fn mul(self, rhs: FP) -> Mat
     {
-        self.clone().mul(rhs)
+        self.clone_sz().mul(rhs)
     }
 }
 
@@ -904,7 +926,7 @@ impl<V: View> Div<FP> for &MatGen<V>
 
     fn div(self, rhs: FP) -> Mat
     {
-        self.clone().div(rhs)
+        self.clone_sz().div(rhs)
     }
 }
 
@@ -999,7 +1021,7 @@ fn test_slice()
             0., 0., 1., 0.,
             1., 0., 0., 1.
         ]);
-        let a1 = a.col(3).clone();
+        let a1 = a.col(3).clone_sz();
         a.col_mut(0).assign(&a1);
         assert_eq!(a, b);
     }
