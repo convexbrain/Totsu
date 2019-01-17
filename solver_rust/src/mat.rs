@@ -196,7 +196,7 @@ impl<V: View> MatGen<V>
         Mat::new(nrows, 1)
     }
     //
-    // refer methods
+    // slice methods
     pub fn slice<RR, CR>(&self, rows: RR, cols: CR) -> MatSlice
     where RR: RangeBounds<usize>,  CR: RangeBounds<usize>
     {
@@ -227,24 +227,48 @@ impl<V: View> MatGen<V>
         }
     }
     //
+    pub fn rows<RR>(&self, rows: RR) -> MatSlice
+    where RR: RangeBounds<usize>
+    {
+        self.slice(rows, ..)
+    }
+    //
+    pub fn cols<CR>(&self, cols: CR) -> MatSlice
+    where CR: RangeBounds<usize>
+    {
+        self.slice(.., cols)
+    }
+    //
     pub fn row(&self, r: usize) -> MatSlice
     {
-        self.slice(r ..= r, ..)
+        self.rows(r ..= r)
     }
     //
     pub fn col(&self, c: usize) -> MatSlice
     {
-        self.slice(.., c ..= c)
+        self.cols(c ..= c)
+    }
+    //
+    pub fn rows_mut<RR>(&mut self, rows: RR) -> MatSliMu
+    where RR: RangeBounds<usize>
+    {
+        self.slice_mut(rows, ..)
+    }
+    //
+    pub fn cols_mut<CR>(&mut self, cols: CR) -> MatSliMu
+    where CR: RangeBounds<usize>
+    {
+        self.slice_mut(.., cols)
     }
     //
     pub fn row_mut(&mut self, r: usize) -> MatSliMu
     {
-        self.slice_mut(r ..= r, ..)
+        self.rows_mut(r ..= r)
     }
     //
     pub fn col_mut(&mut self, c: usize) -> MatSliMu
     {
-        self.slice_mut(.., c ..= c)
+        self.cols_mut(c ..= c)
     }
     //
     pub fn t(&self) -> MatSlice
@@ -321,9 +345,10 @@ impl<V: View> MatGen<V>
     {
         // NOTE: this is not std::clone::Clone trait
 
+        let (l_nrows, l_ncols) = self.size();
         let sz = self.view.get_len();
 
-        if sz == self.nrows * self.ncols {
+        if sz == l_nrows * l_ncols {
             MatGen {
                 nrows: self.nrows,
                 ncols: self.ncols,
@@ -334,7 +359,6 @@ impl<V: View> MatGen<V>
             }
         }
         else {
-            let (l_nrows, l_ncols) = self.size();
             let mut mat = Mat::new(l_nrows, l_ncols);
             mat.assign(self);
             mat
@@ -386,17 +410,6 @@ impl<V: View> MatGen<V>
         self.assign_by(|r, c| Some(rhs[(r, c)]));
     }
     //
-    // size methods
-    pub fn size(&self) -> (usize, usize)
-    {
-        if !self.transposed {
-            (self.nrows, self.ncols)
-        }
-        else {
-            (self.ncols, self.nrows)
-        }
-    }
-    //
     // norm methods
     pub fn norm_p2sq(&self) -> FP
     {
@@ -418,35 +431,62 @@ impl<V: View> MatGen<V>
         FP::sqrt(self.norm_p2sq())
     }
     //
-    // max/min methods
-    pub fn max(&self) -> FP
+    // search methods
+    pub fn max(&self) -> (usize, usize, FP)
     {
         let (l_nrows, l_ncols) = self.size();
+        assert_ne!(l_nrows, 0);
+        assert_ne!(l_ncols, 0);
 
+        let mut mr: usize = 0;
+        let mut mc: usize = 0;
         let mut m = self[(0, 0)];
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                m = if self[(r, c)] > m {self[(r, c)]} else {m};
+                if self[(r, c)] > m {
+                    m = self[(r, c)];
+                    mr = r;
+                    mc = c;
+                }
             }
         }
 
-        m
+        (mr, mc, m)
     }
     //
-    pub fn min(&self) -> FP
+    pub fn min(&self) -> (usize, usize, FP)
     {
         let (l_nrows, l_ncols) = self.size();
+        assert_ne!(l_nrows, 0);
+        assert_ne!(l_ncols, 0);
         
+        let mut mr: usize = 0;
+        let mut mc: usize = 0;
         let mut m = self[(0, 0)];
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                m = if self[(r, c)] < m {self[(r, c)]} else {m};
+                if self[(r, c)] < m {
+                    m = self[(r, c)];
+                    mr = r;
+                    mc = c;
+                }
             }
         }
 
-        m
+        (mr, mc, m)
+    }
+    //
+    // size methods
+    pub fn size(&self) -> (usize, usize)
+    {
+        if !self.transposed {
+            (self.nrows, self.ncols)
+        }
+        else {
+            (self.ncols, self.nrows)
+        }
     }
 }
 

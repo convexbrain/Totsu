@@ -10,23 +10,23 @@ const ALPHA: FP = 0.1;
 const BETA: FP = 0.8;
 const S_COEF: FP = 0.99;
 
-pub fn solve<F1, F2, F3, F4, F5, F6, F7>(
+pub fn solve<Fo1, Fo2, Fi0, Fi1, Fi2, Fe, Fs>(
     n: usize, m: usize, p: usize,
-    initial_point: F1,
-    d_objective: F2,
-    dd_objective: F3,
-    inequality: F4,
-    d_inequality: F5,
-    dd_inequality: F6,
-    equality: F7
+    d_objective: Fo1,
+    dd_objective: Fo2,
+    inequality: Fi0,
+    d_inequality: Fi1,
+    dd_inequality: Fi2,
+    equality: Fe,
+    start_point: Fs
 ) -> Result<Mat, &'static str>
-where F1: Fn(MatSliMu),
-      F2: Fn(&MatSlice, &mut Mat),
-      F3: Fn(&MatSlice, &mut Mat),
-      F4: Fn(&MatSlice, &mut Mat),
-      F5: Fn(&MatSlice, &mut Mat),
-      F6: Fn(&MatSlice, &mut Mat, usize),
-      F7: Fn(&mut Mat, &mut Mat)
+where Fo1: Fn(&MatSlice, &mut Mat),
+      Fo2: Fn(&MatSlice, &mut Mat),
+      Fi0: Fn(&MatSlice, &mut Mat),
+      Fi1: Fn(&MatSlice, &mut Mat),
+      Fi2: Fn(&MatSlice, &mut Mat, usize),
+      Fe: FnOnce(&mut Mat, &mut Mat),
+      Fs: FnOnce(MatSliMu)
 {
     // parameter check
     if n == 0 {return Err("n: 0");}
@@ -48,36 +48,36 @@ where F1: Fn(MatSliMu),
     let mut mat_ddf = Mat::new(n, n);
 
     // initialize
-    let x = vec_y.slice_mut(0 .. n, ..);
-    initial_point(x);
-    let mut lmd = vec_y.slice_mut(n .. n + m, ..);
+    let x = vec_y.rows_mut(0 .. n);
+    start_point(x);
+    let mut lmd = vec_y.rows_mut(n .. n + m);
     lmd.assign_all(MARGIN);
     equality(&mut mat_a, &mut vec_b);
 
     // initial df_o, f_i, df_i
-    let x = vec_y.slice(0 .. n, ..);
+    let x = vec_y.rows(0 .. n);
     d_objective(&x, &mut vec_df_o);
     inequality(&x, &mut vec_f_i);
     d_inequality(&x, &mut mat_df_i);
 
     // inequality feasibility check
-    if vec_f_i.max() >= 0. {return Err("inequality: not feasible at init");}
+    if vec_f_i.max().2 >= 0. {return Err("inequality: not feasible at init");}
 
     // initial residual - dual and primal
-    let mut r_dual = vec_r_t.slice_mut(0 .. n, ..);
+    let mut r_dual = vec_r_t.rows_mut(0 .. n);
     r_dual.assign(&vec_df_o);
     if m > 0 {
-        let lmd = vec_y.slice(n .. n + m, ..);
+        let lmd = vec_y.rows(n .. n + m);
         r_dual.assign(&(&r_dual + mat_df_i.t() * lmd));
     }
     if p > 0 {
-        let nu = vec_y.slice(n + m .. n + m + p, ..);
+        let nu = vec_y.rows(n + m .. n + m + p);
         r_dual.assign(&(&r_dual + mat_a.t() * nu));
     }
-    let mut r_pri = vec_r_t.slice_mut(n + m .. n + m + p, ..);
+    let mut r_pri = vec_r_t.rows_mut(n + m .. n + m + p);
     if p > 0 {
-        let x = vec_y.slice(0 .. n, ..);
-        r_pri.assign(&(mat_a * x - vec_b));
+        let x = vec_y.rows(0 .. n);
+        r_pri.assign(&(&mat_a * x - vec_b));
     }
 
     //
@@ -87,7 +87,7 @@ where F1: Fn(MatSliMu),
         /***** calc t *****/
 
         let eta = if m > 0 {
-            let lmd = vec_y.slice(n .. n + m, ..);
+            let lmd = vec_y.rows(n .. n + m);
             -(vec_f_i.t() * lmd)[(0, 0)]
         }
         else {
@@ -102,15 +102,15 @@ where F1: Fn(MatSliMu),
         /***** update residual - central *****/
 
         if m > 0 {
-            let mut r_cent = vec_r_t.slice_mut(n .. n + m, ..);
-            let lmd = vec_y.slice(n .. n + m, ..);
+            let mut r_cent = vec_r_t.rows_mut(n .. n + m);
+            let lmd = vec_y.rows(n .. n + m);
             r_cent.assign(&(-lmd.clone_diag() * &vec_f_i - m_inv_t));
         }
 
         /***** termination criteria *****/
 
-        let r_dual = vec_r_t.slice(0 .. n, ..);
-        let r_pri = vec_r_t.slice(n + m .. n + m + p, ..);
+        let r_dual = vec_r_t.rows(0 .. n);
+        let r_pri = vec_r_t.rows(n + m .. n + m + p);
 
         let r_dual_norm = r_dual.norm_p2();
         let r_pri_norm = r_pri.norm_p2();
@@ -121,12 +121,32 @@ where F1: Fn(MatSliMu),
 
         /***** calc kkt matrix *****/
         
-        let x = vec_y.slice(0 .. n, ..);
+        let x = vec_y.rows(0 .. n);
         let mut kkt_x_dual = kkt.slice_mut(0 .. n, 0 .. n);
         dd_objective(&x, &mut mat_ddf);
         kkt_x_dual.assign(&mat_ddf);
         for i in 0 .. m {
             dd_inequality(&x, &mut mat_ddf, i);
+        }
+
+        if m > 0 {
+            let mut kkt_lmd_dual = kkt.slice_mut(0 .. n, n .. n + m);
+            kkt_lmd_dual.assign(&mat_df_i.t());
+
+            let mut kkt_x_cent = kkt.slice_mut(n .. n + m, 0 .. n);
+            let lmd = vec_y.rows(n .. n + m);
+            kkt_x_cent.assign(&(-lmd.clone_diag() * &mat_df_i));
+
+            let mut kkt_lmd_cent = kkt.slice_mut(n .. n + m, n .. n + m);
+            kkt_lmd_cent.assign(&(-vec_f_i.clone_diag()));
+        }
+
+        if p > 0 {
+            let mut kkt_nu_dual = kkt.slice_mut(0 .. n, n + m .. n + m + p);
+            kkt_nu_dual.assign(&mat_a.t());
+
+            let mut kkt_x_pri = kkt.slice_mut(n + m .. n + m + p, 0 .. n);
+            kkt_x_pri.assign(&mat_a);
         }
 
         return Err("not implemented yet");
@@ -174,7 +194,7 @@ pub fn solve_qp(mat_p: &Mat, vec_q: &Mat,
 
     // ----- initial value of a slack variable
 
-    let s = -vec_h.min();
+    let s = -vec_h.min().2;
     let mut margin = MARGIN;
     let mut s_inital = s + margin;
     while s_inital <= s {
@@ -185,42 +205,42 @@ pub fn solve_qp(mat_p: &Mat, vec_q: &Mat,
     // ----- start to solve
 
     let rslt = solve(n + 1, m, p + 1, // '+ 1' is for a slack variable
-          |mut x| {
-              x[(n, 0)] = s_inital;
-          },
           |x, df_o| {
-              df_o.slice_mut(0 .. n, ..).assign(
-                  &(mat_p * x.slice(0 .. n, ..) + vec_q)
+              df_o.rows_mut(0 .. n).assign(
+                  &(mat_p * x.rows(0 .. n) + vec_q)
               );
               df_o[(n, 0)] = 0.;
           },
           |_, ddf_o| {
               ddf_o.slice_mut(0 .. n, 0 .. n).assign(mat_p);
-              ddf_o.slice_mut(n ..= n, ..).assign_all(0.);
-              ddf_o.slice_mut(.., n ..= n).assign_all(0.);
+              ddf_o.row_mut(n).assign_all(0.);
+              ddf_o.col_mut(n).assign_all(0.);
           },
           |x, f_i| {
               f_i.assign(
-                  &(mat_g * x.slice(0 .. n, ..) - vec_h - x[(n, 0)] * (m as FP))
+                  &(mat_g * x.rows(0 .. n) - vec_h - x[(n, 0)] * (m as FP))
               )
           },
           |_, df_i| {
-              df_i.slice_mut(0 .. m, 0 .. n).assign(&mat_g);
-              df_i.slice_mut(0 .. m, n ..= n).assign_all(-(m as FP));
+              df_i.cols_mut(0 .. n).assign(&mat_g);
+              df_i.col_mut(n).assign_all(-(m as FP));
           },
           |_, ddf_i, _| {
               ddf_i.assign_all(0.);
           },
           |a, b| {
               a.slice_mut(0 .. p, 0 .. n).assign(mat_a);
-              b.slice_mut(0 .. p, ..).assign(vec_b);
+              b.rows_mut(0 .. p).assign(vec_b);
               // for a slack variable
               a[(p, n)] = 1.;
+          },
+          |mut x| {
+              x[(n, 0)] = s_inital;
           }
     );
 
     match rslt {
-        Ok(y) => Ok(y.slice(0 .. n, ..).clone()),
+        Ok(y) => Ok(y.rows(0 .. n).clone()),
         Err(s) => Err(s)
     }
 }
@@ -228,9 +248,9 @@ pub fn solve_qp(mat_p: &Mat, vec_q: &Mat,
 #[test]
 fn test_qp()
 {
-    const n: usize = 2; // x0, x1
-    const m: usize = 1;
-    const p: usize = 0;
+    let n: usize = 2; // x0, x1
+    let m: usize = 1;
+    let p: usize = 0;
 
     let vec_x = Mat::new_vec(n);
 
