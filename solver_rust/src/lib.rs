@@ -4,7 +4,7 @@ pub mod pdipm;
 pub mod qp;
 
 pub mod prelude {
-    pub use crate::mat::{Mat, MatSlice, MatSliMu, FP};
+    pub use crate::mat::{Mat, FP};
     pub use crate::pdipm::PDIPM;
 }
 
