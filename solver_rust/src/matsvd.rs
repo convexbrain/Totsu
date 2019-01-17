@@ -1,4 +1,4 @@
-use super::mat::{Mat, FP, FP_EPSILON, FP_MINPOS, xor64, XOR64_INIT}; // TODO: prelude
+use super::mat::{Mat, FP, FP_EPSILON, FP_MINPOS}; // TODO: prelude
 
 const TOL_CNV2: FP = FP_EPSILON * FP_EPSILON;
 const TOL_DIV0: FP = FP_MINPOS;
@@ -157,6 +157,9 @@ impl MatSVD
         }
     }
 }
+
+#[cfg(test)]
+use super::mat::{xor64, XOR64_INIT};
 
 #[test]
 fn test_decomp()

@@ -1,6 +1,6 @@
-mod mat;
-mod matsvd;
-mod qp;
+pub mod mat;
+pub mod matsvd;
+pub mod qp;
 
 #[cfg(test)]
 mod tests {
