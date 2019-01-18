@@ -25,17 +25,13 @@ fn check_param(mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
         // m = 0 means NO inequality constraints
         // p = 0 means NO equality constraints
 
+        if vec_q.len() != m + 1 {return Err("vec_q: length mismatch");}
+        if scl_r.len() != m + 1 {return Err("scl_r: length mismatch");}
+
         for i in 0 ..= m {
             if mat_p[i].size() != (n, n) {return Err("mat_p[_]: size mismatch");}
-        }
-
-        if vec_q.len() != m + 1 {return Err("vec_q: length mismatch");}
-
-        for i in 0 ..= m {
             if vec_q[i].size() != (n, 1) {return Err("vec_q[_]: size mismatch");}
         }
-
-        if scl_r.len() != m + 1 {return Err("scl_r: length mismatch");}
 
         if mat_a.size() != (p, n) {return Err("mat_a: size mismatch");}
         if vec_b.size() != (p, 1) {return Err("vec_b: size mismatch");}

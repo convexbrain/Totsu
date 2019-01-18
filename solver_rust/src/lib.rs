@@ -3,6 +3,7 @@ pub mod matsvd;
 pub mod pdipm;
 pub mod qp;
 pub mod qcqp;
+pub mod socp;
 
 pub mod prelude {
     pub use crate::mat::{Mat, FP};
@@ -12,6 +13,7 @@ pub mod prelude {
 pub mod predef {
     pub use crate::qp::QP;
     pub use crate::qcqp::QCQP;
+    pub use crate::socp::SOCP;
 }
 
 #[cfg(test)]
@@ -90,4 +92,35 @@ mod tests {
                                            &mat_p, &vec_q, &scl_r,
                                            &mat_a, &vec_b);
         println!("{}", rslt.unwrap());
-    }}
+    }
+
+    #[test]
+    fn test_socp()
+    {
+        let n: usize = 2; // x0, x1
+        let m: usize = 1;
+        let p: usize = 0;
+        let ni: usize = 2;
+
+        let vec_f = Mat::new_vec(n).set_all(1.);
+        let mut mat_g = vec![Mat::new(ni, n); m];
+        let vec_h = vec![Mat::new_vec(ni); m];
+        let vec_c = vec![Mat::new_vec(n); m];
+        let mut scl_d = vec![0. as FP; m];
+
+        mat_g[0].assign_iter(&[
+            1., 0.,
+            0., 1.
+        ]);
+        scl_d[0] = 1.41421356;
+
+        let mat_a = Mat::new(p, n);
+        let vec_b = Mat::new_vec(p);
+
+        let rslt = PDIPM::new().solve_socp(std::io::stdout(),
+                                           &vec_f,
+                                           &mat_g, &vec_h, &vec_c, &scl_d,
+                                           &mat_a, &vec_b);
+        println!("{}", rslt.unwrap());
+    }
+}
