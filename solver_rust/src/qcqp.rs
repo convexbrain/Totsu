@@ -1,3 +1,7 @@
+//! Quadratically constrained quadratic program
+//! 
+//! TODO
+
 use super::mat::{Mat, FP};
 use super::pdipm::PDIPM;
 

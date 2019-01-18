@@ -3,5 +3,12 @@ name = "totsu"
 version = "0.1.0"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2018"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/convexbrain/Totsu"
+description = """
+A basic primal-dual interior-point method solver for continuous scalar convex optimization problems.
+"""
+categories = ["science"]
 
 [dependencies]

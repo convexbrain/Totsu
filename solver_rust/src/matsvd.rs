@@ -1,3 +1,9 @@
+/*!
+Matrix singular value decomposition
+
+TODO
+*/
+
 use super::mat::{Mat, FP, FP_EPSILON, FP_MINPOS};
 
 const TOL_CNV2: FP = FP_EPSILON * FP_EPSILON;

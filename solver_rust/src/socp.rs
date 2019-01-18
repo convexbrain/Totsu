@@ -1,3 +1,7 @@
+//! Second-order cone program
+//! 
+//! TODO
+
 use super::mat::{Mat, FP};
 use super::pdipm::PDIPM;
 

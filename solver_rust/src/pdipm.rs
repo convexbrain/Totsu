@@ -1,3 +1,9 @@
+/*!
+Primal-dual interior point method
+
+TODO
+*/
+
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
 use super::matsvd::MatSVD;
 

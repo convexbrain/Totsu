@@ -1,8 +1,39 @@
+//! Quadratic program
+
 use super::mat::{Mat, FP};
 use super::pdipm::PDIPM;
 
 use std::io::Write;
 
+/// Quadratic program
+/// 
+/// <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
+/// 
+/// The problem is
+/// \\[
+/// \\begin{array}{ll}
+/// {\\rm minimize} & {1 \\over 2} x^T P x + q^T x + r \\\\
+/// {\\rm subject \\ to} & G x \\preceq h \\\\
+/// & A x = b,
+/// \\end{array}
+/// \\]
+/// where
+/// - variables \\( x \\in {\\bf R}^n \\)
+/// - \\( P \\in {\\bf S}_{+}^n \\), \\( q \\in {\\bf R}^n \\), \\( r \\in {\\bf R} \\)
+/// - \\( G \\in {\\bf R}^{m \\times n} \\), \\( h \\in {\\bf R}^m \\).
+/// - \\( A \\in {\\bf R}^{p \\times n} \\), \\( b \\in {\\bf R}^p \\).
+/// 
+/// Internally a slack variable \\( s \\in {\\bf R} \\) is introduced for the infeasible start method as follows:
+/// \\[
+/// \\begin{array}{ll}
+/// {\\rm minimize}_{x,s} & {1 \\over 2} x^T P x + q^T x + r \\\\
+/// {\\rm subject \\ to} & G x \\preceq h + s {\\bf 1} \\\\
+/// & A x = b \\\\
+/// & s = 0.
+/// \\end{array}
+/// \\]
+/// 
+/// In the following, \\( r \\) does not appear since it does not matter.
 pub trait QP {
     fn solve_qp<L>(&self, log: L,
                    mat_p: &Mat, vec_q: &Mat,
@@ -37,6 +68,7 @@ fn check_param(mat_p: &Mat, vec_q: &Mat,
 
 impl QP for PDIPM
 {
+    //! TODO
     fn solve_qp<L>(&self, log: L,
                    mat_p: &Mat, vec_q: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
