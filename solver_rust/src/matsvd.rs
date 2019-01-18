@@ -76,16 +76,15 @@ impl MatSVD
         let (_, n) = self.u.size();
 
         for i in 0 .. n {
-            let s = self.u.col(i).norm_p2();
+            let mut col = self.u.col_mut(i);
+            let s = col.norm_p2();
             self.s[(i, 0)] = s;
 
             if (-TOL_DIV0 < s) && (s < TOL_DIV0) {
                 continue;
             }
 
-            let tmp = self.u.col(i) / s;
-
-            self.u.col_mut(i).assign(&tmp);
+            col /= s;
         }
     }
     //

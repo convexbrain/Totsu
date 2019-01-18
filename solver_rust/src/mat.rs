@@ -8,7 +8,7 @@ pub type MatSliMu<'a> = MatGen<&'a mut[FP]>;
 
 use std::cmp::PartialEq;
 use std::ops::{Range, RangeBounds, Bound};
-use std::ops::{Neg, Add, Mul, Sub, Div};
+use std::ops::{Neg, Add, Mul, Sub, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 use std::ops::{Index, IndexMut};
 use std::fmt;
 
@@ -659,6 +659,36 @@ impl<V: View> Neg for &MatGen<V>
 
 //
 
+impl<V: View, T: MatAcc> AddAssign<T> for MatGen<V>
+{
+    fn add_assign(&mut self, rhs: T)
+    {
+        let (l_nrows, l_ncols) = self.size();
+
+        assert_eq!((l_nrows, l_ncols), rhs.acc_size());
+
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                self[(r, c)] += rhs.acc_get(r, c);
+            }
+        }
+    }
+}
+
+impl<V: View> AddAssign<FP> for MatGen<V>
+{
+    fn add_assign(&mut self, rhs: FP)
+    {
+        let (l_nrows, l_ncols) = self.size();
+
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                self[(r, c)] += rhs;
+            }
+        }
+    }
+}
+
 impl<V: View, T: MatAcc> Add<T> for MatGen<V>
 {
     type Output = Mat;
@@ -666,16 +696,7 @@ impl<V: View, T: MatAcc> Add<T> for MatGen<V>
     fn add(self, rhs: T) -> Mat
     {
         let mut mat = self.h_own();
-        let (l_nrows, l_ncols) = mat.size();
-
-        assert_eq!((l_nrows, l_ncols), rhs.acc_size());
-
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                mat[(r, c)] += rhs.acc_get(r, c);
-            }
-        }
-
+        mat.add_assign(rhs);
         mat
     }
 }
@@ -697,14 +718,7 @@ impl<V: View> Add<FP> for MatGen<V>
     fn add(self, rhs: FP) -> Mat
     {
         let mut mat = self.h_own();
-        let (l_nrows, l_ncols) = mat.size();
-
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                mat[(r, c)] += rhs;
-            }
-        }
-
+        mat.add_assign(rhs);
         mat
     }
 }
@@ -741,6 +755,36 @@ impl<V: View> Add<&MatGen<V>> for FP
 
 //
 
+impl<V: View, T: MatAcc> SubAssign<T> for MatGen<V>
+{
+    fn sub_assign(&mut self, rhs: T)
+    {
+        let (l_nrows, l_ncols) = self.size();
+
+        assert_eq!((l_nrows, l_ncols), rhs.acc_size());
+
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                self[(r, c)] -= rhs.acc_get(r, c);
+            }
+        }
+    }
+}
+
+impl<V: View> SubAssign<FP> for MatGen<V>
+{
+    fn sub_assign(&mut self, rhs: FP)
+    {
+        let (l_nrows, l_ncols) = self.size();
+
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                self[(r, c)] -= rhs;
+            }
+        }
+    }
+}
+
 impl<V: View, T: MatAcc> Sub<T> for MatGen<V>
 {
     type Output = Mat;
@@ -748,16 +792,7 @@ impl<V: View, T: MatAcc> Sub<T> for MatGen<V>
     fn sub(self, rhs: T) -> Mat
     {
         let mut mat = self.h_own();
-        let (l_nrows, l_ncols) = mat.size();
-
-        assert_eq!((l_nrows, l_ncols), rhs.acc_size());
-
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                mat[(r, c)] -= rhs.acc_get(r, c);
-            }
-        }
-
+        mat.sub_assign(rhs);
         mat
     }
 }
@@ -779,14 +814,7 @@ impl<V: View> Sub<FP> for MatGen<V>
     fn sub(self, rhs: FP) -> Mat
     {
         let mut mat = self.h_own();
-        let (l_nrows, l_ncols) = mat.size();
-
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                mat[(r, c)] -= rhs;
-            }
-        }
-
+        mat.sub_assign(rhs);
         mat
     }
 }
@@ -822,6 +850,20 @@ impl<V: View> Sub<&MatGen<V>> for FP
 }
 
 //
+
+impl<V: View> MulAssign<FP> for MatGen<V>
+{
+    fn mul_assign(&mut self, rhs: FP)
+    {
+        let (l_nrows, l_ncols) = self.size();
+
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                self[(r, c)] *= rhs;
+            }
+        }
+    }
+}
 
 impl<V: View, T: MatAcc> Mul<T> for MatGen<V>
 {
@@ -867,14 +909,7 @@ impl<V: View> Mul<FP> for MatGen<V>
     fn mul(self, rhs: FP) -> Mat
     {
         let mut mat = self.h_own();
-        let (l_nrows, l_ncols) = mat.size();
-
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                mat[(r, c)] *= rhs;
-            }
-        }
-
+        mat.mul_assign(rhs);
         mat
     }
 }
@@ -911,6 +946,20 @@ impl<V: View> Mul<&MatGen<V>> for FP
 
 //
 
+impl<V: View> DivAssign<FP> for MatGen<V>
+{
+    fn div_assign(&mut self, rhs: FP)
+    {
+        let (l_nrows, l_ncols) = self.size();
+
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                self[(r, c)] /= rhs;
+            }
+        }
+    }
+}
+
 impl<V: View> Div<FP> for MatGen<V>
 {
     type Output = Mat;
@@ -918,14 +967,7 @@ impl<V: View> Div<FP> for MatGen<V>
     fn div(self, rhs: FP) -> Mat
     {
         let mut mat = self.h_own();
-        let (l_nrows, l_ncols) = mat.size();
-
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                mat[(r, c)] /= rhs;
-            }
-        }
-
+        mat.div_assign(rhs);
         mat
     }
 }

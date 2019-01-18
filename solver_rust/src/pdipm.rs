@@ -102,11 +102,11 @@ impl PDIPM
         r_dual.assign(&vec_df_o);
         if m > 0 {
             let lmd = vec_y.rows(n .. n + m);
-            r_dual.assign(&(&r_dual + mat_df_i.t() * lmd));
+            r_dual += mat_df_i.t() * lmd;
         }
         if p > 0 {
             let nu = vec_y.rows(n + m .. n + m + p);
-            r_dual.assign(&(&r_dual + mat_a.t() * nu));
+            r_dual += mat_a.t() * nu;
         }
         let mut r_pri = vec_r_t.rows_mut(n + m .. n + m + p);
         if p > 0 {
@@ -164,14 +164,13 @@ impl PDIPM
 
             /***** calc kkt matrix *****/
             
+            let mut kkt_x_dual = kkt.slice_mut(0 .. n, 0 .. n);
             dd_objective(&x, &mut mat_ddf);
-            let mut ddf = mat_ddf.clone_sz();
+            kkt_x_dual.assign(&mat_ddf);
             for i in 0 .. m {
                 dd_inequality(&x, &mut mat_ddf, i);
-                ddf = ddf + lmd[(i, 0)] * &mat_ddf;
+                kkt_x_dual += lmd[(i, 0)] * &mat_ddf;
             }
-            let mut kkt_x_dual = kkt.slice_mut(0 .. n, 0 .. n);
-            kkt_x_dual.assign(&ddf);
 
             if m > 0 {
                 let mut kkt_lmd_dual = kkt.slice_mut(0 .. n, n .. n + m);
@@ -229,7 +228,7 @@ impl PDIPM
                 inequality(&x_p, &mut vec_f_i);
 
                 if (vec_f_i.max().2 < 0.) && (lmd_p.min().2 > 0.) {break;}
-                s = self.beta * s;
+                s *= self.beta;
                 y_p = &vec_y + s * &dy;
 
                 bcnt += 1;
@@ -260,10 +259,10 @@ impl PDIPM
                 let mut r_dual = vec_r_t.rows_mut(0 .. n);
                 r_dual.assign(&vec_df_o);
                 if m > 0 {
-                    r_dual.assign(&(&r_dual + mat_df_i.t() * &lmd_p));
+                    r_dual += mat_df_i.t() * &lmd_p;
                 }
                 if p > 0 {
-                    r_dual.assign(&(&r_dual + mat_a.t() * nu_p));
+                    r_dual += mat_a.t() * nu_p;
                 }
                 if m > 0 {
                     let mut r_cent = vec_r_t.rows_mut(n .. n + m);
@@ -275,7 +274,7 @@ impl PDIPM
                 }
 
                 if vec_r_t.norm_p2() <= (1. - self.alpha * s) * org_r_t_norm {break;}
-                s = self.beta * s;
+                s *= self.beta;
                 y_p = &vec_y + s * &dy;
 
                 bcnt += 1;
