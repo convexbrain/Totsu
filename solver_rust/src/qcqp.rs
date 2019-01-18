@@ -11,6 +11,38 @@ pub trait QCQP {
     where L: Write;
 }
 
+fn check_param(mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
+               mat_a: &Mat, vec_b: &Mat)
+               -> Result<(usize, usize, usize), &'static str>
+{
+        if mat_p.len() == 0 {return Err("mat_p: 0 length");}
+
+        let (n, _) = mat_p[0].size();
+        let m = mat_p.len() - 1;
+        let (p, _) = mat_a.size();
+
+        if n == 0 {return Err("mat_p[_]: 0 rows");}
+        // m = 0 means NO inequality constraints
+        // p = 0 means NO equality constraints
+
+        for i in 0 ..= m {
+            if mat_p[i].size() != (n, n) {return Err("mat_p[_]: size mismatch");}
+        }
+
+        if vec_q.len() != m + 1 {return Err("vec_q: length mismatch");}
+
+        for i in 0 ..= m {
+            if vec_q[i].size() != (n, 1) {return Err("vec_q[_]: size mismatch");}
+        }
+
+        if scl_r.len() != m + 1 {return Err("scl_r: length mismatch");}
+
+        if mat_a.size() != (p, n) {return Err("mat_a: size mismatch");}
+        if vec_b.size() != (p, 1) {return Err("vec_b: size mismatch");}
+
+        Ok((n, m, p))
+}
+
 impl QCQP for PDIPM
 {
     fn solve_qcqp<L>(&self, log: L,
@@ -21,38 +53,7 @@ impl QCQP for PDIPM
     {
         // ----- parameter check
 
-        if mat_p.len() == 0 {return Err("mat_p: 0 length");}
-
-        let (n, _) = mat_p[0].size();
-        if n == 0 {return Err("mat_p: 0 rows");}
-
-        // m = 0 means NO inequality constraints
-        let m = mat_p.len() - 1;
-
-        for i in 0 ..= m {
-            let (tmpr, tmpc) = mat_p[i].size();
-            if (tmpr, tmpc) != (n, n) {return Err("mat_p: size mismatch");}
-        }
-
-        if vec_q.len() != m + 1 {return Err("vec_q: length mismatch");}
-
-        for i in 0 ..= m {
-            let (tmpr, tmpc) = vec_q[i].size();
-            if tmpc != 1 {return Err("vec_q: must be column vector");}
-            if tmpr != n {return Err("vec_q: size mismatch");}
-        }
-
-        if scl_r.len() != m + 1 {return Err("scl_r: length mismatch");}
-
-        // p = 0 means NO equality constraints
-        let (p, tmpc) = mat_a.size();
-
-        if tmpc != n {return Err("mat_a: column size mismatch");}
-
-        let (tmpr, tmpc) = vec_b.size();
-        
-        if tmpc != 1 {return Err("vec_b: must be column vector");}
-        if tmpr != p {return Err("vec_b: size mismatch");}
+        let (n, m, p) = check_param(mat_p, vec_q, scl_r, mat_a, vec_b)?;
 
         // ----- initial value of a slack variable
 

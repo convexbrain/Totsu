@@ -12,6 +12,29 @@ pub trait QP {
     where L: Write;
 }
 
+fn check_param(mat_p: &Mat, vec_q: &Mat,
+               mat_g: &Mat, vec_h: &Mat,
+               mat_a: &Mat, vec_b: &Mat)
+               -> Result<(usize, usize, usize), &'static str>
+{
+    let (n, _) = mat_p.size();
+    let (m, _) = mat_g.size();
+    let (p, _) = mat_a.size();
+
+    if n == 0 {return Err("mat_p: 0 rows");}
+    // m = 0 means NO inequality constraints
+    // p = 0 means NO equality constraints
+
+    if mat_p.size() != (n, n) {return Err("mat_p: size mismatch");}
+    if vec_q.size() != (n, 1) {return Err("vec_q: size mismatch");}
+    if mat_g.size() != (m, n) {return Err("mat_g: size mismatch");}
+    if vec_h.size() != (m, 1) {return Err("vec_h: size mismatch");}
+    if mat_a.size() != (p, n) {return Err("mat_a: size mismatch");}
+    if vec_b.size() != (p, 1) {return Err("vec_b: size mismatch");}
+
+    Ok((n, m, p))
+}
+
 impl QP for PDIPM
 {
     fn solve_qp<L>(&self, log: L,
@@ -23,35 +46,7 @@ impl QP for PDIPM
     {
         // ----- parameter check
 
-        let (n, tmpc) = mat_p.size();
-
-        if n == 0 {return Err("mat_p: 0 rows");}
-        if tmpc != n {return Err("mat_p: must be square matrix");}
-
-        let (tmpr, tmpc) = vec_q.size();
-        
-        if tmpc != 1 {return Err("vec_q: must be column vector");}
-        if tmpr != n {return Err("vec_q: size mismatch");}
-
-        // m = 0 means NO inequality constraints
-        let (m, tmpc) = mat_g.size();
-
-        if tmpc != n {return Err("mat_g: column size mismatch");}
-
-        let (tmpr, tmpc) = vec_h.size();
-        
-        if tmpc != 1 {return Err("vec_h: must be column vector");}
-        if tmpr != m {return Err("vec_h: size mismatch");}
-
-        // p = 0 means NO equality constraints
-        let (p, tmpc) = mat_a.size();
-
-        if tmpc != n {return Err("mat_a: column size mismatch");}
-
-        let (tmpr, tmpc) = vec_b.size();
-        
-        if tmpc != 1 {return Err("vec_b: must be column vector");}
-        if tmpr != p {return Err("vec_b: size mismatch");}
+        let (n, m, p) = check_param(mat_p, vec_q, mat_g, vec_h, mat_a, vec_b)?;
 
         // ----- initial value of a slack variable
 

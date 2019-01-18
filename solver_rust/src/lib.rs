@@ -86,7 +86,7 @@ mod tests {
         let mat_a = Mat::new(p, n);
         let vec_b = Mat::new_vec(p);
 
-        let rslt = PDIPM::new().solve_qcqp(std::io::stdout(),
+        let rslt = PDIPM::new().solve_qcqp(std::io::sink(),
                                            &mat_p, &vec_q, &scl_r,
                                            &mat_a, &vec_b);
         println!("{}", rslt.unwrap());

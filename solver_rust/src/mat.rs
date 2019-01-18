@@ -271,6 +271,16 @@ impl<V: View> MatGen<V>
         self.cols_mut(c ..= c)
     }
     //
+    pub fn as_slice(&self) -> MatSlice
+    {
+        self.slice(.., ..)
+    }
+    //
+    pub fn as_slice_mut(&mut self) -> MatSliMu
+    {
+        self.slice_mut(.., ..)
+    }
+    //
     pub fn t(&self) -> MatSlice
     {
         MatGen {
