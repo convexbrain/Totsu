@@ -1,8 +1,4 @@
-/*!
-Matrix singular value decomposition
-
-TODO
-*/
+//! Matrix singular value decomposition
 
 use super::mat::{Mat, FP, FP_EPSILON, FP_MINPOS};
 
@@ -10,6 +6,7 @@ const TOL_CNV2: FP = FP_EPSILON * FP_EPSILON;
 const TOL_DIV0: FP = FP_MINPOS;
 const TOL_SINV: FP = FP_EPSILON;
 
+/// Matrix singular value decomposition
 #[derive(Debug)]
 pub struct MatSVD
 {
@@ -22,6 +19,7 @@ pub struct MatSVD
 
 impl MatSVD
 {
+    /// Makes a SVD workplace for factorizing a specified size matrix.
     pub fn new((nrows, ncols): (usize, usize)) -> MatSVD
     {
         let transposed = nrows < ncols;
@@ -112,6 +110,7 @@ impl MatSVD
         self.norm_singular();
     }
     //
+    /// Runs SVD of a specified matrix.
     pub fn decomp(&mut self, g: &Mat)
     {
         if !self.transposed {
@@ -126,6 +125,7 @@ impl MatSVD
         self.do_decomp();
     }
     //
+    /// Runs SVD of a specified matrix with a warm-start from the last SVD result.
     pub fn decomp_warm(&mut self, g: &Mat)
     {
         if !self.transposed {
@@ -138,6 +138,7 @@ impl MatSVD
         self.do_decomp();
     }
     //
+    /// Solves linear equations using the last SVD result.
     pub fn solve(&self, h: &Mat) -> Mat
     {
         let mut sinv = self.s.clone_diag();

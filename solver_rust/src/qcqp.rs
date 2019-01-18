@@ -1,12 +1,36 @@
 //! Quadratically constrained quadratic program
-//! 
-//! TODO
 
 use super::mat::{Mat, FP};
 use super::pdipm::PDIPM;
 
 use std::io::Write;
 
+/// Quadratically constrained quadratic program
+/// 
+/// <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
+/// 
+/// The problem is
+/// \\[
+/// \\begin{array}{ll}
+/// {\\rm minimize} & {1 \\over 2} x^T P_0 x + q_0^T x + r_0 \\\\
+/// {\\rm subject \\ to} & {1 \\over 2} x^T P_i x + q_i^T x + r_i \\le 0 \\quad (i = 1, \\ldots, m) \\\\
+/// & A x = b,
+/// \\end{array}
+/// \\]
+/// where
+/// - variables \\( x \\in {\\bf R}^n \\)
+/// - \\( P_j \\in {\\bf S}_{+}^n \\), \\( q_j \\in {\\bf R}^n \\), \\( r_j \\in {\\bf R} \\) for \\( j = 0, \\ldots, m \\)
+/// - \\( A \\in {\\bf R}^{p \\times n} \\), \\( b \\in {\\bf R}^p \\).
+/// 
+/// Internally a slack variable \\( s \\in {\\bf R} \\) is introduced for the infeasible start method as follows:
+/// \\[
+/// \\begin{array}{ll}
+/// {\\rm minimize}_{x,s} & {1 \\over 2} x^T P_0 x + q_0^T x + r_0 \\\\
+/// {\\rm subject \\ to} & {1 \\over 2} x^T P_i x + q_i^T x + r_i \\le s \\quad (i = 1, \\ldots, m) \\\\
+/// & A x = b \\\\
+/// & s = 0.
+/// \\end{array}
+/// \\]
 pub trait QCQP {
     fn solve_qcqp<L>(&self, log: L,
                      mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
@@ -45,6 +69,15 @@ fn check_param(mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
 
 impl QCQP for PDIPM
 {
+    /// Runs the solver with given parameters.
+    /// 
+    /// Returns `Ok` with optimal \\(x\\) or `Err` with message string.
+    /// * `log` outputs solver progress.
+    /// * `mat_p` is \\(P_0, \\ldots, P_m\\).
+    /// * `vec_q` is \\(q_0, \\ldots, q_m\\).
+    /// * `scl_r` is \\(r_0, \\ldots, r_m\\).
+    /// * `mat_a` is \\(A\\).
+    /// * `vec_b` is \\(b\\).
     fn solve_qcqp<L>(&self, log: L,
                      mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
                      mat_a: &Mat, vec_b: &Mat)

@@ -68,7 +68,16 @@ fn check_param(mat_p: &Mat, vec_q: &Mat,
 
 impl QP for PDIPM
 {
-    //! TODO
+    /// Runs the solver with given parameters.
+    /// 
+    /// Returns `Ok` with optimal \\(x\\) or `Err` with message string.
+    /// * `log` outputs solver progress.
+    /// * `mat_p` is \\(P\\).
+    /// * `vec_q` is \\(q\\).
+    /// * `mat_g` is \\(G\\).
+    /// * `vec_h` is \\(h\\).
+    /// * `mat_a` is \\(A\\).
+    /// * `vec_b` is \\(b\\).
     fn solve_qp<L>(&self, log: L,
                    mat_p: &Mat, vec_q: &Mat,
                    mat_g: &Mat, vec_h: &Mat,

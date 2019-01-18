@@ -1,12 +1,40 @@
 //! Second-order cone program
-//! 
-//! TODO
 
 use super::mat::{Mat, FP};
 use super::pdipm::PDIPM;
 
 use std::io::Write;
 
+/// Second-order cone program
+/// 
+/// <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
+/// 
+/// The problem is
+/// \\[
+/// \\begin{array}{ll}
+/// {\\rm minimize} & f^T x \\\\
+/// {\\rm subject \\ to} & \\| G_i x + h_i \\|_2 \\le c_i^T x + d_i \\quad (i = 0, \\ldots, m - 1) \\\\
+/// & A x = b,
+/// \\end{array}
+/// \\]
+/// where
+/// - variables \\( x \\in {\\bf R}^n \\)
+/// - \\( f \\in {\\bf R}^n \\)
+/// - \\( G_i \\in {\\bf R}^{n_i \\times n} \\), \\( h_i \\in {\\bf R}^{n_i} \\), \\( c_i \\in {\\bf R}^n \\), \\( d_i \\in {\\bf R} \\)
+/// - \\( A \\in {\\bf R}^{p \\times n} \\), \\( b \\in {\\bf R}^p \\).
+/// 
+/// Internally an **approximately equivalent** problem is formed and
+/// an auxiliary variable \\( s \\in {\\bf R}^m \\) is introduced for the infeasible start method as follows:
+/// \\[
+/// \\begin{array}{lll}
+/// {\\rm minimize}\_{x,s} & f^T x \\\\
+/// {\\rm subject \\ to} & {\\| G_i x + h_i \\|\_2^2 \\over s_i} \\le s_i & (i = 0, \\ldots, m - 1) \\\\
+/// & s_i \\ge \\epsilon_{\\rm bd} & (i = 0, \\ldots, m - 1) \\\\
+/// & c_i^T x + d_i = s_i & (i = 0, \\ldots, m - 1) \\\\
+/// & A x = b,
+/// \\end{array}
+/// \\]
+/// where \\( \\epsilon_{\\rm bd} > 0 \\) indicates the extent of approximation that excludes \\( c_i^T x + d_i = 0 \\) boundary.
 pub trait SOCP {
     fn solve_socp<L>(&self, log: L,
                      vec_f: &Mat,
@@ -48,6 +76,17 @@ fn check_param(vec_f: &Mat,
 
 impl SOCP for PDIPM
 {
+    /// Runs the solver with given parameters.
+    /// 
+    /// Returns `Ok` with optimal \\(x\\) or `Err` with message string.
+    /// * `log` outputs solver progress.
+    /// * `vec_f` is \\(f\\).
+    /// * `mat_g` is \\(G_0, \\ldots, G_{m-1}\\).
+    /// * `vec_h` is \\(h_0, \\ldots, h_{m-1}\\).
+    /// * `vec_c` is \\(c_0, \\ldots, c_{m-1}\\).
+    /// * `scl_d` is \\(d_0, \\ldots, d_{m-1}\\).
+    /// * `mat_a` is \\(A\\).
+    /// * `vec_b` is \\(b\\).
     fn solve_socp<L>(&self, log: L,
                      vec_f: &Mat,
                      mat_g: &[Mat], vec_h: &[Mat], vec_c: &[Mat], scl_d: &[FP],

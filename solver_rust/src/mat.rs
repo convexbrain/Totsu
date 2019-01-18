@@ -23,7 +23,7 @@ use std::ops::{Neg, Add, Mul, Sub, Div, AddAssign, SubAssign, MulAssign, DivAssi
 use std::ops::{Index, IndexMut};
 use std::fmt;
 
-/// Handle matrix array entity for owning, borrowing immutable and mutable
+/// Ownership view of matrix array entity
 pub trait View {
     fn get_ref(&self) -> &[FP];
     fn get_mut(&mut self) -> &mut[FP];
@@ -184,7 +184,7 @@ impl<V: View> MatGen<V>
         }
     }
     //
-    /// *new* - TODO
+    /// *new* - Makes a matrix.
     pub fn new(nrows: usize, ncols: usize) -> Mat
     {
         MatGen {
@@ -196,20 +196,20 @@ impl<V: View> MatGen<V>
             view: vec![0.0; nrows * ncols]
         }
     }
-    /// *new* - TODO
+    /// *new* - Makes a matrix of the same size.
     pub fn new_like<V2: View>(mat: &MatGen<V2>) -> Mat
     {
         let (nrows, ncols) = mat.size();
 
         Mat::new(nrows, ncols)
     }
-    /// *new* - TODO
+    /// *new* - Makes a column vector.
     pub fn new_vec(nrows: usize) -> Mat
     {
         Mat::new(nrows, 1)
     }
     //
-    /// *slice* - TODO
+    /// *slice* - Slice block reference.
     pub fn slice<RR, CR>(&self, rows: RR, cols: CR) -> MatSlice
     where RR: RangeBounds<usize>,  CR: RangeBounds<usize>
     {
@@ -224,7 +224,7 @@ impl<V: View> MatGen<V>
             view: self.view.get_ref()
         }
     }
-    /// *slice* - TODO
+    /// *slice* - Slice block mutable reference.
     pub fn slice_mut<'b, RR, CR>(&'b mut self, rows: RR, cols: CR) -> MatSliMu
     where RR: RangeBounds<usize>,  CR: RangeBounds<usize>
     {
@@ -239,61 +239,61 @@ impl<V: View> MatGen<V>
             view: self.view.get_mut()
         }
     }
-    /// *slice* - TODO
+    /// *slice* - Row vectors reference.
     pub fn rows<RR>(&self, rows: RR) -> MatSlice
     where RR: RangeBounds<usize>
     {
         self.slice(rows, ..)
     }
-    /// *slice* - TODO
+    /// *slice* - Column vectors reference.
     pub fn cols<CR>(&self, cols: CR) -> MatSlice
     where CR: RangeBounds<usize>
     {
         self.slice(.., cols)
     }
-    /// *slice* - TODO
+    /// *slice* - A row vector reference.
     pub fn row(&self, r: usize) -> MatSlice
     {
         self.rows(r ..= r)
     }
-    /// *slice* - TODO
+    /// *slice* - A column vector reference.
     pub fn col(&self, c: usize) -> MatSlice
     {
         self.cols(c ..= c)
     }
-    /// *slice* - TODO
+    /// *slice* - Row vectors mutable reference.
     pub fn rows_mut<RR>(&mut self, rows: RR) -> MatSliMu
     where RR: RangeBounds<usize>
     {
         self.slice_mut(rows, ..)
     }
-    /// *slice* - TODO
+    /// *slice* - Column vectors mutable reference.
     pub fn cols_mut<CR>(&mut self, cols: CR) -> MatSliMu
     where CR: RangeBounds<usize>
     {
         self.slice_mut(.., cols)
     }
-    /// *slice* - TODO
+    /// *slice* - A row vector mutable reference.
     pub fn row_mut(&mut self, r: usize) -> MatSliMu
     {
         self.rows_mut(r ..= r)
     }
-    /// *slice* - TODO
+    /// *slice* - A column vector mutable reference.
     pub fn col_mut(&mut self, c: usize) -> MatSliMu
     {
         self.cols_mut(c ..= c)
     }
-    /// *slice* - TODO
+    /// *slice* - Whole reference.
     pub fn as_slice(&self) -> MatSlice
     {
         self.slice(.., ..)
     }
-    /// *slice* - TODO
+    /// *slice* - Whole mutable reference.
     pub fn as_slice_mut(&mut self) -> MatSliMu
     {
         self.slice_mut(.., ..)
     }
-    /// *slice* - TODO
+    /// *slice* - Transopsed reference.
     pub fn t(&self) -> MatSlice
     {
         MatGen {
@@ -305,7 +305,7 @@ impl<V: View> MatGen<V>
             view: self.view.get_ref()
         }
     }
-    /// *slice* - TODO
+    /// *slice* - Transopsed mutable reference.
     pub fn t_mut(&mut self) -> MatSliMu
     {
         MatGen {
@@ -318,7 +318,7 @@ impl<V: View> MatGen<V>
         }
     }
     //
-    /// *set* - TODO
+    /// *set* - Set by closure.
     pub fn set_by<F>(mut self, mut f: F) -> MatGen<V>
     where F: FnMut(usize, usize) -> FP
     {
@@ -331,7 +331,7 @@ impl<V: View> MatGen<V>
         }
         self
     }
-    /// *set* - TODO
+    /// *set* - Set by iterator.
     pub fn set_iter<'b, T>(mut self, iter: T) -> MatGen<V>
     where T: IntoIterator<Item=&'b FP>
     {
@@ -346,24 +346,24 @@ impl<V: View> MatGen<V>
         }
         self
     }
-    /// *set* - TODO
+    /// *set* - Set eye matrix.
     pub fn set_eye(self) -> MatGen<V>
     {
         self.set_by(|r, c| if r == c {1.} else {0.})
     }
-    /// *set* - TODO
+    /// *set* - Set a value.
     pub fn set_all(self, value: FP) -> MatGen<V>
     {
         self.set_by(|_, _| value)
     }
-    /// *set* - TODO
+    /// *set* - Set transposed.
     pub fn set_t(mut self) -> MatGen<V>
     {
         self.transposed = !self.transposed;
         self
     }
     //
-    /// *clone* - TODO
+    /// *clone* - Clone with shrinking size.
     pub fn clone_sz(&self) -> Mat
     {
         let (l_nrows, l_ncols) = self.size();
@@ -385,7 +385,7 @@ impl<V: View> MatGen<V>
             mat
         }
     }
-    /// *clone* - TODO
+    /// *clone* - Clone into diagonal matrix.
     pub fn clone_diag(&self) -> Mat
     {
         let (l_nrows, l_ncols) = self.size();
@@ -400,7 +400,7 @@ impl<V: View> MatGen<V>
         mat
     }
     //
-    /// *assign* - TODO
+    /// *assign* - Assign by closure.
     pub fn assign_by<F>(&mut self, f: F)
     where F: Fn(usize, usize) -> Option<FP>
     {
@@ -414,7 +414,7 @@ impl<V: View> MatGen<V>
             }
         }
     }
-    /// *assign* - TODO
+    /// *assign* - Assign by iterator.
     pub fn assign_iter<'b, T>(&mut self, iter: T)
     where T: IntoIterator<Item=&'b FP>
     {
@@ -428,17 +428,17 @@ impl<V: View> MatGen<V>
             }
         }
     }
-    /// *assign* - TODO
+    /// *assign* - Assign eye matrix.
     pub fn assign_eye(&mut self)
     {
         self.assign_by(|r, c| Some(if r == c {1.} else {0.}));
     }
-    /// *assign* - TODO
+    /// *assign* - Assign a value.
     pub fn assign_all(&mut self, value: FP)
     {
         self.assign_by(|_, _| Some(value));
     }
-    /// *assign* - TODO
+    /// *assign* - Assign matrix.
     pub fn assign<V2: View>(&mut self, rhs: &MatGen<V2>)
     {
         let (l_nrows, l_ncols) = self.size();
@@ -450,7 +450,7 @@ impl<V: View> MatGen<V>
         self.assign_by(|r, c| Some(rhs[(r, c)]));
     }
     //
-    /// *norm* - TODO
+    /// Returns p=2 norm squared.
     pub fn norm_p2sq(&self) -> FP
     {
         let (l_nrows, l_ncols) = self.size();
@@ -465,13 +465,13 @@ impl<V: View> MatGen<V>
 
         sum
     }
-    /// *norm* - TODO
+    /// Returns p=2 norm.
     pub fn norm_p2(&self) -> FP
     {
         FP::sqrt(self.norm_p2sq())
     }
     //
-    /// *search* - TODO
+    /// Finds maximum value and returns with its location.
     pub fn max(&self) -> (usize, usize, FP)
     {
         let (l_nrows, l_ncols) = self.size();
@@ -494,7 +494,7 @@ impl<V: View> MatGen<V>
 
         (mr, mc, m)
     }
-    /// *search* - TODO
+    /// Finds minumum value and returns with its location.
     pub fn min(&self) -> (usize, usize, FP)
     {
         let (l_nrows, l_ncols) = self.size();
@@ -518,7 +518,7 @@ impl<V: View> MatGen<V>
         (mr, mc, m)
     }
     //
-    /// *misc* - TODO
+    /// Returns number of rows and columns.
     pub fn size(&self) -> (usize, usize)
     {
         if !self.transposed {

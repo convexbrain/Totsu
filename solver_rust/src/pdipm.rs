@@ -1,7 +1,5 @@
 /*!
 Primal-dual interior point method
-
-TODO
 */
 
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
@@ -15,16 +13,47 @@ macro_rules! writeln_or {
     };
 }
 
+/**
+A basic Primal-Dual Interior-Point Method solver struct.
+
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
+
+This struct abstracts a solver of continuous scalar convex optimization problem:
+\\[
+\\begin{array}{ll}
+{\\rm minimize} & f_{\\rm obj}(x) \\\\
+{\\rm subject \\ to} & f_i(x) \\le 0 \\quad (i = 0, \\ldots, m - 1) \\\\
+& A x = b,
+\\end{array}
+\\]
+where
+- variables \\( x \\in {\\bf R}^n \\)
+- \\( f_{\\rm obj}: {\\bf R}^n \\rightarrow {\\bf R} \\), convex and twice differentiable
+- \\( f_i: {\\bf R}^n \\rightarrow {\\bf R} \\), convex and twice differentiable
+- \\( A \\in {\\bf R}^{p \\times n} \\), \\( {\\bf rank} A = p < n \\), \\( b \\in {\\bf R}^p \\).
+
+The solution gives optimal values of primal variables \\(x\\)
+as well as dual variables \\(\\lambda \\in {\\bf R}^m\\) and \\(\\nu \\in {\\bf R}^p\\).
+ */
 pub struct PDIPM
 {
+    /// Initial margin value for dual variables of inequalities.
     pub margin: FP,
+    /// Max iteration number of outer-loop for the Newton step.
     pub n_loop: usize,
+    /// Max iteration number of inner-loop for the backtracking line search.
     pub b_loop: usize,
+    /// Tolerance of the primal and dual residuals.
     pub eps_feas: FP,
+    /// Tolerance of the surrogate duality gap.
     pub eps: FP,
+    /// The factor to squeeze complementary slackness.
     pub mu: FP,
+    /// The factor to decrease residuals in the backtracking line search.
     pub alpha: FP,
+    /// The factor to decrease a step size in the backtracking line search.
     pub beta: FP,
+    /// The factor to determine an initial step size in the backtracking line search.
     pub s_coef: FP
 }
 
@@ -32,6 +61,7 @@ pub struct PDIPM
 
 impl PDIPM
 {
+    /// Creates an instance with default parameters.
     pub fn new() -> PDIPM
     {
         PDIPM {
@@ -47,6 +77,36 @@ impl PDIPM
         }
     }
 
+    /// Starts to solve a optimization problem by primal-dual interior-point method.
+    /// 
+    /// Returns `Ok` with optimal \\(x, \\lambda, \\nu\\) concatenated vector
+    /// or `Err` with message string.
+    /// * `n` is \\(n\\), the dimension of the variable \\(x\\).
+	/// * `m` is \\(m\\), the number of inequality constraints \\(f_i\\).
+    /// * `p` is \\(p\\), the number of rows of equality constraints \\(A\\) and \\(b\\).
+    /// * `log` outputs solver progress.
+    /// * `d_objective(x, df_o)`
+    ///   calculates first derivatives of the objective function
+    ///   \\(\\nabla f_{\\rm obj}(x)\\).
+    /// * `dd_objective(x, ddf_o)`
+    ///   calculates second derivatives of the objective function
+    ///   \\(\\nabla^2 f_{\\rm obj}(x)\\).
+    /// * `inequality(x, f_i)`
+    ///   calculates the inequality constraint functions
+    ///   \\(f_i(x)\\).
+    /// * `d_inequality(x, df_i)`
+    ///   calculates first derivatives of the inequality constraint functions
+    ///   \\(Df(x) = \\left[\\matrix{\\nabla f_0(x) & \\cdots & \\nabla f_{m-1}(x)}\\right]^T\\).
+    /// * `dd_inequality(x, ddf_i, i)`
+    ///   calculates second derivatives of the inequality constraint functions
+    ///   \\(\\nabla^2 f_i(x)\\).
+    /// * `equality(a, b)`
+    ///   produces the equality constraints affine parameters \\(A\\) and \\(b\\).
+    /// * `start_point(x)`
+    ///   produces the initial values of \\(x\\).
+    ///   **The initial values must satisfy all inequality constraints strictly: \\(f_i(x)<0\\).**
+    ///   This may seem a hard requirement, but introducing **slack variables** helps in most cases.
+    ///   Refer pre-defined solver implementations for example.
     pub fn solve<L, Fo1, Fo2, Fi0, Fi1, Fi2, Fe, Fs>(&self,
         n: usize, m: usize, p: usize,
         mut log: L,
