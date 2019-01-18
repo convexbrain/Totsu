@@ -55,8 +55,8 @@ impl SOCP for PDIPM
 
         let (n, m, p) = check_param(vec_f, mat_g, vec_h, vec_c, scl_d, mat_a, vec_b)?;
 
-        let eps_div0 = self.eps_eta;
-        let eps_bd = self.eps_eta;
+        let eps_div0 = self.eps;
+        let eps_bd = self.eps;
 
         // ----- start to solve
 

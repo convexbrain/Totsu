@@ -15,7 +15,7 @@ pub struct PDIPM
     pub n_loop: usize,
     pub b_loop: usize,
     pub eps_feas: FP,
-    pub eps_eta: FP,
+    pub eps: FP,
     pub mu: FP,
     pub alpha: FP,
     pub beta: FP,
@@ -33,7 +33,7 @@ impl PDIPM
             n_loop: 256,
             b_loop: 256,
             eps_feas: FP_EPSILON.sqrt(),
-            eps_eta: FP_EPSILON.sqrt(),
+            eps: FP_EPSILON.sqrt(),
             mu: 10.,
             alpha: 0.1,
             beta: 0.8,
@@ -130,19 +130,19 @@ impl PDIPM
                 -(vec_f_i.t() * &lmd)[(0, 0)]
             }
             else {
-                self.eps_eta
+                self.eps
             };
 
             // inequality feasibility check
             if eta < 0. {return Err("inequality: not feasible in loop");}
 
-            let m_inv_t = eta / self.mu;
+            let inv_t = eta / (self.mu * m as FP);
 
             /***** update residual - central *****/
 
             if m > 0 {
                 let mut r_cent = vec_r_t.rows_mut(n .. n + m);
-                r_cent.assign(&(-lmd.clone_diag() * &vec_f_i - m_inv_t));
+                r_cent.assign(&(-lmd.clone_diag() * &vec_f_i - inv_t));
             }
 
             /***** termination criteria *****/
@@ -157,19 +157,21 @@ impl PDIPM
             writeln_or!(log, "|| r_pri  || : {:.3e}", r_pri_norm)?;
             writeln_or!(log, "   eta       : {:.3e}", eta)?;
 
-            if (r_dual_norm <= self.eps_feas) && (r_pri_norm <= self.eps_feas) && (eta <= self.eps_eta) {
+            if (r_dual_norm <= self.eps_feas) && (r_pri_norm <= self.eps_feas) && (eta <= self.eps) {
                 writeln_or!(log, "termination criteria satisfied")?;
                 break;
             }
 
             /***** calc kkt matrix *****/
             
-            let mut kkt_x_dual = kkt.slice_mut(0 .. n, 0 .. n);
             dd_objective(&x, &mut mat_ddf);
-            kkt_x_dual.assign(&mat_ddf);
+            let mut ddf = mat_ddf.clone_sz();
             for i in 0 .. m {
                 dd_inequality(&x, &mut mat_ddf, i);
+                ddf = ddf + lmd[(i, 0)] * &mat_ddf;
             }
+            let mut kkt_x_dual = kkt.slice_mut(0 .. n, 0 .. n);
+            kkt_x_dual.assign(&ddf);
 
             if m > 0 {
                 let mut kkt_lmd_dual = kkt.slice_mut(0 .. n, n .. n + m);
@@ -265,7 +267,7 @@ impl PDIPM
                 }
                 if m > 0 {
                     let mut r_cent = vec_r_t.rows_mut(n .. n + m);
-                    r_cent.assign(&(-lmd_p.clone_diag() * &vec_f_i - m_inv_t));
+                    r_cent.assign(&(-lmd_p.clone_diag() * &vec_f_i - inv_t));
                 }
                 if p > 0 {
                     let mut r_pri = vec_r_t.rows_mut(n + m .. n + m + p);

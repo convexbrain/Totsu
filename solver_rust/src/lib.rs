@@ -50,11 +50,16 @@ mod tests {
         let mat_a = Mat::new(p, n);
         let vec_b = Mat::new_vec(p);
 
-        let rslt = PDIPM::new().solve_qp(std::io::sink(),
-                                        &mat_p, &vec_q,
-                                        &mat_g, &vec_h,
-                                        &mat_a, &vec_b);
-        println!("{}", rslt.unwrap());
+        let pdipm = PDIPM::new();
+        let rslt = pdipm.solve_qp(std::io::sink(),
+                                  &mat_p, &vec_q,
+                                  &mat_g, &vec_h,
+                                  &mat_a, &vec_b).unwrap();
+
+        let exp = Mat::new_vec(n).set_iter(&[
+            2., 0.
+        ]);
+        assert!((&rslt - exp).norm_p2() < pdipm.eps, "rslt = {}", rslt);
     }
 
     #[test]
@@ -88,10 +93,15 @@ mod tests {
         let mat_a = Mat::new(p, n);
         let vec_b = Mat::new_vec(p);
 
-        let rslt = PDIPM::new().solve_qcqp(std::io::sink(),
-                                           &mat_p, &vec_q, &scl_r,
-                                           &mat_a, &vec_b);
-        println!("{}", rslt.unwrap());
+        let pdipm = PDIPM::new();
+        let rslt = pdipm.solve_qcqp(std::io::sink(),
+                                    &mat_p, &vec_q, &scl_r,
+                                    &mat_a, &vec_b).unwrap();
+
+        let exp = Mat::new_vec(n).set_iter(&[
+            5., 4.
+        ]);
+        assert!((&rslt - exp).norm_p2() < pdipm.eps, "rslt = {}", rslt);
     }
 
     #[test]
@@ -117,10 +127,15 @@ mod tests {
         let mat_a = Mat::new(p, n);
         let vec_b = Mat::new_vec(p);
 
-        let rslt = PDIPM::new().solve_socp(std::io::stdout(),
-                                           &vec_f,
-                                           &mat_g, &vec_h, &vec_c, &scl_d,
-                                           &mat_a, &vec_b);
-        println!("{}", rslt.unwrap());
+        let pdipm = PDIPM::new();
+        let rslt = pdipm.solve_socp(std::io::sink(),
+                                    &vec_f,
+                                    &mat_g, &vec_h, &vec_c, &scl_d,
+                                    &mat_a, &vec_b).unwrap();
+
+        let exp = Mat::new_vec(n).set_iter(&[
+            -1., -1.
+        ]);
+        assert!((&rslt - exp).norm_p2() < pdipm.eps, "rslt = {}", rslt);
     }
 }
