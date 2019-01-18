@@ -57,8 +57,6 @@ pub struct PDIPM
     pub s_coef: FP
 }
 
-// TODO: module
-
 impl PDIPM
 {
     /// Creates an instance with default parameters.
