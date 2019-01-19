@@ -257,13 +257,14 @@ impl PDIPM
 
             /***** calc search direction *****/
 
+            //writeln_or!(log, "kkt : {}", kkt)?;
+
             //svd.decomp(&kkt);
             svd.decomp_warm(&kkt);
             
             let dy = svd.solve(&(-&vec_r_t));
 
             writeln_or!(log, "y : {}", vec_y.t())?;
-            //writeln_or!(log, "kkt : {}", kkt)?;
             writeln_or!(log, "r_t : {}", vec_r_t.t())?;
             writeln_or!(log, "dy : {}", dy.t())?;
 

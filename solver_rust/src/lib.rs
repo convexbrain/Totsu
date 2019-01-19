@@ -86,6 +86,7 @@ assert!((&rslt - exp).norm_p2() < pdipm.eps, "rslt = {}", rslt);
 pub mod mat;
 pub mod matsvd;
 pub mod pdipm;
+pub mod lp;
 pub mod qp;
 pub mod qcqp;
 pub mod socp;
@@ -98,6 +99,7 @@ pub mod prelude {
 
 /// Pre-defined solvers
 pub mod predef {
+    pub use crate::lp::LP;
     pub use crate::qp::QP;
     pub use crate::qcqp::QCQP;
     pub use crate::socp::SOCP;
@@ -224,5 +226,35 @@ mod tests {
             -1., -1.
         ]);
         assert!((&rslt - exp).norm_p2() < pdipm.eps, "rslt = {}", rslt);
+    }
+
+    #[test]
+    fn test_lp_infeas()
+    {
+        let n: usize = 1;
+        let m: usize = 2;
+        let p: usize = 0;
+
+        let vec_c = Mat::new_vec(n).set_iter(&[
+            1.
+        ]);
+
+        // x <= b, x >= c
+        let mat_g = Mat::new(m, n).set_iter(&[
+            1., -1.
+        ]);
+        let vec_h = Mat::new_vec(m).set_iter(&[
+            -5., // b
+            -(10.)  // -c
+        ]);
+
+        let mat_a = Mat::new(p, n);
+        let vec_b = Mat::new_vec(p);
+
+        let pdipm = PDIPM::new();
+        let _rslt = pdipm.solve_lp(std::io::sink(),
+                                   &vec_c,
+                                   &mat_g, &vec_h,
+                                   &mat_a, &vec_b).unwrap_err();
     }
 }
