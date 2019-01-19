@@ -3,7 +3,7 @@ Totsu ([凸](http://www.decodeunicode.org/en/u+51F8) in Japanese) means convex.
 
 <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
 
-This crate provides a basic **primal-dual interior-point method** solver: [`PDIPM`](pdipm/struct.PDIPM.html).
+This crate for Rust provides a basic **primal-dual interior-point method** solver: [`PDIPM`](pdipm/struct.PDIPM.html).
 
 # Target problem
 

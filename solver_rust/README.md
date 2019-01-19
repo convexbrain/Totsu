@@ -2,27 +2,12 @@
 
 Totsu ([凸](http://www.decodeunicode.org/en/u+51F8) in Japanese) means convex.
 
-<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
-
-This crate provides a basic **primal-dual interior-point method** solver: [`PDIPM`](pdipm/struct.PDIPM.html).
+This crate for Rust provides a basic **primal-dual interior-point method** solver: `PDIPM`.
 
 ## Target problem
 
 A common target problem is continuous scalar **convex optimization** such as
 LS, LP, QP, GP, QCQP and (approximately equivalent) SOCP.
-More specifically,
-\\[
-\\begin{array}{ll}
-{\\rm minimize} & f_{\\rm obj}(x) \\\\
-{\\rm subject \\ to} & f_i(x) \\le 0 \\quad (i = 0, \\ldots, m - 1) \\\\
-& A x = b,
-\\end{array}
-\\]
-where
-* variables \\( x \\in {\\bf R}^n \\)
-* \\( f_{\\rm obj}: {\\bf R}^n \\rightarrow {\\bf R} \\), convex and twice differentiable
-* \\( f_i: {\\bf R}^n \\rightarrow {\\bf R} \\), convex and twice differentiable
-* \\( A \\in {\\bf R}^{p \\times n} \\), \\( b \\in {\\bf R}^p \\).
 
 ## Algorithm and design concepts
 
@@ -30,14 +15,14 @@ The overall algorithm is based on the reference:
 *S. Boyd and L. Vandenberghe, "Convex Optimization",*
 [http://stanford.edu/~boyd/cvxbook/](http://stanford.edu/~boyd/cvxbook/).
 
-[`PDIPM`](pdipm/struct.PDIPM.html) has a core method [`solve`](pdipm/struct.PDIPM.html#method.solve)
+`PDIPM` has a core method `solve`
 which takes objective and constraint (derivative) functions as closures.
 Therefore solving a specific problem requires a implementation of those closures.
-You can use a pre-defined implementations (see [`predef`](predef/index.html)),
+You can use a pre-defined implementations (see `predef`),
 as well as construct a user-defined tailored version for the reason of functionality and efficiency.
 
 This crate has no dependencies on other crates at all.
-Necessary matrix operations are implemented in [`mat`](mat/index.html) and [`matsvd`](matsvd/index.html).
+Necessary matrix operations are implemented in `mat` and `matsvd`.
 
 ## Example: QP
 
@@ -82,5 +67,3 @@ let exp = Mat::new_vec(n).set_iter(&[
 ]);
 assert!((&rslt - exp).norm_p2() < pdipm.eps, "rslt = {}", rslt);
 ```
-
-License: MIT
