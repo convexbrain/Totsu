@@ -1,0 +1,21 @@
+[package]
+name = "totsu"
+version = "0.1.0"
+authors = ["convexbrain <convexbrain@gmail.com>"]
+edition = "2018"
+
+description = "A basic primal-dual interior-point method solver for continuous scalar convex optimization problems."
+
+#documentation = "..."
+homepage = "https://github.com/convexbrain/Totsu/tree/master/solver_rust"
+repository = "https://github.com/convexbrain/Totsu"
+
+readme = "README.md"
+
+keywords = ["convex", "optimization", "solver", "matrix", "SVD"]
+
+categories = ["science"]
+
+license = "MIT"
+
+[dependencies]
