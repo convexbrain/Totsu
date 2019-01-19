@@ -12,7 +12,7 @@ repository = "https://github.com/convexbrain/Totsu"
 
 readme = "README.md"
 
-keywords = ["convex optimization", "optimization", "solver", "matrix", "SVD"]
+keywords = ["convex", "optimization", "solver", "matrix", "SVD"]
 
 categories = ["science"]
 
