@@ -60,6 +60,8 @@ fn check_param(vec_f: &Mat,
         if vec_c.len() != m {return Err("vec_c: length mismatch");}
         if scl_d.len() != m {return Err("scl_d: length mismatch");}
 
+        if vec_f.size() != (n, 1) {return Err("vec_c: size mismatch");}
+
         for i in 0 .. m {
             let (ni, _) = mat_g[i].size();
             if mat_g[i].size() != (ni, n) {return Err("mat_g[_]: size mismatch");}

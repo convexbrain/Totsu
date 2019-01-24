@@ -55,6 +55,7 @@ fn check_param(vec_c: &Mat,
     // m = 0 means NO inequality constraints
     // p = 0 means NO equality constraints
 
+    if vec_c.size() != (n, 1) {return Err("vec_c: size mismatch");}
     if mat_g.size() != (m, n) {return Err("mat_g: size mismatch");}
     if vec_h.size() != (m, 1) {return Err("vec_h: size mismatch");}
     if mat_a.size() != (p, n) {return Err("mat_a: size mismatch");}
