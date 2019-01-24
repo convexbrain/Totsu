@@ -1,7 +1,6 @@
 //! Quadratic program
 
-use super::mat::{Mat, FP};
-use super::pdipm::PDIPM;
+use super::prelude::*;
 
 use std::io::Write;
 
