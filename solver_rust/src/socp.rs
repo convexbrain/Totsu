@@ -213,12 +213,12 @@ impl SOCP for PDIPM
                     let s = vec_h[i].norm_p2() + eps_bd;
 
                     let mut margin = self.margin;
-                    let mut s_inital = s + margin;
-                    while s_inital <= s {
+                    let mut s_initial = s + margin;
+                    while s_initial <= s {
                         margin *= 2.;
-                        s_inital = s + margin;
+                        s_initial = s + margin;
                     }
-                    x[(n + i, 0)] = s_inital;
+                    x[(n + i, 0)] = s_initial;
                 }
             }
         );

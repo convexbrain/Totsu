@@ -92,10 +92,10 @@ impl QP for PDIPM
 
         let s = -vec_h.min().2;
         let mut margin = self.margin;
-        let mut s_inital = s + margin;
-        while s_inital <= s {
+        let mut s_initial = s + margin;
+        while s_initial <= s {
             margin *= 2.;
-            s_inital = s + margin;
+            s_initial = s + margin;
         }
 
         // ----- start to solve
@@ -136,7 +136,7 @@ impl QP for PDIPM
                 a[(p, n)] = 1.;
             },
             |mut x| {
-                x[(n, 0)] = s_inital;
+                x[(n, 0)] = s_initial;
             }
         );
 

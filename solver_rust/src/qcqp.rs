@@ -91,10 +91,10 @@ impl QCQP for PDIPM
 
         let s: FP = *scl_r.iter().max_by(|l, r| l.partial_cmp(r).unwrap()).unwrap();
         let mut margin = self.margin;
-        let mut s_inital = s + margin;
-        while s_inital <= s {
+        let mut s_initial = s + margin;
+        while s_initial <= s {
             margin *= 2.;
-            s_inital = s + margin;
+            s_initial = s + margin;
         }
 
         // ----- start to solve
@@ -147,7 +147,7 @@ impl QCQP for PDIPM
                 a[(p, n)] = 1.;
             },
             |mut x| {
-                x[(n, 0)] = s_inital;
+                x[(n, 0)] = s_initial;
             }
         );
 
