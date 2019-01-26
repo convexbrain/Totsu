@@ -470,6 +470,19 @@ impl<V: View> MatGen<V>
     {
         FP::sqrt(self.norm_p2sq())
     }
+    /// Returns trace.
+    pub fn tr(&self) -> FP
+    {
+        let (l_nrows, l_ncols) = self.size();
+
+        let mut sum = 0.;
+
+        for i in 0 .. l_nrows.min(l_ncols) {
+            sum += self[(i, i)];
+        }
+
+        sum
+    }
     //
     /// Finds maximum value and returns with its location.
     pub fn max(&self) -> (usize, usize, FP)

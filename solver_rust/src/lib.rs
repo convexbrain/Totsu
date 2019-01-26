@@ -90,6 +90,7 @@ pub mod lp;
 pub mod qp;
 pub mod qcqp;
 pub mod socp;
+pub mod sdp;
 
 /// Prelude
 pub mod prelude {

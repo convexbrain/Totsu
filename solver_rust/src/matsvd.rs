@@ -162,6 +162,12 @@ impl MatSVD
             &self.u * (sinv * (self.v.t() * h))
         }
     }
+    //
+    /// Returns singular values.
+    pub fn s(&self) -> &Mat
+    {
+        &self.s
+    }
 }
 
 #[cfg(test)]
