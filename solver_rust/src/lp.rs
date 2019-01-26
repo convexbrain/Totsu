@@ -34,7 +34,7 @@ use std::io::Write;
 /// 
 /// In the following, \\( d \\) does not appear since it does not matter.
 pub trait LP {
-    fn solve_lp<L>(&self, log: L,
+    fn solve_lp<L>(&self, log: &mut L,
                    vec_c: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)
@@ -75,7 +75,7 @@ impl LP for PDIPM
     /// * `vec_h` is \\(h\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_lp<L>(&self, log: L,
+    fn solve_lp<L>(&self, log: &mut L,
                    vec_c: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)

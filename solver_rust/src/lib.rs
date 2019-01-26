@@ -71,7 +71,7 @@ let mat_a = Mat::new(p, n);
 let vec_b = Mat::new_vec(p);
 
 let pdipm = PDIPM::new();
-let rslt = pdipm.solve_qp(std::io::sink(),
+let rslt = pdipm.solve_qp(&mut std::io::sink(),
                           &mat_p, &vec_q,
                           &mat_g, &vec_h,
                           &mat_a, &vec_b).unwrap();
@@ -140,7 +140,7 @@ mod tests {
         let vec_b = Mat::new_vec(p);
 
         let pdipm = PDIPM::new();
-        let rslt = pdipm.solve_qp(std::io::sink(),
+        let rslt = pdipm.solve_qp(&mut std::io::sink(),
                                   &mat_p, &vec_q,
                                   &mat_g, &vec_h,
                                   &mat_a, &vec_b).unwrap();
@@ -183,7 +183,7 @@ mod tests {
         let vec_b = Mat::new_vec(p);
 
         let pdipm = PDIPM::new();
-        let rslt = pdipm.solve_qcqp(std::io::sink(),
+        let rslt = pdipm.solve_qcqp(&mut std::io::sink(),
                                     &mat_p, &vec_q, &scl_r,
                                     &mat_a, &vec_b).unwrap();
 
@@ -217,7 +217,7 @@ mod tests {
         let vec_b = Mat::new_vec(p);
 
         let pdipm = PDIPM::new();
-        let rslt = pdipm.solve_socp(std::io::sink(),
+        let rslt = pdipm.solve_socp(&mut std::io::sink(),
                                     &vec_f,
                                     &mat_g, &vec_h, &vec_c, &scl_d,
                                     &mat_a, &vec_b).unwrap();
@@ -252,7 +252,7 @@ mod tests {
         let vec_b = Mat::new_vec(p);
 
         let pdipm = PDIPM::new();
-        let _rslt = pdipm.solve_lp(std::io::sink(),
+        let _rslt = pdipm.solve_lp(&mut std::io::sink(),
                                    &vec_c,
                                    &mat_g, &vec_h,
                                    &mat_a, &vec_b).unwrap_err();

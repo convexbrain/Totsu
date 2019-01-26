@@ -31,7 +31,7 @@ use std::io::Write;
 /// \\end{array}
 /// \\]
 pub trait QCQP {
-    fn solve_qcqp<L>(&self, log: L,
+    fn solve_qcqp<L>(&self, log: &mut L,
                      mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
                      -> Result<Mat, &'static str>
@@ -77,7 +77,7 @@ impl QCQP for PDIPM
     /// * `scl_r` is \\(r_0, \\ldots, r_m\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_qcqp<L>(&self, log: L,
+    fn solve_qcqp<L>(&self, log: &mut L,
                      mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
                      -> Result<Mat, &'static str>

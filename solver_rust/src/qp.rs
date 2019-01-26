@@ -34,7 +34,7 @@ use std::io::Write;
 /// 
 /// In the following, \\( r \\) does not appear since it does not matter.
 pub trait QP {
-    fn solve_qp<L>(&self, log: L,
+    fn solve_qp<L>(&self, log: &mut L,
                    mat_p: &Mat, vec_q: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)
@@ -77,7 +77,7 @@ impl QP for PDIPM
     /// * `vec_h` is \\(h\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_qp<L>(&self, log: L,
+    fn solve_qp<L>(&self, log: &mut L,
                    mat_p: &Mat, vec_q: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)

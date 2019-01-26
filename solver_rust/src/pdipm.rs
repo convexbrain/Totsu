@@ -107,7 +107,7 @@ impl PDIPM
     ///   Refer pre-defined solver implementations for example.
     pub fn solve<L, Fo1, Fo2, Fi0, Fi1, Fi2, Fe, Fs>(&self,
         n: usize, m: usize, p: usize,
-        mut log: L,
+        log: &mut L,
         d_objective: Fo1,
         dd_objective: Fo2,
         inequality: Fi0,
