@@ -1,62 +1,61 @@
-//! Quadratic program
+//! Linear program
 
 use super::prelude::*;
 
 use std::io::Write;
 
-/// Quadratic program
+/// Linear program
 /// 
 /// <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
 /// 
 /// The problem is
 /// \\[
 /// \\begin{array}{ll}
-/// {\\rm minimize} & {1 \\over 2} x^T P x + q^T x + r \\\\
+/// {\\rm minimize} & c^Tx + d \\\\
 /// {\\rm subject \\ to} & G x \\preceq h \\\\
 /// & A x = b,
 /// \\end{array}
 /// \\]
 /// where
 /// - variables \\( x \\in {\\bf R}^n \\)
-/// - \\( P \\in {\\bf S}_{+}^n \\), \\( q \\in {\\bf R}^n \\), \\( r \\in {\\bf R} \\)
+/// - \\( c \\in {\\bf R}^n \\), \\( d \\in {\\bf R} \\)
 /// - \\( G \\in {\\bf R}^{m \\times n} \\), \\( h \\in {\\bf R}^m \\)
 /// - \\( A \\in {\\bf R}^{p \\times n} \\), \\( b \\in {\\bf R}^p \\).
 /// 
 /// Internally a slack variable \\( s \\in {\\bf R} \\) is introduced for the infeasible start method as follows:
 /// \\[
 /// \\begin{array}{ll}
-/// {\\rm minimize}_{x,s} & {1 \\over 2} x^T P x + q^T x + r \\\\
+/// {\\rm minimize}_{x,s} & c^T x + d \\\\
 /// {\\rm subject \\ to} & G x \\preceq h + s {\\bf 1} \\\\
 /// & A x = b \\\\
 /// & s = 0.
 /// \\end{array}
 /// \\]
 /// 
-/// In the following, \\( r \\) does not appear since it does not matter.
-pub trait QP {
-    fn solve_qp<L>(&self, log: &mut L,
-                   mat_p: &Mat, vec_q: &Mat,
+/// In the following, \\( d \\) does not appear since it does not matter.
+pub trait LP {
+    fn solve_lp<L>(&self, log: &mut L,
+                   vec_c: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)
                    -> Result<Mat, &'static str>
     where L: Write;
 }
 
-fn check_param(mat_p: &Mat, vec_q: &Mat,
+fn check_param(vec_c: &Mat,
                mat_g: &Mat, vec_h: &Mat,
                mat_a: &Mat, vec_b: &Mat)
                -> Result<(usize, usize, usize), &'static str>
 {
-    let (n, _) = mat_p.size();
+    let (n, _) = vec_c.size();
     let (m, _) = mat_g.size();
     let (p, _) = mat_a.size();
 
-    if n == 0 {return Err("mat_p: 0 rows");}
+    if n == 0 {return Err("vec_c: 0 rows");}
     // m = 0 means NO inequality constraints
     // p = 0 means NO equality constraints
 
-    if mat_p.size() != (n, n) {return Err("mat_p: size mismatch");}
-    if vec_q.size() != (n, 1) {return Err("vec_q: size mismatch");}
+    if vec_c.size() != (n, 1) {return Err("vec_c: size mismatch");}
     if mat_g.size() != (m, n) {return Err("mat_g: size mismatch");}
     if vec_h.size() != (m, 1) {return Err("vec_h: size mismatch");}
     if mat_a.size() != (p, n) {return Err("mat_a: size mismatch");}
@@ -65,20 +64,19 @@ fn check_param(mat_p: &Mat, vec_q: &Mat,
     Ok((n, m, p))
 }
 
-impl QP for PDIPM
+impl LP for PDIPM
 {
     /// Runs the solver with given parameters.
     /// 
     /// Returns `Ok` with optimal \\(x\\) or `Err` with message string.
     /// * `log` outputs solver progress.
-    /// * `mat_p` is \\(P\\).
-    /// * `vec_q` is \\(q\\).
+    /// * `vec_c` is \\(c\\).
     /// * `mat_g` is \\(G\\).
     /// * `vec_h` is \\(h\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_qp<L>(&self, log: &mut L,
-                   mat_p: &Mat, vec_q: &Mat,
+    fn solve_lp<L>(&self, log: &mut L,
+                   vec_c: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)
                    -> Result<Mat, &'static str>
@@ -86,7 +84,7 @@ impl QP for PDIPM
     {
         // ----- parameter check
 
-        let (n, m, p) = check_param(mat_p, vec_q, mat_g, vec_h, mat_a, vec_b)?;
+        let (n, m, p) = check_param(vec_c, mat_g, vec_h, mat_a, vec_b)?;
 
         // ----- initial value of a slack variable
 
@@ -102,18 +100,13 @@ impl QP for PDIPM
 
         let rslt = self.solve(n + 1, m, p + 1, // '+ 1' is for a slack variable
             log,
-            |x, df_o| {
-                df_o.rows_mut(0 .. n).assign(&(
-                    mat_p * x.rows(0 .. n) + vec_q
-                ));
+            |_, df_o| {
+                df_o.rows_mut(0 .. n).assign(&vec_c);
                 // for a slack variable
                 df_o[(n, 0)] = 0.;
             },
             |_, ddf_o| {
-                ddf_o.slice_mut(0 .. n, 0 .. n).assign(mat_p);
-                // for a slack variable
-                ddf_o.row_mut(n).assign_all(0.);
-                ddf_o.col_mut(n).assign_all(0.);
+                ddf_o.assign_all(0.);
             },
             |x, f_i| {
                 f_i.assign(&(

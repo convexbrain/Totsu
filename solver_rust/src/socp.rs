@@ -1,7 +1,6 @@
 //! Second-order cone program
 
-use super::mat::{Mat, FP};
-use super::pdipm::PDIPM;
+use super::prelude::*;
 
 use std::io::Write;
 
@@ -36,7 +35,7 @@ use std::io::Write;
 /// \\]
 /// where \\( \\epsilon_{\\rm bd} > 0 \\) indicates the extent of approximation that excludes \\( c_i^T x + d_i = 0 \\) boundary.
 pub trait SOCP {
-    fn solve_socp<L>(&self, log: L,
+    fn solve_socp<L>(&self, log: &mut L,
                      vec_f: &Mat,
                      mat_g: &[Mat], vec_h: &[Mat], vec_c: &[Mat], scl_d: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
@@ -60,6 +59,8 @@ fn check_param(vec_f: &Mat,
         if vec_h.len() != m {return Err("vec_h: length mismatch");}
         if vec_c.len() != m {return Err("vec_c: length mismatch");}
         if scl_d.len() != m {return Err("scl_d: length mismatch");}
+
+        if vec_f.size() != (n, 1) {return Err("vec_c: size mismatch");}
 
         for i in 0 .. m {
             let (ni, _) = mat_g[i].size();
@@ -87,7 +88,7 @@ impl SOCP for PDIPM
     /// * `scl_d` is \\(d_0, \\ldots, d_{m-1}\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_socp<L>(&self, log: L,
+    fn solve_socp<L>(&self, log: &mut L,
                      vec_f: &Mat,
                      mat_g: &[Mat], vec_h: &[Mat], vec_c: &[Mat], scl_d: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
@@ -212,12 +213,12 @@ impl SOCP for PDIPM
                     let s = vec_h[i].norm_p2() + eps_bd;
 
                     let mut margin = self.margin;
-                    let mut s_inital = s + margin;
-                    while s_inital <= s {
+                    let mut s_initial = s + margin;
+                    while s_initial <= s {
                         margin *= 2.;
-                        s_inital = s + margin;
+                        s_initial = s + margin;
                     }
-                    x[(n + i, 0)] = s_inital;
+                    x[(n + i, 0)] = s_initial;
                 }
             }
         );

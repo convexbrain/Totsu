@@ -470,52 +470,59 @@ impl<V: View> MatGen<V>
     {
         FP::sqrt(self.norm_p2sq())
     }
-    //
-    /// Finds maximum value and returns with its location.
-    pub fn max(&self) -> (usize, usize, FP)
+    /// Returns trace.
+    pub fn tr(&self) -> FP
     {
         let (l_nrows, l_ncols) = self.size();
-        assert_ne!(l_nrows, 0);
-        assert_ne!(l_ncols, 0);
 
-        let mut mr: usize = 0;
-        let mut mc: usize = 0;
+        let mut sum = 0.;
+
+        for i in 0 .. l_nrows.min(l_ncols) {
+            sum += self[(i, i)];
+        }
+
+        sum
+    }
+    //
+    /// Finds maximum value.
+    pub fn max(&self) -> Option<FP>
+    {
+        let (l_nrows, l_ncols) = self.size();
+        if (l_nrows == 0) || (l_ncols == 0) {
+            return None;
+        }
+
         let mut m = self[(0, 0)];
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
                 if self[(r, c)] > m {
                     m = self[(r, c)];
-                    mr = r;
-                    mc = c;
                 }
             }
         }
 
-        (mr, mc, m)
+        Some(m)
     }
-    /// Finds minumum value and returns with its location.
-    pub fn min(&self) -> (usize, usize, FP)
+    /// Finds minumum value.
+    pub fn min(&self) -> Option<FP>
     {
         let (l_nrows, l_ncols) = self.size();
-        assert_ne!(l_nrows, 0);
-        assert_ne!(l_ncols, 0);
+        if (l_nrows == 0) || (l_ncols == 0) {
+            return None;
+        }
         
-        let mut mr: usize = 0;
-        let mut mc: usize = 0;
         let mut m = self[(0, 0)];
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
                 if self[(r, c)] < m {
                     m = self[(r, c)];
-                    mr = r;
-                    mc = c;
                 }
             }
         }
 
-        (mr, mc, m)
+        Some(m)
     }
     //
     /// Returns number of rows and columns.
@@ -555,7 +562,7 @@ impl<V: View> IndexMut<(usize, usize)> for MatGen<V>
 
 //
 
-impl<V: View> fmt::Display for MatGen<V>
+impl<V: View> fmt::LowerExp for MatGen<V>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
     {
@@ -564,11 +571,19 @@ impl<V: View> fmt::Display for MatGen<V>
         writeln!(f, "[")?;
         for r in 0 .. l_nrows {
             for c in 0 .. l_ncols {
-                write!(f, "  {:.3e},", self[(r, c)])?;
+                write!(f, "  {:.precision$e},", self[(r, c)], precision = f.precision().unwrap_or(3))?;
             }
             writeln!(f)?;
         }
         write!(f, "]")
+    }
+}
+
+impl<V: View> fmt::Display for MatGen<V>
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
+    {
+        writeln!(f, "{:.3e}", self)
     }
 }
 

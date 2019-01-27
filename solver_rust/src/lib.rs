@@ -8,7 +8,7 @@ This crate for Rust provides a basic **primal-dual interior-point method** solve
 # Target problem
 
 A common target problem is continuous scalar **convex optimization** such as
-LS, LP, QP, GP, QCQP and (approximately equivalent) SOCP.
+LP, QP and QCQP. SOCP and SDP can also be handled with elaboration.
 More specifically,
 \\[
 \\begin{array}{ll}
@@ -71,7 +71,7 @@ let mat_a = Mat::new(p, n);
 let vec_b = Mat::new_vec(p);
 
 let pdipm = PDIPM::new();
-let rslt = pdipm.solve_qp(std::io::sink(),
+let rslt = pdipm.solve_qp(&mut std::io::sink(),
                           &mat_p, &vec_q,
                           &mat_g, &vec_h,
                           &mat_a, &vec_b).unwrap();
@@ -79,16 +79,21 @@ let rslt = pdipm.solve_qp(std::io::sink(),
 let exp = Mat::new_vec(n).set_iter(&[
     2., 0.
 ]);
-assert!((&rslt - exp).norm_p2() < pdipm.eps, "rslt = {}", rslt);
+println!("rslt = {}", rslt);
+assert!((&rslt - exp).norm_p2() < pdipm.eps);
 ```
+
+You can find other test examples of pre-defined solvers in [`lib.rs`](../src/totsu/lib.rs.html).
 */
 
 pub mod mat;
 pub mod matsvd;
 pub mod pdipm;
+pub mod lp;
 pub mod qp;
 pub mod qcqp;
 pub mod socp;
+pub mod sdp;
 
 /// Prelude
 pub mod prelude {
@@ -98,56 +103,17 @@ pub mod prelude {
 
 /// Pre-defined solvers
 pub mod predef {
+    pub use crate::lp::LP;
     pub use crate::qp::QP;
     pub use crate::qcqp::QCQP;
     pub use crate::socp::SOCP;
+    pub use crate::sdp::SDP;
 }
 
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
     use crate::predef::*;
-
-    #[test]
-    fn test_qp()
-    {
-        let n: usize = 2; // x0, x1
-        let m: usize = 1;
-        let p: usize = 0;
-
-        // (1/2)(x - a)^2 + const
-        let mat_p = Mat::new(n, n).set_iter(&[
-            1., 0.,
-            0., 1.
-        ]);
-        let vec_q = Mat::new_vec(n).set_iter(&[
-            -(-1.), // -a0
-            -(-2.)  // -a1
-        ]);
-
-        // 1 - x0/b0 - x1/b1 <= 0
-        let mat_g = Mat::new(m, n).set_iter(&[
-            -1. / 2., // -1/b0
-            -1. / 3.  // -1/b1
-        ]);
-        let vec_h = Mat::new_vec(m).set_iter(&[
-            -1.
-        ]);
-
-        let mat_a = Mat::new(p, n);
-        let vec_b = Mat::new_vec(p);
-
-        let pdipm = PDIPM::new();
-        let rslt = pdipm.solve_qp(std::io::sink(),
-                                  &mat_p, &vec_q,
-                                  &mat_g, &vec_h,
-                                  &mat_a, &vec_b).unwrap();
-
-        let exp = Mat::new_vec(n).set_iter(&[
-            2., 0.
-        ]);
-        assert!((&rslt - exp).norm_p2() < pdipm.eps, "rslt = {}", rslt);
-    }
 
     #[test]
     fn test_qcqp()
@@ -181,14 +147,15 @@ mod tests {
         let vec_b = Mat::new_vec(p);
 
         let pdipm = PDIPM::new();
-        let rslt = pdipm.solve_qcqp(std::io::sink(),
+        let rslt = pdipm.solve_qcqp(&mut std::io::sink(),
                                     &mat_p, &vec_q, &scl_r,
                                     &mat_a, &vec_b).unwrap();
 
         let exp = Mat::new_vec(n).set_iter(&[
             5., 4.
         ]);
-        assert!((&rslt - exp).norm_p2() < pdipm.eps, "rslt = {}", rslt);
+        println!("rslt = {}", rslt);
+        assert!((&rslt - exp).norm_p2() < pdipm.eps);
     }
 
     #[test]
@@ -215,7 +182,7 @@ mod tests {
         let vec_b = Mat::new_vec(p);
 
         let pdipm = PDIPM::new();
-        let rslt = pdipm.solve_socp(std::io::sink(),
+        let rslt = pdipm.solve_socp(&mut std::io::sink(),
                                     &vec_f,
                                     &mat_g, &vec_h, &vec_c, &scl_d,
                                     &mat_a, &vec_b).unwrap();
@@ -223,6 +190,79 @@ mod tests {
         let exp = Mat::new_vec(n).set_iter(&[
             -1., -1.
         ]);
-        assert!((&rslt - exp).norm_p2() < pdipm.eps, "rslt = {}", rslt);
+        println!("rslt = {}", rslt);
+        assert!((&rslt - exp).norm_p2() < pdipm.eps);
+    }
+
+    #[test]
+    fn test_lp_infeas()
+    {
+        let n: usize = 1;
+        let m: usize = 2;
+        let p: usize = 0;
+
+        let vec_c = Mat::new_vec(n).set_iter(&[
+            1.
+        ]);
+
+        // x <= b, x >= c
+        let mat_g = Mat::new(m, n).set_iter(&[
+            1., -1.
+        ]);
+        let vec_h = Mat::new_vec(m).set_iter(&[
+            -5., // b
+            -(10.)  // -c
+        ]);
+
+        let mat_a = Mat::new(p, n);
+        let vec_b = Mat::new_vec(p);
+
+        let pdipm = PDIPM::new();
+        let _rslt = pdipm.solve_lp(&mut std::io::sink(),
+                                   &vec_c,
+                                   &mat_g, &vec_h,
+                                   &mat_a, &vec_b).unwrap_err();
+    }
+
+    #[test]
+    fn test_sdp()
+    {
+        let n: usize = 2;
+        let p: usize = 0;
+        let k: usize = 2;
+
+        let vec_c = Mat::new_vec(n).set_iter(&[
+            1., 1.
+        ]);
+        let mut mat_f = vec![Mat::new(k, k); n + 1];
+
+        mat_f[0].assign_iter(&[
+            -1., 0.,
+            0., 0.
+        ]);
+        mat_f[1].assign_iter(&[
+            0., 0.,
+            0., -1.
+        ]);
+        mat_f[2].assign_iter(&[
+            3., 0.,
+            0., 4.
+        ]);
+
+        let mat_a = Mat::new(p, n);
+        let vec_b = Mat::new_vec(p);
+
+        let mut pdipm = PDIPM::new();
+        pdipm.eps = 1e-4; // solve_sdp() is not so accurate
+        let rslt = pdipm.solve_sdp(&mut std::io::sink(),
+                                   &vec_c, &mat_f,
+                                   &mat_a, &vec_b).unwrap();
+        
+        let exp = Mat::new_vec(n).set_iter(&[
+            3., 4.
+        ]);
+        let eps = 1e-3; // solve_sdp() is not so accurate
+        println!("rslt = {}", rslt);
+        assert!((&rslt - exp).norm_p2() < eps);
     }
 }

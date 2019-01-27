@@ -2,7 +2,7 @@
 
 use super::mat::{Mat, FP, FP_EPSILON, FP_MINPOS};
 
-const TOL_CNV2: FP = FP_EPSILON * FP_EPSILON;
+const TOL_CNV2: FP = FP_EPSILON * FP_EPSILON * 4.;
 const TOL_DIV0: FP = FP_MINPOS;
 const TOL_SINV: FP = FP_EPSILON;
 
@@ -84,7 +84,7 @@ impl MatSVD
             let s = col.norm_p2();
             self.s[(i, 0)] = s;
 
-            if (-TOL_DIV0 < s) && (s < TOL_DIV0) {
+            if s.abs() < TOL_DIV0 {
                 continue;
             }
 
@@ -147,7 +147,7 @@ impl MatSVD
         for r in 0 .. nrows {
             let s = sinv[(r, r)];
 
-            sinv[(r, r)] = if (-TOL_SINV < s) && (s < TOL_SINV) {
+            sinv[(r, r)] = if s.abs() < TOL_SINV {
                 0.
             }
             else {
@@ -161,6 +161,12 @@ impl MatSVD
         else {
             &self.u * (sinv * (self.v.t() * h))
         }
+    }
+    //
+    /// Returns singular values.
+    pub fn s(&self) -> &Mat
+    {
+        &self.s
     }
 }
 
