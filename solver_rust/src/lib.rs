@@ -8,7 +8,7 @@ This crate for Rust provides a basic **primal-dual interior-point method** solve
 # Target problem
 
 A common target problem is continuous scalar **convex optimization** such as
-LS, LP, QP, GP, QCQP and (approximately equivalent) SOCP.
+LP, QP and QCQP. SOCP and SDP can also be handled.
 More specifically,
 \\[
 \\begin{array}{ll}
