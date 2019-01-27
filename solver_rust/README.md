@@ -7,7 +7,7 @@ This crate for Rust provides a basic **primal-dual interior-point method** solve
 ## Target problem
 
 A common target problem is continuous scalar **convex optimization** such as
-LP, QP and QCQP. SOCP and SDP can also be handled with elaboration.
+LP, QP and QCQP. SOCP and SDP can also be handled with effort.
 
 ## Algorithm and design concepts
 
