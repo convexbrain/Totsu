@@ -10,7 +10,33 @@ macro_rules! writeln_or {
     };
 }
 
-/// TODO
+/// Semidefinite program
+/// 
+/// <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
+/// 
+/// The problem is
+/// \\[
+/// \\begin{array}{ll}
+/// {\\rm minimize} & c^Tx \\\\
+/// {\\rm subject \\ to} & \\sum_{i=0}^{n - 1} x_i F_i + F_n \\preceq 0 \\\\
+/// & A x = b,
+/// \\end{array}
+/// \\]
+/// where
+/// - variables \\( x \\in {\\bf R}^n \\)
+/// - \\( c \\in {\\bf R}^n \\)
+/// - \\( F_j \\in {\\bf S}^k \\) for \\( j = 0, \\ldots, n \\)
+/// - \\( A \\in {\\bf R}^{p \\times n} \\), \\( b \\in {\\bf R}^p \\).
+/// 
+/// Internally a slack variable \\( s \\in {\\bf R} \\) is introduced for the infeasible start method as follows:
+/// \\[
+/// \\begin{array}{ll}
+/// {\\rm minimize} & c^Tx \\\\
+/// {\\rm subject \\ to} & \\sum_{i=0}^{n - 1} x_i F_i + F_n \\preceq s I \\\\
+/// & A x = b \\\\
+/// & s = 0.
+/// \\end{array}
+/// \\]
 pub trait SDP {
     fn solve_sdp<L>(&self, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
@@ -48,14 +74,25 @@ fn check_param(vec_c: &Mat, mat_f: &[Mat],
 
 impl SDP for PDIPM
 {
-    /// TODO
+    /// Runs the solver with given parameters.
+    /// 
+    /// Returns `Ok` with optimal \\(x\\) or `Err` with message string.
+    /// * `log` outputs solver progress.
+    /// * `vec_c` is \\(c\\).
+    /// * `mat_f` is \\(F_0, \\ldots, F_n\\).
+    /// * `mat_a` is \\(A\\).
+    /// * `vec_b` is \\(b\\).
+    /// 
+    /// **NOTE: Current implementation is neither efficient nor accurate.**
+    /// **You may need lower [`eps`](../pdipm/struct.PDIPM.html#structfield.eps) parameter.**
     fn solve_sdp<L>(&self, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
                     mat_a: &Mat, vec_b: &Mat)
                     -> Result<Mat, &'static str>
     where L: Write
     {
-        // TODO: optimize
+        // TODO: improve efficiency
+        // TODO: improve accuracy
 
         // ----- parameter check
 

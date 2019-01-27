@@ -7,7 +7,7 @@ This crate for Rust provides a basic **primal-dual interior-point method** solve
 ## Target problem
 
 A common target problem is continuous scalar **convex optimization** such as
-LP, QP and QCQP. SOCP and SDP can also be handled.
+LP, QP and QCQP. SOCP and SDP can also be handled with elaboration.
 
 ## Algorithm and design concepts
 
@@ -65,5 +65,8 @@ let rslt = pdipm.solve_qp(&mut std::io::sink(),
 let exp = Mat::new_vec(n).set_iter(&[
     2., 0.
 ]);
-assert!((&rslt - exp).norm_p2() < pdipm.eps, "rslt = {}", rslt);
+println!("rslt = {}", rslt);
+assert!((&rslt - exp).norm_p2() < pdipm.eps);
 ```
+
+You can find other test examples of pre-defined solvers in `lib.rs`.

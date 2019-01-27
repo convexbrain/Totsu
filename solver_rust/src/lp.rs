@@ -19,7 +19,7 @@ use std::io::Write;
 /// where
 /// - variables \\( x \\in {\\bf R}^n \\)
 /// - \\( c \\in {\\bf R}^n \\), \\( d \\in {\\bf R} \\)
-/// - \\( G \\in {\\bf R}^{m \\times n} \\), \\( h \\in {\\bf R}^m \\).
+/// - \\( G \\in {\\bf R}^{m \\times n} \\), \\( h \\in {\\bf R}^m \\)
 /// - \\( A \\in {\\bf R}^{p \\times n} \\), \\( b \\in {\\bf R}^p \\).
 /// 
 /// Internally a slack variable \\( s \\in {\\bf R} \\) is introduced for the infeasible start method as follows:
