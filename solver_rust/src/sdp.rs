@@ -113,9 +113,10 @@ impl SDP for PDIPM
 
         // ----- initial value of t for barrier method
 
+        let eye = Mat::new(k, k).set_eye();
+
         let mut vec_q = Mat::new_vec(n);
-        let fx0 = Mat::new(k, k).set_eye();
-        let fx0 = &mat_f[n] - s_initial * fx0;
+        let fx0 = &mat_f[n] - s_initial * &eye;
         svd.decomp(&fx0); // re-use because of the same size
         for i in 0 .. n {
             vec_q[(i, 0)] = svd.solve(&mat_f[i]).tr();
@@ -144,7 +145,6 @@ impl SDP for PDIPM
             let rslt = self.solve(n + 1, m, p + 1, // '+ 1' is for a slack variable
                 log,
                 |x, df_o| {
-                    let eye = Mat::new(k, k).set_eye();
                     let mut fx = - x[(n, 0)] * &eye;
                     fx += &mat_f[n];
                     for i in 0 .. n {
@@ -160,7 +160,6 @@ impl SDP for PDIPM
                     df_o[(n, 0)] = svd.solve(&eye).tr();
                 },
                 |x, ddf_o| {
-                    let eye = Mat::new(k, k).set_eye();
                     let mut fx = - x[(n, 0)] * &eye;
                     fx += &mat_f[n];
                     for i in 0 .. n {
