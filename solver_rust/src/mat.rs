@@ -483,6 +483,25 @@ impl<V: View> MatGen<V>
 
         sum
     }
+    /// Returns inner product.
+    pub fn prod<V2: View>(&self, rhs: &MatGen<V2>) -> FP
+    {
+        let (l_nrows, l_ncols) = self.size();
+        let (r_nrows, r_ncols) = rhs.size();
+
+        assert_eq!(l_nrows, r_nrows);
+        assert_eq!(l_ncols, r_ncols);
+
+        let mut sum = 0.;
+
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                sum += self[(r, c)] * rhs[(r, c)];
+            }
+        }
+
+        sum
+    }
     //
     /// Finds maximum value.
     pub fn max(&self) -> Option<FP>

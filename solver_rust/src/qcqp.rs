@@ -118,10 +118,10 @@ impl QCQP for PDIPM
                 for r in 0 .. m {
                     let i = r + 1;
                     let xn = x.rows(0 .. n);
-                    let tmp = xn.t() * &mat_p[i] * &xn / 2.
-                            + vec_q[i].t() * &xn
+                    let tmp = xn.prod(&(&mat_p[i] * &xn)) / 2.
+                            + vec_q[i].prod(&xn)
                             + scl_r[i];
-                    f_i[(r, 0)] = tmp[(0, 0)] - x[(n, 0)]; // minus a slack variable
+                    f_i[(r, 0)] = tmp - x[(n, 0)]; // minus a slack variable
                 }
             },
             |x, df_i| {

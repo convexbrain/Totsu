@@ -172,19 +172,20 @@ impl SDP for PDIPM
                     for c in 0 .. n {
                         let fc = svd.solve(&mat_f[c]);
                         for r in 0 .. c {
-                            let v = (&fc * svd.solve(&mat_f[r])).tr();
+                            let fr = svd.solve(&mat_f[r]);
+                            let v = fr.prod(&fc); // tr(fr*fc)
                             ddf_o[(r, c)] = v;
                             ddf_o[(c, r)] = v;
                         }
-                        let v = (&fc * &fc).tr();
+                        let v = fc.norm_p2sq(); // tr(fc*fc)
                         ddf_o[(c, c)] = v;
                         // for a slack variable
-                        let v = -(&fc * &feye).tr();
+                        let v = -fc.prod(&feye); // tr(fc*-feye)
                         ddf_o[(n, c)] = v;
                         ddf_o[(c, n)] = v;
                     }
                     // for a slack variable
-                    let v = (&feye * &feye).tr();
+                    let v = feye.norm_p2sq(); // tr(-feye*-feye)
                     ddf_o[(n, n)] = v;
                 },
                 |_, f_i| {

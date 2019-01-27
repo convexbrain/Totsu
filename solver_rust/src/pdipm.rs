@@ -195,7 +195,7 @@ impl PDIPM
             /***** calc t *****/
 
             let eta = if m > 0 {
-                -(vec_f_i.t() * &lmd)[(0, 0)]
+                -vec_f_i.prod(&lmd)
             }
             else {
                 self.eps
