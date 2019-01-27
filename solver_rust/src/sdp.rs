@@ -84,7 +84,7 @@ impl SDP for PDIPM
     /// * `vec_b` is \\(b\\).
     /// 
     /// **NOTE: Current implementation is neither efficient nor accurate.**
-    /// **You may need lower [`eps`](../pdipm/struct.PDIPM.html#structfield.eps) parameter.**
+    /// **You may need increase [`eps`](../pdipm/struct.PDIPM.html#structfield.eps) parameter.**
     fn solve_sdp<L>(&self, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
                     mat_a: &Mat, vec_b: &Mat)
