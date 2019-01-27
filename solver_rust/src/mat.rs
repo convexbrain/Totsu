@@ -562,7 +562,7 @@ impl<V: View> IndexMut<(usize, usize)> for MatGen<V>
 
 //
 
-impl<V: View> fmt::Display for MatGen<V>
+impl<V: View> fmt::LowerExp for MatGen<V>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
     {
@@ -571,11 +571,19 @@ impl<V: View> fmt::Display for MatGen<V>
         writeln!(f, "[")?;
         for r in 0 .. l_nrows {
             for c in 0 .. l_ncols {
-                write!(f, "  {:.3e},", self[(r, c)])?;
+                write!(f, "  {:.precision$e},", self[(r, c)], precision = f.precision().unwrap_or(3))?;
             }
             writeln!(f)?;
         }
         write!(f, "]")
+    }
+}
+
+impl<V: View> fmt::Display for MatGen<V>
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
+    {
+        writeln!(f, "{:.3e}", self)
     }
 }
 

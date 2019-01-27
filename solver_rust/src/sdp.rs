@@ -55,7 +55,7 @@ impl SDP for PDIPM
                     -> Result<Mat, &'static str>
     where L: Write
     {
-        // TODO: test, optimize
+        // TODO: optimize
 
         // ----- parameter check
 
@@ -63,7 +63,7 @@ impl SDP for PDIPM
 
         // ----- initial value of a slack variable
 
-        let mut svd = MatSVD::new((n, n));
+        let mut svd = MatSVD::new((k, k));
         svd.decomp(&mat_f[n]);
 
         let s = svd.s().max().unwrap();
@@ -77,7 +77,7 @@ impl SDP for PDIPM
         // ----- initial value of t for barrier method
 
         let mut vec_q = Mat::new_vec(n);
-        let fx0 = Mat::new(n, n).set_eye();
+        let fx0 = Mat::new(k, k).set_eye();
         let fx0 = &mat_f[n] - s_initial * fx0;
         svd.decomp(&fx0); // re-use because of the same size
         for i in 0 .. n {
@@ -107,7 +107,7 @@ impl SDP for PDIPM
             let rslt = self.solve(n + 1, m, p + 1, // '+ 1' is for a slack variable
                 log,
                 |x, df_o| {
-                    let eye = Mat::new(n, n).set_eye();
+                    let eye = Mat::new(k, k).set_eye();
                     let mut fx = - x[(n, 0)] * &eye;
                     fx += &mat_f[n];
                     for i in 0 .. n {
@@ -117,13 +117,13 @@ impl SDP for PDIPM
                     svd.decomp(&fx);
                     //
                     for i in 0 .. n {
-                        df_o[(i, 0)] = -svd.solve(&mat_f[i]).tr();
+                        df_o[(i, 0)] = t * vec_c[(i, 0)] - svd.solve(&mat_f[i]).tr();
                     }
                     // for a slack variable
                     df_o[(n, 0)] = svd.solve(&eye).tr();
                 },
                 |x, ddf_o| {
-                    let eye = Mat::new(n, n).set_eye();
+                    let eye = Mat::new(k, k).set_eye();
                     let mut fx = - x[(n, 0)] * &eye;
                     fx += &mat_f[n];
                     for i in 0 .. n {

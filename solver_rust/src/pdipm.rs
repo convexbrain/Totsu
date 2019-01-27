@@ -36,15 +36,8 @@ as well as dual variables \\(\\lambda \\in {\\bf R}^m\\) and \\(\\nu \\in {\\bf 
  */
 pub struct PDIPM
 {
-    /// Initial margin value for dual variables of inequalities.
-    pub margin: FP,
-    /// Max iteration number of outer-loop for the Newton step.
-    pub n_loop: usize,
-    /// Max iteration number of inner-loop for the backtracking line search.
-    pub b_loop: usize,
-    /// Tolerance of the primal and dual residuals.
-    pub eps_feas: FP,
     /// Tolerance of the surrogate duality gap.
+    /// Tolerance of the primal and dual residuals.
     pub eps: FP,
     /// The factor to squeeze complementary slackness.
     pub mu: FP,
@@ -54,6 +47,11 @@ pub struct PDIPM
     pub beta: FP,
     /// The factor to determine an initial step size in the backtracking line search.
     pub s_coef: FP,
+    /// Initial margin value for dual variables of inequalities.
+    pub margin: FP,
+    /// Max iteration number of outer-loop for the Newton step.
+    /// Max iteration number of inner-loop for the backtracking line search.
+    pub n_loop: usize,
     /// Enables to warm-start svd.
     pub svd_warm: bool,
     /// Enables to log kkt matrix.
@@ -66,15 +64,13 @@ impl PDIPM
     pub fn new() -> PDIPM
     {
         PDIPM {
-            margin: 1.,
-            n_loop: 256,
-            b_loop: 256,
-            eps_feas: FP_EPSILON.sqrt(),
-            eps: FP_EPSILON.sqrt(),
+            eps: 1e-8,
             mu: 10.,
             alpha: 0.1,
             beta: 0.8,
             s_coef: 0.99,
+            margin: 1.,
+            n_loop: 256,
             svd_warm: true,
             log_kkt: false
         }
@@ -130,6 +126,9 @@ impl PDIPM
           Fe: FnOnce(&mut Mat, &mut Mat),
           Fs: FnOnce(MatSliMu)
     {
+        let eps_feas = self.eps;
+        let b_loop = self.n_loop;
+
         // parameter check
         if n == 0 {return Err("n: 0");}
 
@@ -226,7 +225,7 @@ impl PDIPM
             writeln_or!(log, "|| r_pri  || : {:.3e}", r_pri_norm)?;
             writeln_or!(log, "   eta       : {:.3e}", eta)?;
 
-            if (r_dual_norm <= self.eps_feas) && (r_pri_norm <= self.eps_feas) && (eta <= self.eps) {
+            if (r_dual_norm <= eps_feas) && (r_pri_norm <= eps_feas) && (eta <= self.eps) {
                 writeln_or!(log, "termination criteria satisfied")?;
                 break;
             }
@@ -296,7 +295,7 @@ impl PDIPM
             let mut y_p = &vec_y + s * &dy;
 
             let mut bcnt = 0;
-            while bcnt < self.b_loop {
+            while bcnt < b_loop {
                 let x_p = y_p.rows(0 .. n);
                 let lmd_p = y_p.rows(n .. n + m);
                 
@@ -312,7 +311,7 @@ impl PDIPM
 
             writeln_or!(log, "s : {:.3e}", s)?;
 
-            if bcnt < self.b_loop {
+            if bcnt < b_loop {
                 writeln_or!(log, "feasible points found")?;
             }
             else {
@@ -321,7 +320,7 @@ impl PDIPM
 
             let org_r_t_norm = vec_r_t.norm_p2();
 
-            while bcnt < self.b_loop {
+            while bcnt < b_loop {
                 let x_p = y_p.rows(0 .. n);
                 let lmd_p = y_p.rows(n .. n + m);
                 let nu_p = y_p.rows(n + m .. n + m + p);
@@ -358,7 +357,7 @@ impl PDIPM
 
             writeln_or!(log, "s : {:.3e}", s)?;
 
-            if (bcnt < self.b_loop) && ((&y_p - &vec_y).norm_p2() >= FP_EPSILON) {
+            if (bcnt < b_loop) && ((&y_p - &vec_y).norm_p2() >= FP_EPSILON) {
                 writeln_or!(log, "update")?;
                 // update y
                 vec_y.assign(&y_p);
