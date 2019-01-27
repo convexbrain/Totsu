@@ -6,7 +6,6 @@ use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
 use super::matsvd::MatSVD;
 
 use std::io::Write;
-
 macro_rules! writeln_or {
     ( $( $arg: expr ),* ) => {
         writeln!( $( $arg ),* ).or(Err("log: I/O Error"))
@@ -54,7 +53,11 @@ pub struct PDIPM
     /// The factor to decrease a step size in the backtracking line search.
     pub beta: FP,
     /// The factor to determine an initial step size in the backtracking line search.
-    pub s_coef: FP
+    pub s_coef: FP,
+    /// Enables to warm-start svd.
+    pub svd_warm: bool,
+    /// Enables to log kkt matrix.
+    pub log_kkt: bool
 }
 
 impl PDIPM
@@ -71,7 +74,9 @@ impl PDIPM
             mu: 10.,
             alpha: 0.1,
             beta: 0.8,
-            s_coef: 0.99
+            s_coef: 0.99,
+            svd_warm: true,
+            log_kkt: false
         }
     }
 
@@ -159,7 +164,7 @@ impl PDIPM
         d_inequality(&x, &mut mat_df_i);
 
         // inequality feasibility check
-        if vec_f_i.max().2 >= 0. {return Err("inequality: not feasible at init");}
+        if vec_f_i.max().unwrap_or(-1.) >= 0. {return Err("inequality: not feasible at init");}
 
         // initial residual - dual and primal
         let mut r_dual = vec_r_t.rows_mut(0 .. n);
@@ -257,10 +262,16 @@ impl PDIPM
 
             /***** calc search direction *****/
 
-            //writeln_or!(log, "kkt : {}", kkt)?;
+            if self.log_kkt {
+                writeln_or!(log, "kkt : {}", kkt)?;
+            }
 
-            //svd.decomp(&kkt);
-            svd.decomp_warm(&kkt);
+            if self.svd_warm {
+                svd.decomp_warm(&kkt);
+            }
+            else {
+                svd.decomp(&kkt);
+            }
             
             let dy = svd.solve(&(-&vec_r_t));
 
@@ -292,7 +303,7 @@ impl PDIPM
                 // update f_i
                 inequality(&x_p, &mut vec_f_i);
 
-                if (vec_f_i.max().2 < 0.) && (lmd_p.min().2 > 0.) {break;}
+                if (vec_f_i.max().unwrap_or(-1.) < 0.) && (lmd_p.min().unwrap_or(1.) > 0.) {break;}
                 s *= self.beta;
                 y_p = &vec_y + s * &dy;
 

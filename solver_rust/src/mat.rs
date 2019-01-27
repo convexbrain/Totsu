@@ -484,51 +484,45 @@ impl<V: View> MatGen<V>
         sum
     }
     //
-    /// Finds maximum value and returns with its location.
-    pub fn max(&self) -> (usize, usize, FP)
+    /// Finds maximum value.
+    pub fn max(&self) -> Option<FP>
     {
         let (l_nrows, l_ncols) = self.size();
-        assert_ne!(l_nrows, 0);
-        assert_ne!(l_ncols, 0);
+        if (l_nrows == 0) || (l_ncols == 0) {
+            return None;
+        }
 
-        let mut mr: usize = 0;
-        let mut mc: usize = 0;
         let mut m = self[(0, 0)];
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
                 if self[(r, c)] > m {
                     m = self[(r, c)];
-                    mr = r;
-                    mc = c;
                 }
             }
         }
 
-        (mr, mc, m)
+        Some(m)
     }
-    /// Finds minumum value and returns with its location.
-    pub fn min(&self) -> (usize, usize, FP)
+    /// Finds minumum value.
+    pub fn min(&self) -> Option<FP>
     {
         let (l_nrows, l_ncols) = self.size();
-        assert_ne!(l_nrows, 0);
-        assert_ne!(l_ncols, 0);
+        if (l_nrows == 0) || (l_ncols == 0) {
+            return None;
+        }
         
-        let mut mr: usize = 0;
-        let mut mc: usize = 0;
         let mut m = self[(0, 0)];
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
                 if self[(r, c)] < m {
                     m = self[(r, c)];
-                    mr = r;
-                    mc = c;
                 }
             }
         }
 
-        (mr, mc, m)
+        Some(m)
     }
     //
     /// Returns number of rows and columns.

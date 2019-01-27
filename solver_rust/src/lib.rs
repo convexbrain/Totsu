@@ -104,6 +104,7 @@ pub mod predef {
     pub use crate::qp::QP;
     pub use crate::qcqp::QCQP;
     pub use crate::socp::SOCP;
+    pub use crate::sdp::SDP;
 }
 
 #[cfg(test)]
@@ -257,5 +258,51 @@ mod tests {
                                    &vec_c,
                                    &mat_g, &vec_h,
                                    &mat_a, &vec_b).unwrap_err();
+    }
+
+    #[test]
+    fn test_sdp()
+    {
+        let n: usize = 2; // x0, x1
+        let p: usize = 0;
+        let k: usize = 2;
+
+        let vec_c = Mat::new_vec(n).set_iter(&[
+            1., 1.
+        ]);
+        let mut mat_f = vec![Mat::new(k, k); n + 1];
+
+        mat_f[0].assign_iter(&[
+            -1., 0.,
+            0., 0.
+        ]);
+        mat_f[1].assign_iter(&[
+            0., 0.,
+            0., -1.
+        ]);
+        mat_f[2].assign_iter(&[
+            3., 0.,
+            0., 4.
+        ]);
+        /*
+        mat_f[2].assign_iter(&[
+            3.5, 0.5,
+            0.5, 3.5
+        ]); // eigenvalue: 3, 4
+        */
+
+        let mat_a = Mat::new(p, n);
+        let vec_b = Mat::new_vec(p);
+
+        let mut pdipm = PDIPM::new();
+        pdipm.log_kkt = true;
+        let rslt = pdipm.solve_sdp(&mut std::io::stdout(),
+                                   &vec_c, &mat_f,
+                                   &mat_a, &vec_b).unwrap();
+
+        let exp = Mat::new_vec(n).set_iter(&[
+            5., 4.
+        ]);
+        assert!((&rslt - exp).norm_p2() < pdipm.eps, "rslt = {}", rslt);
     }
 }

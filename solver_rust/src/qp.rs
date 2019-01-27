@@ -90,7 +90,7 @@ impl QP for PDIPM
 
         // ----- initial value of a slack variable
 
-        let s = -vec_h.min().2;
+        let s = -vec_h.min().unwrap_or(0.);
         let mut margin = self.margin;
         let mut s_initial = s + margin;
         while s_initial <= s {
