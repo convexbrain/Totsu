@@ -39,38 +39,38 @@ pub trait SOCP {
                      vec_f: &Mat,
                      mat_g: &[Mat], vec_h: &[Mat], vec_c: &[Mat], scl_d: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
-                     -> Result<Mat, &'static str>
+                     -> Result<Mat, String>
     where L: Write;
 }
 
 fn check_param(vec_f: &Mat,
                mat_g: &[Mat], vec_h: &[Mat], vec_c: &[Mat], scl_d: &[FP],
                mat_a: &Mat, vec_b: &Mat)
-               -> Result<(usize, usize, usize), &'static str>
+               -> Result<(usize, usize, usize), String>
 {
         let (n, _) = vec_f.size();
         let m = mat_g.len();
         let (p, _) = mat_a.size();
 
-        if n == 0 {return Err("vec_f: 0 rows");}
+        if n == 0 {return Err("vec_f: 0 rows".into());}
         // m = 0 means NO inequality constraints
         // p = 0 means NO equality constraints
 
-        if vec_h.len() != m {return Err("vec_h: length mismatch");}
-        if vec_c.len() != m {return Err("vec_c: length mismatch");}
-        if scl_d.len() != m {return Err("scl_d: length mismatch");}
+        if vec_h.len() != m {return Err(format!("vec_h: length {} must be {}", vec_h.len(), m));}
+        if vec_c.len() != m {return Err(format!("vec_c: length {} must be {}", vec_c.len(), m));}
+        if scl_d.len() != m {return Err(format!("scl_d: length {} must be {}", scl_d.len(), m));}
 
-        if vec_f.size() != (n, 1) {return Err("vec_c: size mismatch");}
+        if vec_f.size() != (n, 1) {return Err(format!("vec_c: size {:?} must be {:?}", vec_f.size(), (n, 1)));}
 
         for i in 0 .. m {
             let (ni, _) = mat_g[i].size();
-            if mat_g[i].size() != (ni, n) {return Err("mat_g[_]: size mismatch");}
-            if vec_h[i].size() != (ni, 1) {return Err("vec_h[_]: size mismatch");}
-            if vec_c[i].size() != (n, 1) {return Err("vec_c[_]: size mismatch");}
+            if mat_g[i].size() != (ni, n) {return Err(format!("mat_g[{}]: size {:?} must be {:?}", i, mat_g[i].size(), (ni, n)));}
+            if vec_h[i].size() != (ni, 1) {return Err(format!("vec_h[{}]: size {:?} must be {:?}", i, vec_h[i].size(), (ni, 1)));}
+            if vec_c[i].size() != (n, 1) {return Err(format!("vec_c[{}]: size {:?} must be {:?}", i, vec_c[i].size(), (n, 1)));}
         }
 
-        if mat_a.size() != (p, n) {return Err("mat_a: size mismatch");}
-        if vec_b.size() != (p, 1) {return Err("vec_b: size mismatch");}
+        if mat_a.size() != (p, n) {return Err(format!("mat_a: size {:?} must be {:?}", mat_a.size(), (p, n)));}
+        if vec_b.size() != (p, 1) {return Err(format!("vec_b: size {:?} must be {:?}", vec_b.size(), (p, 1)));}
 
         Ok((n, m, p))
 }
@@ -93,7 +93,7 @@ impl SOCP for PDIPM
                      vec_f: &Mat,
                      mat_g: &[Mat], vec_h: &[Mat], vec_c: &[Mat], scl_d: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
-                     -> Result<Mat, &'static str>
+                     -> Result<Mat, String>
     where L: Write
     {
         // ----- parameter check
@@ -229,7 +229,7 @@ impl SOCP for PDIPM
 
         match rslt {
             Ok(y) => Ok(y.rows(0 .. n).clone_sz()),
-            Err(s) => Err(s)
+            Err(s) => Err(s.into())
         }
     }
 }

@@ -34,34 +34,34 @@ pub trait QCQP {
     fn solve_qcqp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                      mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
-                     -> Result<Mat, &'static str>
+                     -> Result<Mat, String>
     where L: Write;
 }
 
 fn check_param(mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
                mat_a: &Mat, vec_b: &Mat)
-               -> Result<(usize, usize, usize), &'static str>
+               -> Result<(usize, usize, usize), String>
 {
-        if mat_p.len() == 0 {return Err("mat_p: 0 length");}
+        if mat_p.len() == 0 {return Err("mat_p: 0 length".into());}
 
         let (n, _) = mat_p[0].size();
         let m = mat_p.len() - 1;
         let (p, _) = mat_a.size();
 
-        if n == 0 {return Err("mat_p[_]: 0 rows");}
+        if n == 0 {return Err("mat_p[0]: 0 rows".into());}
         // m = 0 means NO inequality constraints
         // p = 0 means NO equality constraints
 
-        if vec_q.len() != m + 1 {return Err("vec_q: length mismatch");}
-        if scl_r.len() != m + 1 {return Err("scl_r: length mismatch");}
+        if vec_q.len() != m + 1 {return Err(format!("vec_q: length {} must be {}", vec_q.len(), m + 1));}
+        if scl_r.len() != m + 1 {return Err(format!("scl_r: length {} must be {}", scl_r.len(), m + 1));}
 
         for i in 0 ..= m {
-            if mat_p[i].size() != (n, n) {return Err("mat_p[_]: size mismatch");}
-            if vec_q[i].size() != (n, 1) {return Err("vec_q[_]: size mismatch");}
+            if mat_p[i].size() != (n, n) {return Err(format!("mat_p[{}]: size {:?} must be {:?}", i, mat_p[i].size(), (n, n)));}
+            if vec_q[i].size() != (n, 1) {return Err(format!("vec_q[{}]: size {:?} must be {:?}", i, vec_q[i].size(), (n, 1)));}
         }
 
-        if mat_a.size() != (p, n) {return Err("mat_a: size mismatch");}
-        if vec_b.size() != (p, 1) {return Err("vec_b: size mismatch");}
+        if mat_a.size() != (p, n) {return Err(format!("mat_a: size {:?} must be {:?}", mat_a.size(), (p, n)));}
+        if vec_b.size() != (p, 1) {return Err(format!("vec_b: size {:?} must be {:?}", vec_b.size(), (p, 1)));}
 
         Ok((n, m, p))
 }
@@ -81,7 +81,7 @@ impl QCQP for PDIPM
     fn solve_qcqp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                      mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
-                     -> Result<Mat, &'static str>
+                     -> Result<Mat, String>
     where L: Write
     {
         // ----- parameter check
@@ -157,7 +157,7 @@ impl QCQP for PDIPM
 
         match rslt {
             Ok(y) => Ok(y.rows(0 .. n).clone_sz()),
-            Err(s) => Err(s)
+            Err(s) => Err(s.into())
         }
     }
 }

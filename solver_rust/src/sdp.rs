@@ -43,33 +43,33 @@ pub trait SDP {
     fn solve_sdp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
                     mat_a: &Mat, vec_b: &Mat)
-                    -> Result<Mat, &'static str>
+                    -> Result<Mat, String>
     where L: Write;
 }
 
 fn check_param(vec_c: &Mat, mat_f: &[Mat],
                mat_a: &Mat, vec_b: &Mat)
-               -> Result<(usize, usize, usize, usize), &'static str>
+               -> Result<(usize, usize, usize, usize), String>
 {
         let (n, _) = vec_c.size();
         let m = 0;
         let (p, _) = mat_a.size();
 
-        if n == 0 {return Err("vec_c: 0 rows");}
+        if n == 0 {return Err("vec_c: 0 rows".into());}
         // m = 0 means NO inequality constraints
         // p = 0 means NO equality constraints
 
-        if vec_c.size() != (n, 1) {return Err("vec_c: size mismatch");}
+        if vec_c.size() != (n, 1) {return Err(format!("vec_c: size {:?} must be {:?}", vec_c.size(), (n, 1)));}
 
-        if mat_f.len() != n + 1 {return Err("mat_f: length mismatch");}
+        if mat_f.len() != n + 1 {return Err(format!("mat_f: length {} must be {}", mat_f.len(), n + 1));}
 
         let (k, _) = mat_f[0].size();
         for i in 0 ..= n {
-            if mat_f[i].size() != (k, k) {return Err("mat_f[_]: size mismatch");}
+            if mat_f[i].size() != (k, k) {return Err(format!("mat_f[{}]: size {:?} must be {:?}", i, mat_f[i].size(), (k, k)));}
         }
 
-        if mat_a.size() != (p, n) {return Err("mat_a: size mismatch");}
-        if vec_b.size() != (p, 1) {return Err("vec_b: size mismatch");}
+        if mat_a.size() != (p, n) {return Err(format!("mat_a: size {:?} must be {:?}", mat_a.size(), (p, n)));}
+        if vec_b.size() != (p, 1) {return Err(format!("vec_b: size {:?} must be {:?}", vec_b.size(), (p, 1)));}
 
         Ok((n, m, p, k))
 }
@@ -90,7 +90,7 @@ impl SDP for PDIPM
     fn solve_sdp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
                     mat_a: &Mat, vec_b: &Mat)
-                    -> Result<Mat, &'static str>
+                    -> Result<Mat, String>
     where L: Write
     {
         // TODO: improve accuracy

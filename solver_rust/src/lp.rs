@@ -38,29 +38,28 @@ pub trait LP {
                    vec_c: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)
-                   -> Result<Mat, &'static str>
+                   -> Result<Mat, String>
     where L: Write;
 }
 
-// TODO: error string
 fn check_param(vec_c: &Mat,
                mat_g: &Mat, vec_h: &Mat,
                mat_a: &Mat, vec_b: &Mat)
-               -> Result<(usize, usize, usize), &'static str>
+               -> Result<(usize, usize, usize), String>
 {
     let (n, _) = vec_c.size();
     let (m, _) = mat_g.size();
     let (p, _) = mat_a.size();
 
-    if n == 0 {return Err("vec_c: 0 rows");}
+    if n == 0 {return Err("vec_c: 0 rows".into());}
     // m = 0 means NO inequality constraints
     // p = 0 means NO equality constraints
 
-    if vec_c.size() != (n, 1) {return Err("vec_c: size mismatch");}
-    if mat_g.size() != (m, n) {return Err("mat_g: size mismatch");}
-    if vec_h.size() != (m, 1) {return Err("vec_h: size mismatch");}
-    if mat_a.size() != (p, n) {return Err("mat_a: size mismatch");}
-    if vec_b.size() != (p, 1) {return Err("vec_b: size mismatch");}
+    if vec_c.size() != (n, 1) {return Err(format!("vec_c: size {:?} must be {:?}", vec_c.size(), (n, 1)));}
+    if mat_g.size() != (m, n) {return Err(format!("mat_g: size {:?} must be {:?}", mat_g.size(), (m, n)));}
+    if vec_h.size() != (m, 1) {return Err(format!("vec_h: size {:?} must be {:?}", vec_h.size(), (m, 1)));}
+    if mat_a.size() != (p, n) {return Err(format!("mat_a: size {:?} must be {:?}", mat_a.size(), (p, n)));}
+    if vec_b.size() != (p, 1) {return Err(format!("vec_b: size {:?} must be {:?}", vec_b.size(), (p, 1)));}
 
     Ok((n, m, p))
 }
@@ -81,7 +80,7 @@ impl LP for PDIPM
                    vec_c: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)
-                   -> Result<Mat, &'static str>
+                   -> Result<Mat, String>
     where L: Write
     {
         // ----- parameter check
@@ -140,7 +139,7 @@ impl LP for PDIPM
 
         match rslt {
             Ok(y) => Ok(y.rows(0 .. n).clone_sz()),
-            Err(s) => Err(s)
+            Err(s) => Err(s.into())
         }
     }
 }
