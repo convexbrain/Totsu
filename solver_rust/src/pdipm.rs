@@ -36,6 +36,12 @@ as well as dual variables \\(\\lambda \\in {\\bf R}^m\\) and \\(\\nu \\in {\\bf 
  */
 pub struct PDIPM
 {
+}
+
+/// Primal-Dual Interior-Point Method solver parameters.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PDIPMParam
+{
     /// Tolerance of the surrogate duality gap.
     /// Tolerance of the primal and dual residuals.
     pub eps: FP,
@@ -58,12 +64,11 @@ pub struct PDIPM
     pub log_kkt: bool
 }
 
-impl PDIPM
+impl Default for PDIPMParam
 {
-    /// Creates an instance with default parameters.
-    pub fn new() -> PDIPM
+    fn default() -> PDIPMParam
     {
-        PDIPM {
+        PDIPMParam {
             eps: 1e-8,
             mu: 10.,
             alpha: 0.1,
@@ -75,15 +80,26 @@ impl PDIPM
             log_kkt: false
         }
     }
+}
+
+impl PDIPM
+{
+    /// Creates an instance.
+    pub fn new() -> PDIPM
+    {
+        PDIPM {
+        }
+    }
 
     /// Starts to solve a optimization problem by primal-dual interior-point method.
     /// 
     /// Returns `Ok` with optimal \\(x, \\lambda, \\nu\\) concatenated vector
     /// or `Err` with message string.
+    /// * `param` is solver parameters.
+    /// * `log` outputs solver progress.
     /// * `n` is \\(n\\), the dimension of the variable \\(x\\).
 	/// * `m` is \\(m\\), the number of inequality constraints \\(f_i\\).
     /// * `p` is \\(p\\), the number of rows of equality constraints \\(A\\) and \\(b\\).
-    /// * `log` outputs solver progress.
     /// * `d_objective(x, df_o)`
     ///   calculates first derivatives of the objective function
     ///   \\(\\nabla f_{\\rm obj}(x)\\).
@@ -106,9 +122,9 @@ impl PDIPM
     ///   **The initial values must satisfy all inequality constraints strictly: \\(f_i(x)<0\\).**
     ///   This may seem a hard requirement, but introducing **slack variables** helps in most cases.
     ///   Refer pre-defined solver implementations for example.
-    pub fn solve<L, Fo1, Fo2, Fi0, Fi1, Fi2, Fe, Fs>(&self,
+    pub fn solve<L, Fo1, Fo2, Fi0, Fi1, Fi2, Fe, Fs>(
+        &self, param: &PDIPMParam, log: &mut L,
         n: usize, m: usize, p: usize,
-        log: &mut L,
         d_objective: Fo1,
         dd_objective: Fo2,
         inequality: Fi0,
@@ -126,8 +142,8 @@ impl PDIPM
           Fe: FnOnce(&mut Mat, &mut Mat),
           Fs: FnOnce(MatSliMu)
     {
-        let eps_feas = self.eps;
-        let b_loop = self.n_loop;
+        let eps_feas = param.eps;
+        let b_loop = param.n_loop;
 
         // parameter check
         if n == 0 {return Err("n: 0");}
@@ -153,7 +169,7 @@ impl PDIPM
         let x = vec_y.rows_mut(0 .. n);
         start_point(x);
         let mut lmd = vec_y.rows_mut(n .. n + m);
-        lmd.assign_all(self.margin);
+        lmd.assign_all(param.margin);
         equality(&mut mat_a, &mut vec_b);
 
         // initial df_o, f_i, df_i
@@ -185,7 +201,7 @@ impl PDIPM
         //
 
         let mut cnt = 0;
-        while cnt < self.n_loop {
+        while cnt < param.n_loop {
             writeln_or!(log)?;
             writeln_or!(log, "===== ===== ===== ===== loop : {}", cnt)?;
 
@@ -198,13 +214,13 @@ impl PDIPM
                 -vec_f_i.prod(&lmd)
             }
             else {
-                self.eps
+                param.eps
             };
 
             // inequality feasibility check
             if eta < 0. {return Err("inequality: not feasible in loop");}
 
-            let inv_t = eta / (self.mu * m as FP);
+            let inv_t = eta / (param.mu * m as FP);
 
             /***** update residual - central *****/
 
@@ -225,7 +241,7 @@ impl PDIPM
             writeln_or!(log, "|| r_pri  || : {:.3e}", r_pri_norm)?;
             writeln_or!(log, "   eta       : {:.3e}", eta)?;
 
-            if (r_dual_norm <= eps_feas) && (r_pri_norm <= eps_feas) && (eta <= self.eps) {
+            if (r_dual_norm <= eps_feas) && (r_pri_norm <= eps_feas) && (eta <= param.eps) {
                 writeln_or!(log, "termination criteria satisfied")?;
                 break;
             }
@@ -261,11 +277,11 @@ impl PDIPM
 
             /***** calc search direction *****/
 
-            if self.log_kkt {
+            if param.log_kkt {
                 writeln_or!(log, "kkt : {}", kkt)?;
             }
 
-            if self.svd_warm {
+            if param.svd_warm {
                 svd.decomp_warm(&kkt);
             }
             else {
@@ -290,7 +306,7 @@ impl PDIPM
                     }
                 }
             }
-            let mut s = self.s_coef * s_max;
+            let mut s = param.s_coef * s_max;
 
             let mut y_p = &vec_y + s * &dy;
 
@@ -303,7 +319,7 @@ impl PDIPM
                 inequality(&x_p, &mut vec_f_i);
 
                 if (vec_f_i.max().unwrap_or(-1.) < 0.) && (lmd_p.min().unwrap_or(1.) > 0.) {break;}
-                s *= self.beta;
+                s *= param.beta;
                 y_p = &vec_y + s * &dy;
 
                 bcnt += 1;
@@ -348,8 +364,8 @@ impl PDIPM
                     r_pri.assign(&(&mat_a * x_p - &vec_b));
                 }
 
-                if vec_r_t.norm_p2() <= (1. - self.alpha * s) * org_r_t_norm {break;}
-                s *= self.beta;
+                if vec_r_t.norm_p2() <= (1. - param.alpha * s) * org_r_t_norm {break;}
+                s *= param.beta;
                 y_p = &vec_y + s * &dy;
 
                 bcnt += 1;
@@ -372,7 +388,7 @@ impl PDIPM
             cnt += 1;
         }
 
-        if !(cnt < self.n_loop) {
+        if !(cnt < param.n_loop) {
             writeln_or!(log, "iteration limit")?;
             return Err("iteration: not converged");
         }

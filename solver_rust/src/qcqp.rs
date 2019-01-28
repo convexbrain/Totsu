@@ -31,7 +31,7 @@ use std::io::Write;
 /// \\end{array}
 /// \\]
 pub trait QCQP {
-    fn solve_qcqp<L>(&self, log: &mut L,
+    fn solve_qcqp<L>(&self, param: &PDIPMParam, log: &mut L,
                      mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
                      -> Result<Mat, &'static str>
@@ -71,13 +71,14 @@ impl QCQP for PDIPM
     /// Runs the solver with given parameters.
     /// 
     /// Returns `Ok` with optimal \\(x\\) or `Err` with message string.
+    /// * `param` is solver parameters.
     /// * `log` outputs solver progress.
     /// * `mat_p` is \\(P_0, \\ldots, P_m\\).
     /// * `vec_q` is \\(q_0, \\ldots, q_m\\).
     /// * `scl_r` is \\(r_0, \\ldots, r_m\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_qcqp<L>(&self, log: &mut L,
+    fn solve_qcqp<L>(&self, param: &PDIPMParam, log: &mut L,
                      mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
                      -> Result<Mat, &'static str>
@@ -90,7 +91,7 @@ impl QCQP for PDIPM
         // ----- initial value of a slack variable
 
         let s: FP = *scl_r.iter().max_by(|l, r| l.partial_cmp(r).unwrap()).unwrap();
-        let mut margin = self.margin;
+        let mut margin = param.margin;
         let mut s_initial = s + margin;
         while s_initial <= s {
             margin *= 2.;
@@ -99,8 +100,8 @@ impl QCQP for PDIPM
 
         // ----- start to solve
 
-        let rslt = self.solve(n + 1, m, p + 1, // '+ 1' is for a slack variable
-            log,
+        let rslt = self.solve(param, log,
+            n + 1, m, p + 1, // '+ 1' is for a slack variable
             |x, df_o| {
                 df_o.rows_mut(0 .. n).assign(&(
                     &mat_p[0] * x.rows(0 .. n) + &vec_q[0]

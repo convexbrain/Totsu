@@ -70,17 +70,17 @@ let vec_h = Mat::new_vec(m).set_iter(&[
 let mat_a = Mat::new(p, n);
 let vec_b = Mat::new_vec(p);
 
-let pdipm = PDIPM::new();
-let rslt = pdipm.solve_qp(&mut std::io::sink(),
-                          &mat_p, &vec_q,
-                          &mat_g, &vec_h,
-                          &mat_a, &vec_b).unwrap();
+let param = PDIPMParam::default();
+let rslt = PDIPM::new().solve_qp(&param, &mut std::io::sink(),
+                                 &mat_p, &vec_q,
+                                 &mat_g, &vec_h,
+                                 &mat_a, &vec_b).unwrap();
 
 let exp = Mat::new_vec(n).set_iter(&[
     2., 0.
 ]);
 println!("rslt = {}", rslt);
-assert!((&rslt - exp).norm_p2() < pdipm.eps);
+assert!((&rslt - exp).norm_p2() < param.eps);
 ```
 
 You can find other test examples of pre-defined solvers in [`lib.rs`](../src/totsu/lib.rs.html).
@@ -98,7 +98,7 @@ pub mod sdp;
 /// Prelude
 pub mod prelude {
     pub use crate::mat::{Mat, FP};
-    pub use crate::pdipm::PDIPM;
+    pub use crate::pdipm::{PDIPM, PDIPMParam};
 }
 
 /// Pre-defined solvers
@@ -146,16 +146,16 @@ mod tests {
         let mat_a = Mat::new(p, n);
         let vec_b = Mat::new_vec(p);
 
-        let pdipm = PDIPM::new();
-        let rslt = pdipm.solve_qcqp(&mut std::io::sink(),
-                                    &mat_p, &vec_q, &scl_r,
-                                    &mat_a, &vec_b).unwrap();
+        let param = PDIPMParam::default();
+        let rslt = PDIPM::new().solve_qcqp(&param, &mut std::io::sink(),
+                                           &mat_p, &vec_q, &scl_r,
+                                           &mat_a, &vec_b).unwrap();
 
         let exp = Mat::new_vec(n).set_iter(&[
             5., 4.
         ]);
         println!("rslt = {}", rslt);
-        assert!((&rslt - exp).norm_p2() < pdipm.eps);
+        assert!((&rslt - exp).norm_p2() < param.eps);
     }
 
     #[test]
@@ -181,17 +181,17 @@ mod tests {
         let mat_a = Mat::new(p, n);
         let vec_b = Mat::new_vec(p);
 
-        let pdipm = PDIPM::new();
-        let rslt = pdipm.solve_socp(&mut std::io::sink(),
-                                    &vec_f,
-                                    &mat_g, &vec_h, &vec_c, &scl_d,
-                                    &mat_a, &vec_b).unwrap();
+        let param = PDIPMParam::default();
+        let rslt = PDIPM::new().solve_socp(&param, &mut std::io::sink(),
+                                           &vec_f,
+                                           &mat_g, &vec_h, &vec_c, &scl_d,
+                                           &mat_a, &vec_b).unwrap();
 
         let exp = Mat::new_vec(n).set_iter(&[
             -1., -1.
         ]);
         println!("rslt = {}", rslt);
-        assert!((&rslt - exp).norm_p2() < pdipm.eps);
+        assert!((&rslt - exp).norm_p2() < param.eps);
     }
 
     #[test]
@@ -217,11 +217,11 @@ mod tests {
         let mat_a = Mat::new(p, n);
         let vec_b = Mat::new_vec(p);
 
-        let pdipm = PDIPM::new();
-        let _rslt = pdipm.solve_lp(&mut std::io::sink(),
-                                   &vec_c,
-                                   &mat_g, &vec_h,
-                                   &mat_a, &vec_b).unwrap_err();
+        let param = PDIPMParam::default();
+        let _rslt = PDIPM::new().solve_lp(&param, &mut std::io::sink(),
+                                          &vec_c,
+                                          &mat_g, &vec_h,
+                                          &mat_a, &vec_b).unwrap_err();
     }
 
     #[test]
@@ -252,11 +252,13 @@ mod tests {
         let mat_a = Mat::new(p, n);
         let vec_b = Mat::new_vec(p);
 
-        let mut pdipm = PDIPM::new();
-        pdipm.eps = 1e-4; // solve_sdp() is not so accurate
-        let rslt = pdipm.solve_sdp(&mut std::io::sink(),
-                                   &vec_c, &mat_f,
-                                   &mat_a, &vec_b).unwrap();
+        let param = PDIPMParam {
+            eps: 1e-4, // solve_sdp() is not so accurate
+            .. Default::default()
+        };
+        let rslt = PDIPM::new().solve_sdp(&param, &mut std::io::sink(),
+                                          &vec_c, &mat_f,
+                                          &mat_a, &vec_b).unwrap();
         
         let exp = Mat::new_vec(n).set_iter(&[
             3., 4.

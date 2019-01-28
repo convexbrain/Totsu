@@ -34,7 +34,7 @@ use std::io::Write;
 /// 
 /// In the following, \\( r \\) does not appear since it does not matter.
 pub trait QP {
-    fn solve_qp<L>(&self, log: &mut L,
+    fn solve_qp<L>(&self, param: &PDIPMParam, log: &mut L,
                    mat_p: &Mat, vec_q: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)
@@ -70,6 +70,7 @@ impl QP for PDIPM
     /// Runs the solver with given parameters.
     /// 
     /// Returns `Ok` with optimal \\(x\\) or `Err` with message string.
+    /// * `param` is solver parameters.
     /// * `log` outputs solver progress.
     /// * `mat_p` is \\(P\\).
     /// * `vec_q` is \\(q\\).
@@ -77,7 +78,7 @@ impl QP for PDIPM
     /// * `vec_h` is \\(h\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_qp<L>(&self, log: &mut L,
+    fn solve_qp<L>(&self, param: &PDIPMParam, log: &mut L,
                    mat_p: &Mat, vec_q: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)
@@ -91,7 +92,7 @@ impl QP for PDIPM
         // ----- initial value of a slack variable
 
         let s = -vec_h.min().unwrap_or(0.);
-        let mut margin = self.margin;
+        let mut margin = param.margin;
         let mut s_initial = s + margin;
         while s_initial <= s {
             margin *= 2.;
@@ -100,8 +101,8 @@ impl QP for PDIPM
 
         // ----- start to solve
 
-        let rslt = self.solve(n + 1, m, p + 1, // '+ 1' is for a slack variable
-            log,
+        let rslt = self.solve(param, log,
+            n + 1, m, p + 1, // '+ 1' is for a slack variable
             |x, df_o| {
                 df_o.rows_mut(0 .. n).assign(&(
                     mat_p * x.rows(0 .. n) + vec_q

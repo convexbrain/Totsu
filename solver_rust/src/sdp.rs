@@ -40,7 +40,7 @@ use std::cell::RefCell;
 /// \\end{array}
 /// \\]
 pub trait SDP {
-    fn solve_sdp<L>(&self, log: &mut L,
+    fn solve_sdp<L>(&self, param: &PDIPMParam, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
                     mat_a: &Mat, vec_b: &Mat)
                     -> Result<Mat, &'static str>
@@ -79,15 +79,15 @@ impl SDP for PDIPM
     /// Runs the solver with given parameters.
     /// 
     /// Returns `Ok` with optimal \\(x\\) or `Err` with message string.
+    /// * `param` is solver parameters.
+    ///   *NOTE: Current implementation is not so accurate.*
+    ///   *You may need increase `eps` parameter.*
     /// * `log` outputs solver progress.
     /// * `vec_c` is \\(c\\).
     /// * `mat_f` is \\(F_0, \\ldots, F_n\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    /// 
-    /// **NOTE: Current implementation is neither efficient nor accurate.**
-    /// **You may need increase [`eps`](../pdipm/struct.PDIPM.html#structfield.eps) parameter.**
-    fn solve_sdp<L>(&self, log: &mut L,
+    fn solve_sdp<L>(&self, param: &PDIPMParam, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
                     mat_a: &Mat, vec_b: &Mat)
                     -> Result<Mat, &'static str>
@@ -106,7 +106,7 @@ impl SDP for PDIPM
         svd_kk.decomp(&mat_f[n]);
 
         let s = svd_kk.s().max().unwrap();
-        let mut margin = self.margin;
+        let mut margin = param.margin;
         let mut s_initial = s + margin;
         while s_initial <= s {
             margin *= 2.;
@@ -132,7 +132,7 @@ impl SDP for PDIPM
         svd_np1.decomp(&mat_p);
 
         let mut t = svd_np1.solve(&vec_q)[(p, 0)];
-        t = t.max(self.eps);
+        t = t.max(param.eps);
 
         // ----- start to solve
 
@@ -141,13 +141,13 @@ impl SDP for PDIPM
 
         let svd_cell = RefCell::new(svd_kk);
 
-        while k as FP / t >= self.eps {
+        while k as FP / t >= param.eps {
             writeln_or!(log)?;
             writeln_or!(log, "===== ===== ===== ===== barrier loop")?;
             writeln_or!(log, "t = {}", t)?;
 
-            let rslt = self.solve(n + 1, m, p + 1, // '+ 1' is for a slack variable
-                log,
+            let rslt = self.solve(param, log,
+                n + 1, m, p + 1, // '+ 1' is for a slack variable
                 |x, df_o| {
                     let mut fx = - x[(n, 0)] * &eye;
                     fx += &mat_f[n];
@@ -210,7 +210,7 @@ impl SDP for PDIPM
             let rslt = rslt?;
             vec_xs.assign(&rslt.rows(0 .. n + 1));
 
-            t *= self.mu;
+            t *= param.mu;
         }
 
         Ok(vec_xs.rows(0 .. n).clone_sz())

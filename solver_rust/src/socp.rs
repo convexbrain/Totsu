@@ -35,7 +35,7 @@ use std::io::Write;
 /// \\]
 /// where \\( \\epsilon_{\\rm bd} > 0 \\) indicates the extent of approximation that excludes \\( c_i^T x + d_i = 0 \\) boundary.
 pub trait SOCP {
-    fn solve_socp<L>(&self, log: &mut L,
+    fn solve_socp<L>(&self, param: &PDIPMParam, log: &mut L,
                      vec_f: &Mat,
                      mat_g: &[Mat], vec_h: &[Mat], vec_c: &[Mat], scl_d: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
@@ -80,6 +80,7 @@ impl SOCP for PDIPM
     /// Runs the solver with given parameters.
     /// 
     /// Returns `Ok` with optimal \\(x\\) or `Err` with message string.
+    /// * `param` is solver parameters.
     /// * `log` outputs solver progress.
     /// * `vec_f` is \\(f\\).
     /// * `mat_g` is \\(G_0, \\ldots, G_{m-1}\\).
@@ -88,7 +89,7 @@ impl SOCP for PDIPM
     /// * `scl_d` is \\(d_0, \\ldots, d_{m-1}\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_socp<L>(&self, log: &mut L,
+    fn solve_socp<L>(&self, param: &PDIPMParam, log: &mut L,
                      vec_f: &Mat,
                      mat_g: &[Mat], vec_h: &[Mat], vec_c: &[Mat], scl_d: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
@@ -99,13 +100,13 @@ impl SOCP for PDIPM
 
         let (n, m, p) = check_param(vec_f, mat_g, vec_h, vec_c, scl_d, mat_a, vec_b)?;
 
-        let eps_div0 = self.eps;
-        let eps_bd = self.eps;
+        let eps_div0 = param.eps;
+        let eps_bd = param.eps;
 
         // ----- start to solve
 
-        let rslt = self.solve(n + m, m + m, p + m, // '+ m' is for slack variables
-            log,
+        let rslt = self.solve(param, log,
+            n + m, m + m, p + m, // '+ m' is for slack variables
             |_, df_o| {
                 df_o.rows_mut(0 .. n).assign(&vec_f);
                 // for slack variables
@@ -212,7 +213,7 @@ impl SOCP for PDIPM
                 for i in 0 .. m {
                     let s = vec_h[i].norm_p2() + eps_bd;
 
-                    let mut margin = self.margin;
+                    let mut margin = param.margin;
                     let mut s_initial = s + margin;
                     while s_initial <= s {
                         margin *= 2.;
