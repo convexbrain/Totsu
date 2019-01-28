@@ -10,6 +10,8 @@ macro_rules! writeln_or {
     };
 }
 
+use std::cell::RefCell;
+
 /// Semidefinite program
 /// 
 /// <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
@@ -38,36 +40,36 @@ macro_rules! writeln_or {
 /// \\end{array}
 /// \\]
 pub trait SDP {
-    fn solve_sdp<L>(&self, log: &mut L,
+    fn solve_sdp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
                     mat_a: &Mat, vec_b: &Mat)
-                    -> Result<Mat, &'static str>
+                    -> Result<Mat, String>
     where L: Write;
 }
 
 fn check_param(vec_c: &Mat, mat_f: &[Mat],
                mat_a: &Mat, vec_b: &Mat)
-               -> Result<(usize, usize, usize, usize), &'static str>
+               -> Result<(usize, usize, usize, usize), String>
 {
         let (n, _) = vec_c.size();
         let m = 0;
         let (p, _) = mat_a.size();
 
-        if n == 0 {return Err("vec_c: 0 rows");}
+        if n == 0 {return Err("vec_c: 0 rows".into());}
         // m = 0 means NO inequality constraints
         // p = 0 means NO equality constraints
 
-        if vec_c.size() != (n, 1) {return Err("vec_c: size mismatch");}
+        if vec_c.size() != (n, 1) {return Err(format!("vec_c: size {:?} must be {:?}", vec_c.size(), (n, 1)));}
 
-        if mat_f.len() != n + 1 {return Err("mat_f: length mismatch");}
+        if mat_f.len() != n + 1 {return Err(format!("mat_f: length {} must be {}", mat_f.len(), n + 1));}
 
         let (k, _) = mat_f[0].size();
         for i in 0 ..= n {
-            if mat_f[i].size() != (k, k) {return Err("mat_f[_]: size mismatch");}
+            if mat_f[i].size() != (k, k) {return Err(format!("mat_f[{}]: size {:?} must be {:?}", i, mat_f[i].size(), (k, k)));}
         }
 
-        if mat_a.size() != (p, n) {return Err("mat_a: size mismatch");}
-        if vec_b.size() != (p, 1) {return Err("vec_b: size mismatch");}
+        if mat_a.size() != (p, n) {return Err(format!("mat_a: size {:?} must be {:?}", mat_a.size(), (p, n)));}
+        if vec_b.size() != (p, 1) {return Err(format!("vec_b: size {:?} must be {:?}", vec_b.size(), (p, 1)));}
 
         Ok((n, m, p, k))
 }
@@ -77,21 +79,20 @@ impl SDP for PDIPM
     /// Runs the solver with given parameters.
     /// 
     /// Returns `Ok` with optimal \\(x\\) or `Err` with message string.
+    /// * `param` is solver parameters.
+    ///   *NOTE: Current implementation is not so accurate.*
+    ///   *You may need increase `eps` parameter.*
     /// * `log` outputs solver progress.
     /// * `vec_c` is \\(c\\).
     /// * `mat_f` is \\(F_0, \\ldots, F_n\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    /// 
-    /// **NOTE: Current implementation is neither efficient nor accurate.**
-    /// **You may need lower [`eps`](../pdipm/struct.PDIPM.html#structfield.eps) parameter.**
-    fn solve_sdp<L>(&self, log: &mut L,
+    fn solve_sdp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
                     mat_a: &Mat, vec_b: &Mat)
-                    -> Result<Mat, &'static str>
+                    -> Result<Mat, String>
     where L: Write
     {
-        // TODO: improve efficiency
         // TODO: improve accuracy
 
         // ----- parameter check
@@ -100,11 +101,11 @@ impl SDP for PDIPM
 
         // ----- initial value of a slack variable
 
-        let mut svd = MatSVD::new((k, k));
-        svd.decomp(&mat_f[n]);
+        let mut svd_kk = MatSVD::new((k, k));
+        svd_kk.decomp(&mat_f[n]);
 
-        let s = svd.s().max().unwrap();
-        let mut margin = self.margin;
+        let s = svd_kk.s().max().unwrap();
+        let mut margin = param.margin;
         let mut s_initial = s + margin;
         while s_initial <= s {
             margin *= 2.;
@@ -113,44 +114,46 @@ impl SDP for PDIPM
 
         // ----- initial value of t for barrier method
 
+        let eye = Mat::new(k, k).set_eye();
+
         let mut vec_q = Mat::new_vec(n);
-        let fx0 = Mat::new(k, k).set_eye();
-        let fx0 = &mat_f[n] - s_initial * fx0;
-        svd.decomp(&fx0); // re-use because of the same size
+        let fx0 = &mat_f[n] - s_initial * &eye;
+        svd_kk.decomp(&fx0); // re-use because of the same size
         for i in 0 .. n {
-            vec_q[(i, 0)] = svd.solve(&mat_f[i]).tr();
+            vec_q[(i, 0)] = svd_kk.solve(&mat_f[i]).tr();
         }
 
         let mut mat_p = Mat::new(n, p + 1);
         mat_p.cols_mut(0 .. p).assign(&mat_a.t());
         mat_p.col_mut(p).assign(&vec_c);
 
-        let mut svd = MatSVD::new(mat_p.size());
-        svd.decomp(&mat_p);
+        let mut svd_np1 = MatSVD::new(mat_p.size());
+        svd_np1.decomp(&mat_p);
 
-        let mut t = svd.solve(&vec_q)[(p, 0)];
-        t = t.max(self.eps);
+        let mut t = svd_np1.solve(&vec_q)[(p, 0)];
+        t = t.max(param.eps);
 
         // ----- start to solve
 
         let mut vec_xs = Mat::new_vec(n + 1);
         vec_xs[(n, 0)] = s_initial;
 
-        while k as FP / t >= self.eps {
+        let svd_cell = RefCell::new(svd_kk);
+
+        while k as FP / t >= param.eps {
             writeln_or!(log)?;
             writeln_or!(log, "===== ===== ===== ===== barrier loop")?;
             writeln_or!(log, "t = {}", t)?;
 
-            let rslt = self.solve(n + 1, m, p + 1, // '+ 1' is for a slack variable
-                log,
+            let rslt = self.solve(param, log,
+                n + 1, m, p + 1, // '+ 1' is for a slack variable
                 |x, df_o| {
-                    let eye = Mat::new(k, k).set_eye();
                     let mut fx = - x[(n, 0)] * &eye;
                     fx += &mat_f[n];
                     for i in 0 .. n {
                         fx += &mat_f[i] * x[(i, 0)];
                     }
-                    let mut svd = MatSVD::new(fx.size());
+                    let mut svd = svd_cell.borrow_mut();
                     svd.decomp(&fx);
                     //
                     for i in 0 .. n {
@@ -159,33 +162,28 @@ impl SDP for PDIPM
                     // for a slack variable
                     df_o[(n, 0)] = svd.solve(&eye).tr();
                 },
-                |x, ddf_o| {
-                    let eye = Mat::new(k, k).set_eye();
-                    let mut fx = - x[(n, 0)] * &eye;
-                    fx += &mat_f[n];
-                    for i in 0 .. n {
-                        fx += &mat_f[i] * x[(i, 0)];
-                    }
-                    let mut svd = MatSVD::new(fx.size());
-                    svd.decomp(&fx);
+                |_, ddf_o| {
+                    // x won't change because dd_objective is called after d_objective with the same x
+                    let svd = svd_cell.borrow();
                     //
                     let feye = svd.solve(&eye);
                     for c in 0 .. n {
                         let fc = svd.solve(&mat_f[c]);
                         for r in 0 .. c {
-                            let v = (&fc * svd.solve(&mat_f[r])).tr();
+                            let fr = svd.solve(&mat_f[r]);
+                            let v = fr.prod(&fc); // tr(fr*fc)
                             ddf_o[(r, c)] = v;
                             ddf_o[(c, r)] = v;
                         }
-                        let v = (&fc * &fc).tr();
+                        let v = fc.norm_p2sq(); // tr(fc*fc)
                         ddf_o[(c, c)] = v;
                         // for a slack variable
-                        let v = -(&fc * &feye).tr();
+                        let v = -fc.prod(&feye); // tr(fc*-feye)
                         ddf_o[(n, c)] = v;
                         ddf_o[(c, n)] = v;
                     }
                     // for a slack variable
-                    let v = (&feye * &feye).tr();
+                    let v = feye.norm_p2sq(); // tr(-feye*-feye)
                     ddf_o[(n, n)] = v;
                 },
                 |_, f_i| {
@@ -198,6 +196,8 @@ impl SDP for PDIPM
                     ddf_i.assign_all(0.);
                 },
                 |a, b| {
+                    a.assign_all(0.);
+                    b.assign_all(0.);
                     a.slice_mut(0 .. p, 0 .. n).assign(mat_a);
                     b.rows_mut(0 .. p).assign(vec_b);
                     // for a slack variable
@@ -211,7 +211,7 @@ impl SDP for PDIPM
             let rslt = rslt?;
             vec_xs.assign(&rslt.rows(0 .. n + 1));
 
-            t *= self.mu;
+            t *= param.mu;
         }
 
         Ok(vec_xs.rows(0 .. n).clone_sz())

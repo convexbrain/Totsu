@@ -34,32 +34,32 @@ use std::io::Write;
 /// 
 /// In the following, \\( d \\) does not appear since it does not matter.
 pub trait LP {
-    fn solve_lp<L>(&self, log: &mut L,
+    fn solve_lp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                    vec_c: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)
-                   -> Result<Mat, &'static str>
+                   -> Result<Mat, String>
     where L: Write;
 }
 
 fn check_param(vec_c: &Mat,
                mat_g: &Mat, vec_h: &Mat,
                mat_a: &Mat, vec_b: &Mat)
-               -> Result<(usize, usize, usize), &'static str>
+               -> Result<(usize, usize, usize), String>
 {
     let (n, _) = vec_c.size();
     let (m, _) = mat_g.size();
     let (p, _) = mat_a.size();
 
-    if n == 0 {return Err("vec_c: 0 rows");}
+    if n == 0 {return Err("vec_c: 0 rows".into());}
     // m = 0 means NO inequality constraints
     // p = 0 means NO equality constraints
 
-    if vec_c.size() != (n, 1) {return Err("vec_c: size mismatch");}
-    if mat_g.size() != (m, n) {return Err("mat_g: size mismatch");}
-    if vec_h.size() != (m, 1) {return Err("vec_h: size mismatch");}
-    if mat_a.size() != (p, n) {return Err("mat_a: size mismatch");}
-    if vec_b.size() != (p, 1) {return Err("vec_b: size mismatch");}
+    if vec_c.size() != (n, 1) {return Err(format!("vec_c: size {:?} must be {:?}", vec_c.size(), (n, 1)));}
+    if mat_g.size() != (m, n) {return Err(format!("mat_g: size {:?} must be {:?}", mat_g.size(), (m, n)));}
+    if vec_h.size() != (m, 1) {return Err(format!("vec_h: size {:?} must be {:?}", vec_h.size(), (m, 1)));}
+    if mat_a.size() != (p, n) {return Err(format!("mat_a: size {:?} must be {:?}", mat_a.size(), (p, n)));}
+    if vec_b.size() != (p, 1) {return Err(format!("vec_b: size {:?} must be {:?}", vec_b.size(), (p, 1)));}
 
     Ok((n, m, p))
 }
@@ -69,17 +69,18 @@ impl LP for PDIPM
     /// Runs the solver with given parameters.
     /// 
     /// Returns `Ok` with optimal \\(x\\) or `Err` with message string.
+    /// * `param` is solver parameters.
     /// * `log` outputs solver progress.
     /// * `vec_c` is \\(c\\).
     /// * `mat_g` is \\(G\\).
     /// * `vec_h` is \\(h\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_lp<L>(&self, log: &mut L,
+    fn solve_lp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                    vec_c: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)
-                   -> Result<Mat, &'static str>
+                   -> Result<Mat, String>
     where L: Write
     {
         // ----- parameter check
@@ -89,7 +90,7 @@ impl LP for PDIPM
         // ----- initial value of a slack variable
 
         let s = -vec_h.min().unwrap_or(0.);
-        let mut margin = self.margin;
+        let mut margin = param.margin;
         let mut s_initial = s + margin;
         while s_initial <= s {
             margin *= 2.;
@@ -98,8 +99,8 @@ impl LP for PDIPM
 
         // ----- start to solve
 
-        let rslt = self.solve(n + 1, m, p + 1, // '+ 1' is for a slack variable
-            log,
+        let rslt = self.solve(param, log,
+            n + 1, m, p + 1, // '+ 1' is for a slack variable
             |_, df_o| {
                 df_o.rows_mut(0 .. n).assign(&vec_c);
                 // for a slack variable
@@ -123,19 +124,22 @@ impl LP for PDIPM
                 ddf_i.assign_all(0.);
             },
             |a, b| {
+                a.assign_all(0.);
+                b.assign_all(0.);
                 a.slice_mut(0 .. p, 0 .. n).assign(mat_a);
                 b.rows_mut(0 .. p).assign(vec_b);
                 // for a slack variable
                 a[(p, n)] = 1.;
             },
             |mut x| {
+                x.assign_all(0.);
                 x[(n, 0)] = s_initial;
             }
         );
 
         match rslt {
             Ok(y) => Ok(y.rows(0 .. n).clone_sz()),
-            Err(s) => Err(s)
+            Err(s) => Err(s.into())
         }
     }
 }

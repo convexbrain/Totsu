@@ -45,7 +45,7 @@ impl MatSVD
     {
         let a = self.u.col(c1).norm_p2sq();
         let b = self.u.col(c2).norm_p2sq();
-        let d = (self.u.col(c1).t() * self.u.col(c2))[(0, 0)];
+        let d = self.u.col(c1).prod(&self.u.col(c2));
 
         if d * d <= TOL_CNV2 * a * b {
             true
