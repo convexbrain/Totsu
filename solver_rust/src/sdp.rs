@@ -204,8 +204,7 @@ impl SDP for PDIPM
                 },
                 |mut x| {
                     x.assign(&vec_xs);
-                },
-                || true
+                }
             );
 
             let rslt = rslt?;

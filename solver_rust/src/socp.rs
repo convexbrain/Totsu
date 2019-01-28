@@ -220,8 +220,7 @@ impl SOCP for PDIPM
                     }
                     x[(n + i, 0)] = s_initial;
                 }
-            },
-            || true
+            }
         );
 
         match rslt {

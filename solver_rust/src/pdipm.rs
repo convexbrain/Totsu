@@ -106,7 +106,7 @@ impl PDIPM
     ///   **The initial values must satisfy all inequality constraints strictly: \\(f_i(x)<0\\).**
     ///   This may seem a hard requirement, but introducing **slack variables** helps in most cases.
     ///   Refer pre-defined solver implementations for example.
-    pub fn solve<L, Fo1, Fo2, Fi0, Fi1, Fi2, Fe, Fs, Ft>(&self,
+    pub fn solve<L, Fo1, Fo2, Fi0, Fi1, Fi2, Fe, Fs>(&self,
         n: usize, m: usize, p: usize,
         log: &mut L,
         d_objective: Fo1,
@@ -115,8 +115,7 @@ impl PDIPM
         d_inequality: Fi1,
         dd_inequality: Fi2,
         equality: Fe,
-        start_point: Fs,
-        terminate: Ft
+        start_point: Fs
     ) -> Result<Mat, &'static str>
     where L: Write,
           Fo1: Fn(&MatSlice, &mut Mat),
@@ -125,8 +124,7 @@ impl PDIPM
           Fi1: Fn(&MatSlice, &mut Mat),
           Fi2: Fn(&MatSlice, &mut Mat, usize),
           Fe: FnOnce(&mut Mat, &mut Mat),
-          Fs: FnOnce(MatSliMu),
-          Ft: Fn() -> bool
+          Fs: FnOnce(MatSliMu)
     {
         let eps_feas = self.eps;
         let b_loop = self.n_loop;
@@ -229,12 +227,7 @@ impl PDIPM
 
             if (r_dual_norm <= eps_feas) && (r_pri_norm <= eps_feas) && (eta <= self.eps) {
                 writeln_or!(log, "termination criteria satisfied")?;
-                if terminate() {
-                    break;
-                }
-                else {
-                    writeln_or!(log, "but overloaded to continue")?;
-                }
+                break;
             }
 
             /***** calc kkt matrix *****/

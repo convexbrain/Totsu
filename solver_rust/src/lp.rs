@@ -130,8 +130,7 @@ impl LP for PDIPM
             },
             |mut x| {
                 x[(n, 0)] = s_initial;
-            },
-            || true
+            }
         );
 
         match rslt {
