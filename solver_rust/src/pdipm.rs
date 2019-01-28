@@ -40,17 +40,17 @@ pub struct PDIPM
 
     /***** matrix *****/
     // constant across loop
-    mat_a: Mat,
-    vec_b: Mat,
+    a: Mat,
+    b: Mat,
     // loop variable
-    vec_y: Mat,
+    y: Mat,
     kkt: Mat,
     // temporal in loop
-    vec_df_o: Mat,
-    vec_f_i: Mat,
-    vec_r_t: Mat,
-    mat_df_i: Mat,
-    mat_ddf: Mat,
+    df_o: Mat,
+    f_i: Mat,
+    r_t: Mat,
+    df_i: Mat,
+    ddf: Mat,
 
     /***** KKT matrix decomposition solver *****/
     svd: MatSVD
@@ -107,15 +107,15 @@ impl PDIPM
     {
         PDIPM {
             n_m_p: (0, 0, 0),
-            mat_a: Mat::new(0, 0),
-            vec_b: Mat::new_vec(0),
-            vec_y: Mat::new_vec(0),
+            a: Mat::new(0, 0),
+            b: Mat::new_vec(0),
+            y: Mat::new_vec(0),
             kkt: Mat::new(0, 0),
-            vec_df_o: Mat::new_vec(0),
-            vec_f_i: Mat::new_vec(0),
-            vec_r_t: Mat::new_vec(0),
-            mat_df_i: Mat::new(0, 0),
-            mat_ddf: Mat::new(0, 0),
+            df_o: Mat::new_vec(0),
+            f_i: Mat::new_vec(0),
+            r_t: Mat::new_vec(0),
+            df_i: Mat::new(0, 0),
+            ddf: Mat::new(0, 0),
             svd: MatSVD::new((0, 0))
         }
     }
@@ -124,15 +124,15 @@ impl PDIPM
     {
         if self.n_m_p != (n, m, p) {
             self.n_m_p = (n, m, p);
-            self.mat_a = Mat::new(p, n);
-            self.vec_b = Mat::new_vec(p);
-            self.vec_y = Mat::new_vec(n + m + p);
+            self.a = Mat::new(p, n);
+            self.b = Mat::new_vec(p);
+            self.y = Mat::new_vec(n + m + p);
             self.kkt = Mat::new(n + m + p, n + m + p);
-            self.vec_df_o = Mat::new_vec(n);
-            self.vec_f_i = Mat::new_vec(m);
-            self.vec_r_t = Mat::new_vec(n + m + p);
-            self.mat_df_i = Mat::new(m, n);
-            self.mat_ddf = Mat::new(n, n);
+            self.df_o = Mat::new_vec(n);
+            self.f_i = Mat::new_vec(m);
+            self.r_t = Mat::new_vec(n + m + p);
+            self.df_i = Mat::new(m, n);
+            self.ddf = Mat::new(n, n);
             self.svd = MatSVD::new((n + m + p, n + m + p));
         }
     }
@@ -198,36 +198,36 @@ impl PDIPM
         self.allocate(n, m, p);
 
         // initialize
-        let x = self.vec_y.rows_mut(0 .. n);
+        let x = self.y.rows_mut(0 .. n);
         start_point(x);
-        let mut lmd = self.vec_y.rows_mut(n .. n + m);
+        let mut lmd = self.y.rows_mut(n .. n + m);
         lmd.assign_all(param.margin);
-        equality(&mut self.mat_a, &mut self.vec_b);
+        equality(&mut self.a, &mut self.b);
 
         // initial df_o, f_i, df_i
-        let x = self.vec_y.rows(0 .. n);
-        d_objective(&x, &mut self.vec_df_o);
-        inequality(&x, &mut self.vec_f_i);
-        d_inequality(&x, &mut self.mat_df_i);
+        let x = self.y.rows(0 .. n);
+        d_objective(&x, &mut self.df_o);
+        inequality(&x, &mut self.f_i);
+        d_inequality(&x, &mut self.df_i);
 
         // inequality feasibility check
-        if self.vec_f_i.max().unwrap_or(-1.) >= 0. {return Err("inequality: not feasible at init");}
+        if self.f_i.max().unwrap_or(-1.) >= 0. {return Err("inequality: not feasible at init");}
 
         // initial residual - dual and primal
-        let mut r_dual = self.vec_r_t.rows_mut(0 .. n);
-        r_dual.assign(&self.vec_df_o);
+        let mut r_dual = self.r_t.rows_mut(0 .. n);
+        r_dual.assign(&self.df_o);
         if m > 0 {
-            let lmd = self.vec_y.rows(n .. n + m);
-            r_dual += self.mat_df_i.t() * lmd;
+            let lmd = self.y.rows(n .. n + m);
+            r_dual += self.df_i.t() * lmd;
         }
         if p > 0 {
-            let nu = self.vec_y.rows(n + m .. n + m + p);
-            r_dual += self.mat_a.t() * nu;
+            let nu = self.y.rows(n + m .. n + m + p);
+            r_dual += self.a.t() * nu;
         }
-        let mut r_pri = self.vec_r_t.rows_mut(n + m .. n + m + p);
+        let mut r_pri = self.r_t.rows_mut(n + m .. n + m + p);
         if p > 0 {
-            let x = self.vec_y.rows(0 .. n);
-            r_pri.assign(&(&self.mat_a * x - &self.vec_b));
+            let x = self.y.rows(0 .. n);
+            r_pri.assign(&(&self.a * x - &self.b));
         }
 
         //
@@ -237,13 +237,13 @@ impl PDIPM
             writeln_or!(log)?;
             writeln_or!(log, "===== ===== ===== ===== loop : {}", cnt)?;
 
-            let x = self.vec_y.rows(0 .. n);
-            let lmd = self.vec_y.rows(n .. n + m);
+            let x = self.y.rows(0 .. n);
+            let lmd = self.y.rows(n .. n + m);
 
             /***** calc t *****/
 
             let eta = if m > 0 {
-                -self.vec_f_i.prod(&lmd)
+                -self.f_i.prod(&lmd)
             }
             else {
                 param.eps
@@ -257,14 +257,14 @@ impl PDIPM
             /***** update residual - central *****/
 
             if m > 0 {
-                let mut r_cent = self.vec_r_t.rows_mut(n .. n + m);
-                r_cent.assign(&(-lmd.clone_diag() * &self.vec_f_i - inv_t));
+                let mut r_cent = self.r_t.rows_mut(n .. n + m);
+                r_cent.assign(&(-lmd.clone_diag() * &self.f_i - inv_t));
             }
 
             /***** termination criteria *****/
 
-            let r_dual = self.vec_r_t.rows(0 .. n);
-            let r_pri = self.vec_r_t.rows(n + m .. n + m + p);
+            let r_dual = self.r_t.rows(0 .. n);
+            let r_pri = self.r_t.rows(n + m .. n + m + p);
 
             let r_dual_norm = r_dual.norm_p2();
             let r_pri_norm = r_pri.norm_p2();
@@ -281,30 +281,30 @@ impl PDIPM
             /***** calc kkt matrix *****/
             
             let mut kkt_x_dual = self.kkt.slice_mut(0 .. n, 0 .. n);
-            dd_objective(&x, &mut self.mat_ddf);
-            kkt_x_dual.assign(&self.mat_ddf);
+            dd_objective(&x, &mut self.ddf);
+            kkt_x_dual.assign(&self.ddf);
             for i in 0 .. m {
-                dd_inequality(&x, &mut self.mat_ddf, i);
-                kkt_x_dual += lmd[(i, 0)] * &self.mat_ddf;
+                dd_inequality(&x, &mut self.ddf, i);
+                kkt_x_dual += lmd[(i, 0)] * &self.ddf;
             }
 
             if m > 0 {
                 let mut kkt_lmd_dual = self.kkt.slice_mut(0 .. n, n .. n + m);
-                kkt_lmd_dual.assign(&self.mat_df_i.t());
+                kkt_lmd_dual.assign(&self.df_i.t());
 
                 let mut kkt_x_cent = self.kkt.slice_mut(n .. n + m, 0 .. n);
-                kkt_x_cent.assign(&(-lmd.clone_diag() * &self.mat_df_i));
+                kkt_x_cent.assign(&(-lmd.clone_diag() * &self.df_i));
 
                 let mut kkt_lmd_cent = self.kkt.slice_mut(n .. n + m, n .. n + m);
-                kkt_lmd_cent.assign(&(-self.vec_f_i.clone_diag()));
+                kkt_lmd_cent.assign(&(-self.f_i.clone_diag()));
             }
 
             if p > 0 {
                 let mut kkt_nu_dual = self.kkt.slice_mut(0 .. n, n + m .. n + m + p);
-                kkt_nu_dual.assign(&self.mat_a.t());
+                kkt_nu_dual.assign(&self.a.t());
 
                 let mut kkt_x_pri = self.kkt.slice_mut(n + m .. n + m + p, 0 .. n);
-                kkt_x_pri.assign(&self.mat_a);
+                kkt_x_pri.assign(&self.a);
             }
 
             /***** calc search direction *****/
@@ -320,10 +320,10 @@ impl PDIPM
                 self.svd.decomp(&self.kkt);
             }
             
-            let dy = self.svd.solve(&(-&self.vec_r_t));
+            let dy = self.svd.solve(&(-&self.r_t));
 
-            writeln_or!(log, "y : {}", self.vec_y.t())?;
-            writeln_or!(log, "r_t : {}", self.vec_r_t.t())?;
+            writeln_or!(log, "y : {}", self.y.t())?;
+            writeln_or!(log, "r_t : {}", self.r_t.t())?;
             writeln_or!(log, "dy : {}", dy.t())?;
 
             /***** back tracking line search - from here *****/
@@ -340,7 +340,7 @@ impl PDIPM
             }
             let mut s = param.s_coef * s_max;
 
-            let mut y_p = &self.vec_y + s * &dy;
+            let mut y_p = &self.y + s * &dy;
 
             let mut bcnt = 0;
             while bcnt < b_loop {
@@ -348,11 +348,11 @@ impl PDIPM
                 let lmd_p = y_p.rows(n .. n + m);
                 
                 // update f_i
-                inequality(&x_p, &mut self.vec_f_i);
+                inequality(&x_p, &mut self.f_i);
 
-                if (self.vec_f_i.max().unwrap_or(-1.) < 0.) && (lmd_p.min().unwrap_or(1.) > 0.) {break;}
+                if (self.f_i.max().unwrap_or(-1.) < 0.) && (lmd_p.min().unwrap_or(1.) > 0.) {break;}
                 s *= param.beta;
-                y_p = &self.vec_y + s * &dy;
+                y_p = &self.y + s * &dy;
 
                 bcnt += 1;
             }
@@ -366,7 +366,7 @@ impl PDIPM
                 writeln_or!(log, "infeasible in this direction")?;
             }
 
-            let org_r_t_norm = self.vec_r_t.norm_p2();
+            let org_r_t_norm = self.r_t.norm_p2();
 
             while bcnt < b_loop {
                 let x_p = y_p.rows(0 .. n);
@@ -374,41 +374,41 @@ impl PDIPM
                 let nu_p = y_p.rows(n + m .. n + m + p);
 
                 // update df_o, f_i, df_i
-                d_objective(&x_p, &mut self.vec_df_o);
-                inequality(&x_p, &mut self.vec_f_i);
-                d_inequality(&x_p, &mut self.mat_df_i);
+                d_objective(&x_p, &mut self.df_o);
+                inequality(&x_p, &mut self.f_i);
+                d_inequality(&x_p, &mut self.df_i);
 
                 // update residual
-                let mut r_dual = self.vec_r_t.rows_mut(0 .. n);
-                r_dual.assign(&self.vec_df_o);
+                let mut r_dual = self.r_t.rows_mut(0 .. n);
+                r_dual.assign(&self.df_o);
                 if m > 0 {
-                    r_dual += self.mat_df_i.t() * &lmd_p;
+                    r_dual += self.df_i.t() * &lmd_p;
                 }
                 if p > 0 {
-                    r_dual += self.mat_a.t() * nu_p;
+                    r_dual += self.a.t() * nu_p;
                 }
                 if m > 0 {
-                    let mut r_cent = self.vec_r_t.rows_mut(n .. n + m);
-                    r_cent.assign(&(-lmd_p.clone_diag() * &self.vec_f_i - inv_t));
+                    let mut r_cent = self.r_t.rows_mut(n .. n + m);
+                    r_cent.assign(&(-lmd_p.clone_diag() * &self.f_i - inv_t));
                 }
                 if p > 0 {
-                    let mut r_pri = self.vec_r_t.rows_mut(n + m .. n + m + p);
-                    r_pri.assign(&(&self.mat_a * x_p - &self.vec_b));
+                    let mut r_pri = self.r_t.rows_mut(n + m .. n + m + p);
+                    r_pri.assign(&(&self.a * x_p - &self.b));
                 }
 
-                if self.vec_r_t.norm_p2() <= (1. - param.alpha * s) * org_r_t_norm {break;}
+                if self.r_t.norm_p2() <= (1. - param.alpha * s) * org_r_t_norm {break;}
                 s *= param.beta;
-                y_p = &self.vec_y + s * &dy;
+                y_p = &self.y + s * &dy;
 
                 bcnt += 1;
             }
 
             writeln_or!(log, "s : {:.3e}", s)?;
 
-            if (bcnt < b_loop) && ((&y_p - &self.vec_y).norm_p2() >= FP_EPSILON) {
+            if (bcnt < b_loop) && ((&y_p - &self.y).norm_p2() >= FP_EPSILON) {
                 writeln_or!(log, "update")?;
                 // update y
-                self.vec_y.assign(&y_p);
+                self.y.assign(&y_p);
             }
             else {
                 writeln_or!(log, "no more improvement")?;
@@ -427,13 +427,13 @@ impl PDIPM
 
         writeln_or!(log)?;
         writeln_or!(log, "===== ===== ===== ===== result")?;
-        let x = self.vec_y.rows(0 .. n);
-        let lmd = self.vec_y.rows(n .. n + m);
-        let nu = self.vec_y.rows(n + m .. n + m + p);
+        let x = self.y.rows(0 .. n);
+        let lmd = self.y.rows(n .. n + m);
+        let nu = self.y.rows(n + m .. n + m + p);
         writeln_or!(log, "x : {}", x.t())?;
         writeln_or!(log, "lmd : {}", lmd.t())?;
         writeln_or!(log, "nu : {}", nu.t())?;
 
-        Ok(&self.vec_y)
+        Ok(&self.y)
     }
 }
