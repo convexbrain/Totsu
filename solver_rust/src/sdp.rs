@@ -40,7 +40,7 @@ use std::cell::RefCell;
 /// \\end{array}
 /// \\]
 pub trait SDP {
-    fn solve_sdp<L>(&self, param: &PDIPMParam, log: &mut L,
+    fn solve_sdp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
                     mat_a: &Mat, vec_b: &Mat)
                     -> Result<Mat, &'static str>
@@ -87,13 +87,12 @@ impl SDP for PDIPM
     /// * `mat_f` is \\(F_0, \\ldots, F_n\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_sdp<L>(&self, param: &PDIPMParam, log: &mut L,
+    fn solve_sdp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
                     mat_a: &Mat, vec_b: &Mat)
                     -> Result<Mat, &'static str>
     where L: Write
     {
-        // TODO: improve efficiency
         // TODO: improve accuracy
 
         // ----- parameter check
@@ -197,6 +196,8 @@ impl SDP for PDIPM
                     ddf_i.assign_all(0.);
                 },
                 |a, b| {
+                    a.assign_all(0.);
+                    b.assign_all(0.);
                     a.slice_mut(0 .. p, 0 .. n).assign(mat_a);
                     b.rows_mut(0 .. p).assign(vec_b);
                     // for a slack variable

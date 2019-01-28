@@ -34,7 +34,7 @@ use std::io::Write;
 /// 
 /// In the following, \\( d \\) does not appear since it does not matter.
 pub trait LP {
-    fn solve_lp<L>(&self, param: &PDIPMParam, log: &mut L,
+    fn solve_lp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                    vec_c: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)
@@ -42,6 +42,7 @@ pub trait LP {
     where L: Write;
 }
 
+// TODO: error string
 fn check_param(vec_c: &Mat,
                mat_g: &Mat, vec_h: &Mat,
                mat_a: &Mat, vec_b: &Mat)
@@ -76,7 +77,7 @@ impl LP for PDIPM
     /// * `vec_h` is \\(h\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_lp<L>(&self, param: &PDIPMParam, log: &mut L,
+    fn solve_lp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                    vec_c: &Mat,
                    mat_g: &Mat, vec_h: &Mat,
                    mat_a: &Mat, vec_b: &Mat)
@@ -124,12 +125,15 @@ impl LP for PDIPM
                 ddf_i.assign_all(0.);
             },
             |a, b| {
+                a.assign_all(0.);
+                b.assign_all(0.);
                 a.slice_mut(0 .. p, 0 .. n).assign(mat_a);
                 b.rows_mut(0 .. p).assign(vec_b);
                 // for a slack variable
                 a[(p, n)] = 1.;
             },
             |mut x| {
+                x.assign_all(0.);
                 x[(n, 0)] = s_initial;
             }
         );

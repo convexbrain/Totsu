@@ -31,7 +31,7 @@ use std::io::Write;
 /// \\end{array}
 /// \\]
 pub trait QCQP {
-    fn solve_qcqp<L>(&self, param: &PDIPMParam, log: &mut L,
+    fn solve_qcqp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                      mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
                      -> Result<Mat, &'static str>
@@ -78,7 +78,7 @@ impl QCQP for PDIPM
     /// * `scl_r` is \\(r_0, \\ldots, r_m\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_qcqp<L>(&self, param: &PDIPMParam, log: &mut L,
+    fn solve_qcqp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                      mat_p: &[Mat], vec_q: &[Mat], scl_r: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
                      -> Result<Mat, &'static str>
@@ -142,12 +142,15 @@ impl QCQP for PDIPM
                 ddf_i.col_mut(n).assign_all(0.);
             },
             |a, b| {
+                a.assign_all(0.);
+                b.assign_all(0.);
                 a.slice_mut(0 .. p, 0 .. n).assign(mat_a);
                 b.rows_mut(0 .. p).assign(vec_b);
                 // for a slack variable
                 a[(p, n)] = 1.;
             },
             |mut x| {
+                x.assign_all(0.);
                 x[(n, 0)] = s_initial;
             }
         );

@@ -35,7 +35,7 @@ use std::io::Write;
 /// \\]
 /// where \\( \\epsilon_{\\rm bd} > 0 \\) indicates the extent of approximation that excludes \\( c_i^T x + d_i = 0 \\) boundary.
 pub trait SOCP {
-    fn solve_socp<L>(&self, param: &PDIPMParam, log: &mut L,
+    fn solve_socp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                      vec_f: &Mat,
                      mat_g: &[Mat], vec_h: &[Mat], vec_c: &[Mat], scl_d: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
@@ -89,7 +89,7 @@ impl SOCP for PDIPM
     /// * `scl_d` is \\(d_0, \\ldots, d_{m-1}\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    fn solve_socp<L>(&self, param: &PDIPMParam, log: &mut L,
+    fn solve_socp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                      vec_f: &Mat,
                      mat_g: &[Mat], vec_h: &[Mat], vec_c: &[Mat], scl_d: &[FP],
                      mat_a: &Mat, vec_b: &Mat)
@@ -198,6 +198,8 @@ impl SOCP for PDIPM
                 }
             },
             |a, b| {
+                a.assign_all(0.);
+                b.assign_all(0.);
                 a.slice_mut(0 .. p, 0 .. n).assign(mat_a);
                 b.rows_mut(0 .. p).assign(vec_b);
 
@@ -209,6 +211,7 @@ impl SOCP for PDIPM
                 }
             },
             |mut x| {
+                x.assign_all(0.);
                 // slack variables
                 for i in 0 .. m {
                     let s = vec_h[i].norm_p2() + eps_bd;
