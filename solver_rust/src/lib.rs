@@ -98,7 +98,7 @@ pub mod sdp;
 /// Prelude
 pub mod prelude {
     pub use crate::mat::{Mat, FP};
-    pub use crate::pdipm::{PDIPM, PDIPMParam};
+    pub use crate::pdipm::{PDIPM, PDIPMParam, PDIPMErr};
 }
 
 /// Pre-defined solvers
@@ -252,10 +252,7 @@ mod tests {
         let mat_a = Mat::new(p, n);
         let vec_b = Mat::new_vec(p);
 
-        let param = PDIPMParam {
-            eps: 1e-4, // solve_sdp() is not so accurate
-            .. Default::default()
-        };
+        let param = PDIPMParam::default();
         let rslt = PDIPM::new().solve_sdp(&param, &mut std::io::sink(),
                                           &vec_c, &mat_f,
                                           &mat_a, &vec_b).unwrap();
@@ -263,7 +260,7 @@ mod tests {
         let exp = Mat::new_vec(n).set_iter(&[
             3., 4.
         ]);
-        let eps = 1e-3; // solve_sdp() is not so accurate
+        let eps = 1e-6; // solve_sdp() is not so accurate
         println!("rslt = {}", rslt);
         assert!((&rslt - exp).norm_p2() < eps);
     }

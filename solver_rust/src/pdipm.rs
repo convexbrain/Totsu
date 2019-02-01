@@ -8,7 +8,7 @@ use super::matsvd::MatSVD;
 use std::io::Write;
 macro_rules! writeln_or {
     ( $( $arg: expr ),* ) => {
-        writeln!( $( $arg ),* ).or(Err("log: I/O Error"))
+        writeln!( $( $arg ),* ).or(Err(PDIPMErr::LogFailure))
     };
 }
 
@@ -100,6 +100,32 @@ impl Default for PDIPMParam
     }
 }
 
+/// Primal-Dual Interior-Point Method solver errors.
+pub enum PDIPMErr<'a>
+{
+    /// Ended in an inaccurate result because of a too small step.
+    Inaccurate(&'a Mat),
+    /// Did not converged.
+    NotConverged,
+    /// Did not meet inequality feasibility.
+    Infeasible,
+    /// Failed to log due to I/O error.
+    LogFailure
+}
+
+impl<'a> From<PDIPMErr<'a>> for String
+{
+    fn from(err: PDIPMErr) -> String
+    {
+        match err {
+            PDIPMErr::Inaccurate(_) => "PDIPM Inaccurate".into(),
+            PDIPMErr::NotConverged => "PDIPM Not Converged".into(),
+            PDIPMErr::Infeasible => "PDIPM Infeasible".into(),
+            PDIPMErr::LogFailure => "PDIPM Log Failure".into(),
+        }
+    }
+}
+
 impl PDIPM
 {
     /// Creates an instance.
@@ -140,7 +166,7 @@ impl PDIPM
     /// Starts to solve a optimization problem by primal-dual interior-point method.
     /// 
     /// Returns `Ok` with optimal \\(x, \\lambda, \\nu\\) concatenated vector
-    /// or `Err` with message string.
+    /// or `Err` with 'PDIPMErr' type.
     /// * `param` is solver parameters.
     /// * `log` outputs solver progress.
     /// * `n` is \\(n\\), the dimension of the variable \\(x\\).
@@ -178,7 +204,7 @@ impl PDIPM
         dd_inequality: Fi2,
         equality: Fe,
         start_point: Fs
-    ) -> Result<&Mat, &'static str>
+    ) -> Result<&Mat, PDIPMErr>
     where L: Write,
           Fo1: Fn(&MatSlice, &mut Mat),
           Fo2: Fn(&MatSlice, &mut Mat),
@@ -190,9 +216,6 @@ impl PDIPM
     {
         let eps_feas = param.eps;
         let b_loop = param.n_loop;
-
-        // parameter check
-        if n == 0 {return Err("n: 0");}
 
         // allocate matrix
         self.allocate(n, m, p);
@@ -211,7 +234,7 @@ impl PDIPM
         d_inequality(&x, &mut self.df_i);
 
         // inequality feasibility check
-        if self.f_i.max().unwrap_or(-1.) >= 0. {return Err("inequality: not feasible at init");}
+        if self.f_i.max().unwrap_or(-1.) >= 0. {return Err(PDIPMErr::Infeasible);}
 
         // initial residual - dual and primal
         let mut r_dual = self.r_t.rows_mut(0 .. n);
@@ -250,7 +273,7 @@ impl PDIPM
             };
 
             // inequality feasibility check
-            if eta < 0. {return Err("inequality: not feasible in loop");}
+            if eta < 0. {return Err(PDIPMErr::Infeasible);} // never happen
 
             let inv_t = eta / (param.mu * m as FP);
 
@@ -364,6 +387,7 @@ impl PDIPM
             }
             else {
                 writeln_or!(log, "infeasible in this direction")?;
+                return Err(PDIPMErr::NotConverged);
             }
 
             let org_r_t_norm = self.r_t.norm_p2();
@@ -405,14 +429,20 @@ impl PDIPM
 
             writeln_or!(log, "s : {:.3e}", s)?;
 
-            if (bcnt < b_loop) && ((&y_p - &self.y).norm_p2() >= FP_EPSILON) {
-                writeln_or!(log, "update")?;
-                // update y
-                self.y.assign(&y_p);
+            if bcnt < b_loop {
+                if (&y_p - &self.y).norm_p2() >= FP_EPSILON {
+                    writeln_or!(log, "update")?;
+                    // update y
+                    self.y.assign(&y_p);
+                }
+                else {
+                    writeln_or!(log, "too small step")?;
+                    return Err(PDIPMErr::Inaccurate(&self.y));
+                }
             }
             else {
-                writeln_or!(log, "no more improvement")?;
-                return Err("line search: not converged");
+                writeln_or!(log, "B-iteration limit")?;
+                return Err(PDIPMErr::NotConverged);
             }
 
             /***** back tracking line search - to here *****/
@@ -421,8 +451,8 @@ impl PDIPM
         }
 
         if !(cnt < param.n_loop) {
-            writeln_or!(log, "iteration limit")?;
-            return Err("iteration: not converged");
+            writeln_or!(log, "N-iteration limit")?;
+            return Err(PDIPMErr::NotConverged);
         }
 
         writeln_or!(log)?;
