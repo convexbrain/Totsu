@@ -86,7 +86,7 @@ impl SDP for PDIPM
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
     /// 
-    /// *NOTE: Current implementation which uses the barrier method is not so accurate.*
+    /// *NOTE: Current implementation that uses the barrier method is not so accurate.*
     fn solve_sdp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
                     mat_a: &Mat, vec_b: &Mat)
