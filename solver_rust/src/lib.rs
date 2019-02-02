@@ -31,7 +31,7 @@ The overall algorithm is based on the reference:
 
 [`PDIPM`](pdipm/struct.PDIPM.html) has a core method [`solve`](pdipm/struct.PDIPM.html#method.solve)
 which takes objective and constraint (derivative) functions as closures.
-Therefore solving a specific problem requires a implementation of those closures.
+Therefore solving a specific problem requires an implementation of those closures.
 You can use a pre-defined implementations (see [`predef`](predef/index.html)),
 as well as construct a user-defined tailored version for the reason of functionality and efficiency.
 

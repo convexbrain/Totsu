@@ -166,7 +166,7 @@ impl PDIPM
     /// Starts to solve a optimization problem by primal-dual interior-point method.
     /// 
     /// Returns `Ok` with optimal \\(x, \\lambda, \\nu\\) concatenated vector
-    /// or `Err` with 'PDIPMErr' type.
+    /// or `Err` with `PDIPMErr` type.
     /// * `param` is solver parameters.
     /// * `log` outputs solver progress.
     /// * `n` is \\(n\\), the dimension of the variable \\(x\\).
