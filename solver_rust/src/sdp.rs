@@ -80,13 +80,13 @@ impl SDP for PDIPM
     /// 
     /// Returns `Ok` with optimal \\(x\\) or `Err` with message string.
     /// * `param` is solver parameters.
-    ///   *NOTE: Current implementation is not so accurate.*
-    ///   *You may need increase `eps` parameter.*
     /// * `log` outputs solver progress.
     /// * `vec_c` is \\(c\\).
     /// * `mat_f` is \\(F_0, \\ldots, F_n\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
+    /// 
+    /// *NOTE: Current implementation that uses the barrier method is not so accurate.*
     fn solve_sdp<L>(&mut self, param: &PDIPMParam, log: &mut L,
                     vec_c: &Mat, mat_f: &[Mat],
                     mat_a: &Mat, vec_b: &Mat)
@@ -208,8 +208,11 @@ impl SDP for PDIPM
                 }
             );
 
-            let rslt = rslt?;
-            vec_xs.assign(&rslt.rows(0 .. n + 1));
+            match rslt {
+                Ok(y) => vec_xs.assign(&y.rows(0 .. n + 1)),
+                Err(PDIPMErr::Inaccurate(y)) => vec_xs.assign(&y.rows(0 .. n + 1)),
+                Err(other) => return Err(other.into())
+            };
 
             t *= param.mu;
         }
