@@ -97,7 +97,7 @@ pub mod sdp;
 
 /// Prelude
 pub mod prelude {
-    pub use crate::mat::{Mat, FP};
+    pub use crate::mat::{Mat, MatSlice, MatSliMu, FP};
     pub use crate::pdipm::{PDIPM, PDIPMParam, PDIPMErr};
 }
 
