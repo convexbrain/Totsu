@@ -275,13 +275,13 @@ impl PDIPM
             // inequality feasibility check
             if eta < 0. {return Err(PDIPMErr::Infeasible);} // never happen
 
-            let inv_t = eta / (param.mu * m as FP);
+            let inv_t = if m > 0 {Some(eta / (param.mu * m as FP))} else {None};
 
             /***** update residual - central *****/
 
             if m > 0 {
                 let mut r_cent = self.r_t.rows_mut(n .. n + m);
-                r_cent.assign(&(-lmd.clone_diag() * &self.f_i - inv_t));
+                r_cent.assign(&(-lmd.clone_diag() * &self.f_i - inv_t.unwrap()));
             }
 
             /***** termination criteria *****/
@@ -413,7 +413,7 @@ impl PDIPM
                 }
                 if m > 0 {
                     let mut r_cent = self.r_t.rows_mut(n .. n + m);
-                    r_cent.assign(&(-lmd_p.clone_diag() * &self.f_i - inv_t));
+                    r_cent.assign(&(-lmd_p.clone_diag() * &self.f_i - inv_t.unwrap()));
                 }
                 if p > 0 {
                     let mut r_pri = self.r_t.rows_mut(n + m .. n + m + p);

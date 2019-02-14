@@ -6,7 +6,11 @@ Totsu (凸 in Japanese) means convex.
 
 This crate for Rust provides a basic **primal-dual interior-point method** solver: `PDIPM`.
 
-## solver/
+Crate: https://crates.io/crates/totsu/
+
+Documentation: https://docs.rs/totsu/
+
+## [obsolete] solver/
 
 This C++ package provides a basic **primal-dual interior-point method** solver: `PrimalDualIPM`.
 
