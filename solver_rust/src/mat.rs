@@ -1032,18 +1032,25 @@ impl<V: View> Div<FP> for &MatGen<V>
 
 //
 
-/// Xorshift random number generator initializer
-pub const XOR64_INIT: u64 = 88172645463325252;
-
 /// Xorshift random number generator
-pub fn xor64(state: &mut u64) -> FP
-{
-    const MAX: FP = (1_u128 << 64) as FP;
-    *state = *state ^ (*state << 7);
-    *state = *state ^ (*state >> 9);
+pub struct XOR64(u64);
 
-    // [0.0, 1.0)
-    (*state as FP) / MAX
+impl XOR64
+{
+    pub fn init() -> XOR64
+    {
+        XOR64(88172645463325252)
+    }
+
+    pub fn next(&mut self) -> FP
+    {
+        const MAX: FP = (1_u128 << 64) as FP;
+        self.0 = self.0 ^ (self.0 << 7);
+        self.0 = self.0 ^ (self.0 >> 9);
+
+        // [0.0, 1.0)
+        (self.0 as FP) / MAX
+    }
 }
 
 //
@@ -1085,9 +1092,10 @@ fn test_misc()
         assert_eq!(a, b);
     }
     {
-        let mut r = XOR64_INIT;
+        let mut r = XOR64::init();
         let mut a = Mat::new(4, 4);
-        let b = Mat::new_like(&a).set_by(|_, _| xor64(&mut r));
+        let b = Mat::new_like(&a).set_by(|_, _| r.next());
+        println!("{}", b);
         a.assign(&b);
         assert_eq!(a, b);
     }

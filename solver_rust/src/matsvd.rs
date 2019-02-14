@@ -171,15 +171,15 @@ impl MatSVD
 }
 
 #[cfg(test)]
-use super::mat::{xor64, XOR64_INIT};
+use super::mat::{XOR64};
 
 #[test]
 fn test_decomp()
 {
     const TOL_RMSE: FP = 1.0 / (1u64 << 32) as FP;
 
-    let mut r = XOR64_INIT;
-    let mat = Mat::new(4, 4).set_by(|_, _| xor64(&mut r));
+    let mut r = XOR64::init();
+    let mat = Mat::new(4, 4).set_by(|_, _| r.next());
     println!("mat = {}", mat);
 
     let mut svd = MatSVD::new(mat.size());
