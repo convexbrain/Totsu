@@ -171,7 +171,7 @@ impl MatSVD
 }
 
 #[cfg(test)]
-use super::mat::{XOR64};
+use super::mat::XOR64;
 
 #[test]
 fn test_decomp()
