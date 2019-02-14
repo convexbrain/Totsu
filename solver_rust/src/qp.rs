@@ -119,13 +119,13 @@ impl QP for PDIPM
             |x, f_i| {
                 f_i.assign(&(
                     mat_g * x.rows(0 .. n) - vec_h
-                    - x[(n, 0)] * (m as FP) // minus a slack variable
+                    - x[(n, 0)] // minus a slack variable
                 ))
             },
             |_, df_i| {
                 df_i.cols_mut(0 .. n).assign(&mat_g);
                 // for a slack variable
-                df_i.col_mut(n).assign_all(-(m as FP));
+                df_i.col_mut(n).assign_all(-1.);
             },
             |_, ddf_i, _| {
                 ddf_i.assign_all(0.);
