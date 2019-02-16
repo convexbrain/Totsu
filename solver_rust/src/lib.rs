@@ -84,6 +84,7 @@ assert!((&rslt - exp).norm_p2() < param.eps);
 ```
 
 You can find other test examples of pre-defined solvers in [`lib.rs`](../src/totsu/lib.rs.html).
+More practical examples are available [here](https://github.com/convexbrain/Totsu/tree/master/examples).
 */
 
 pub mod mat;
