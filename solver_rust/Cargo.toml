@@ -1,6 +1,6 @@
 [package]
 name = "totsu"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2018"
 
