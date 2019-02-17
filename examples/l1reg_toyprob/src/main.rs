@@ -51,42 +51,24 @@ fn main() -> std::io::Result<()> {
     vec_c.rows_mut(l * 2 .. l * 3).assign_all(lambda); // for beta, L1-regularization
 
     let mut mat_g = Mat::new(m, n);
-    let mut blk = mat_g.slice_mut(0 .. l, 0 .. l);
-    blk.assign_eye();
-    blk *= -1.;
-    let mut blk = mat_g.slice_mut(l .. l * 2, 0 .. l);
-    blk.assign_eye();
-    blk *= -1.;
-    let mut blk = mat_g.slice_mut(0 .. l, l .. l * 2);
-    blk.assign_by(|r, c| {
+    mat_g.slice_mut(0 .. l, 0 .. l).assign_eye(-1.);
+    mat_g.slice_mut(l .. l * 2, 0 .. l).assign_eye(-1.);
+    mat_g.slice_mut(0 .. l, l .. l * 2).assign_by(|r, c| {
         Some(kernel(&x.col(r), &x.col(c)))
     });
-    let mut blk = mat_g.slice_mut(l .. l * 2, l .. l * 2);
-    blk.assign_by(|r, c| {
+    mat_g.slice_mut(l .. l * 2, l .. l * 2).assign_by(|r, c| {
         Some(-kernel(&x.col(r), &x.col(c)))
     });
-    let mut blk = mat_g.slice_mut(l * 2 .. l * 3, l .. l * 2);
-    blk.assign_eye();
-    let mut blk = mat_g.slice_mut(l * 3 .. l * 4, l .. l * 2);
-    blk.assign_eye();
-    blk *= -1.;
-    let mut blk = mat_g.slice_mut(l * 3 .. l * 4, l * 2 .. l * 3);
-    blk.assign_eye();
-    blk *= -1.;
-    let mut blk = mat_g.slice_mut(l * 3 .. l * 4, l * 2 .. l * 3);
-    blk.assign_eye();
-    blk *= -1.;
-    let mut blk = mat_g.slice_mut(0 .. l, l * 3 ..= l * 3);
-    blk.assign_all(1.);
-    let mut blk = mat_g.slice_mut(l .. l * 2, l * 3 ..= l * 3);
-    blk.assign_all(-1.);
+    mat_g.slice_mut(l * 2 .. l * 3, l .. l * 2).assign_eye(1.);
+    mat_g.slice_mut(l * 3 .. l * 4, l .. l * 2).assign_eye(-1.);
+    mat_g.slice_mut(l * 3 .. l * 4, l * 2 .. l * 3).assign_eye(-1.);
+    mat_g.slice_mut(l * 3 .. l * 4, l * 2 .. l * 3).assign_eye(-1.);
+    mat_g.slice_mut(0 .. l, l * 3 ..= l * 3).assign_all(1.);
+    mat_g.slice_mut(l .. l * 2, l * 3 ..= l * 3).assign_all(-1.);
 
     let mut vec_h = Mat::new_vec(m);
-    let mut blk = vec_h.rows_mut(0 .. l);
-    blk.assign(&y);
-    let mut blk = vec_h.rows_mut(l .. l * 2);
-    blk.assign(&y);
-    blk *= -1.;
+    vec_h.rows_mut(0 .. l).assign(&y);
+    vec_h.rows_mut(l .. l * 2).assign(&-&y);
 
     let mat_a = Mat::new(p, n);
     let vec_b = Mat::new_vec(p);

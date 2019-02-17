@@ -48,9 +48,9 @@ fn main() -> std::io::Result<()> {
     let mat_p = Mat::new(n, n).set_by(|r, c| {
         y[(r, 0)] * y[(c, 0)] * kernel(&x.col(r), &x.col(c))
     });
-    let vec_q = Mat::new_vec(n).set_by(|_, _| -1.);
+    let vec_q = Mat::new_vec(n).set_all(-1.);
 
-    let mat_g = Mat::new(m, n).set_by(|r, c| if r == c {-1.} else {0.});
+    let mat_g = Mat::new(m, n).set_eye(-1.);
     let vec_h = Mat::new_vec(m);
 
     let mat_a = y.t().clone_sz();
