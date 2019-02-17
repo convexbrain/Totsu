@@ -1,5 +1,5 @@
 [[package]]
-name = "svm_toyprob"
+name = "l1reg_toyprob"
 version = "0.1.0"
 dependencies = [
  "totsu 0.4.2",

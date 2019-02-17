@@ -10,6 +10,12 @@ Crate: https://crates.io/crates/totsu/
 
 Documentation: https://docs.rs/totsu/
 
+## examples/
+
+How to use Totsu `PDIPM` to solve various optimization problems.
+
+---
+
 ## [obsolete] solver/
 
 This C++ package provides a basic **primal-dual interior-point method** solver: `PrimalDualIPM`.

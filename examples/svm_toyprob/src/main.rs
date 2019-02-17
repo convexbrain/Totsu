@@ -25,7 +25,7 @@ fn wx(x: &Mat, y: &Mat, alpha: &Mat, xi: &MatSlice) -> FP
 }
 
 /// main
-fn main() {
+fn main() -> std::io::Result<()> {
 
     //----- make sample points for training
 
@@ -48,9 +48,9 @@ fn main() {
     let mat_p = Mat::new(n, n).set_by(|r, c| {
         y[(r, 0)] * y[(c, 0)] * kernel(&x.col(r), &x.col(c))
     });
-    let vec_q = Mat::new_vec(n).set_by(|_, _| -1.);
+    let vec_q = Mat::new_vec(n).set_all(-1.);
 
-    let mat_g = Mat::new(m, n).set_by(|r, c| if r == c {-1.} else {0.});
+    let mat_g = Mat::new(m, n).set_eye(-1.);
     let vec_h = Mat::new_vec(m);
 
     let mat_a = y.t().clone_sz();
@@ -61,9 +61,9 @@ fn main() {
 
     let param = PDIPMParam::default();
     let rslt = PDIPM::new().solve_qp(&param, &mut std::io::sink(),
-                                 &mat_p, &vec_q,
-                                 &mat_g, &vec_h,
-                                 &mat_a, &vec_b).unwrap();
+                                     &mat_p, &vec_q,
+                                     &mat_g, &vec_h,
+                                     &mat_a, &vec_b).unwrap();
     //println!("{}", rslt);
 
     //----- calculate bias term
@@ -80,13 +80,13 @@ fn main() {
 
     //----- file output for graph plot
 
-    let mut dat_point = BufWriter::new(File::create("dat_point").unwrap());
+    let mut dat_point = BufWriter::new(File::create("dat_point")?);
 
     for smp in 0 .. l {
-        writeln!(dat_point, "{} {} {} {}", x[(0, smp)], x[(1, smp)], y[(smp, 0)], rslt[(smp, 0)]).unwrap();
+        writeln!(dat_point, "{} {} {} {}", x[(0, smp)], x[(1, smp)], y[(smp, 0)], rslt[(smp, 0)])?;
     }
 
-    let mut dat_grid = BufWriter::new(File::create("dat_grid").unwrap());
+    let mut dat_grid = BufWriter::new(File::create("dat_grid")?);
 
     let grid = 20;
     for iy in 0 .. grid {
@@ -98,8 +98,10 @@ fn main() {
 
             let f = wx(&x, &y, &rslt, &xi.as_slice()) + bias;
 
-            write!(dat_grid, " {}", f).unwrap();
+            write!(dat_grid, " {}", f)?;
         }
-        writeln!(dat_grid).unwrap();
+        writeln!(dat_grid)?;
     }
+
+    Ok(())
 }

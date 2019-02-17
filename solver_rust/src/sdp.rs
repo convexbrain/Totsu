@@ -114,7 +114,7 @@ impl SDP for PDIPM
 
         // ----- initial value of t for barrier method
 
-        let eye = Mat::new(k, k).set_eye();
+        let eye = Mat::new(k, k).set_eye(1.);
 
         let mut vec_q = Mat::new_vec(n);
         let fx0 = &mat_f[n] - s_initial * &eye;

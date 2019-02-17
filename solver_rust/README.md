@@ -24,7 +24,8 @@ as well as construct a user-defined tailored version for the reason of functiona
 This crate has no dependencies on other crates at all.
 Necessary matrix operations are implemented in `mat` and `matsvd`.
 
-## Example: QP
+## Examples
+### QP
 
 ```rust
 use totsu::prelude::*;
@@ -69,4 +70,7 @@ println!("rslt = {}", rslt);
 assert!((&rslt - exp).norm_p2() < param.eps);
 ```
 
+### Other Examples
+
 You can find other test examples of pre-defined solvers in `lib.rs`.
+More practical examples are available [here](https://github.com/convexbrain/Totsu/tree/master/examples).
