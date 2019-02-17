@@ -1,0 +1,11 @@
+[[package]]
+name = "l1reg_toyprob"
+version = "0.1.0"
+dependencies = [
+ "totsu 0.4.1",
+]
+
+[[package]]
+name = "totsu"
+version = "0.4.1"
+
