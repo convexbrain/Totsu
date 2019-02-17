@@ -346,10 +346,10 @@ impl<V: View> MatGen<V>
         }
         self
     }
-    /// *set* - Set eye matrix.
-    pub fn set_eye(self) -> MatGen<V>
+    /// *set* - Set eye matrix with a value.
+    pub fn set_eye(self, value: FP) -> MatGen<V>
     {
-        self.set_by(|r, c| if r == c {1.} else {0.})
+        self.set_by(|r, c| if r == c {value} else {0.})
     }
     /// *set* - Set a value.
     pub fn set_all(self, value: FP) -> MatGen<V>
@@ -428,10 +428,10 @@ impl<V: View> MatGen<V>
             }
         }
     }
-    /// *assign* - Assign eye matrix.
-    pub fn assign_eye(&mut self)
+    /// *assign* - Assign eye matrix with a value.
+    pub fn assign_eye(&mut self, value: FP)
     {
-        self.assign_by(|r, c| Some(if r == c {1.} else {0.}));
+        self.assign_by(|r, c| Some(if r == c {value} else {0.}));
     }
     /// *assign* - Assign a value.
     pub fn assign_all(&mut self, value: FP)
@@ -1059,7 +1059,7 @@ impl XOR64
 fn test_set()
 {
     {
-        let a = Mat::new(3, 3).set_eye();
+        let a = Mat::new(3, 3).set_eye(1.);
         let b = Mat::new_like(&a).set_iter(&[
             1., 0., 0.,
             0., 1., 0.,
@@ -1105,13 +1105,13 @@ fn test_misc()
 fn test_slice()
 {
     {
-        let a = Mat::new(4, 4).set_eye();
+        let a = Mat::new(4, 4).set_eye(1.);
         let a = a.slice(1 ..= 2, 1 ..= 2);
-        let b = Mat::new(2, 2).set_eye();
+        let b = Mat::new(2, 2).set_eye(1.);
         assert_eq!(a, b);
     }
     {
-        let mut a = Mat::new(4, 4).set_eye();
+        let mut a = Mat::new(4, 4).set_eye(1.);
         let b = Mat::new(4, 4).set_iter(&[
             1., 0., 0., 0.,
             0., 2., 2., 0.,
@@ -1124,7 +1124,7 @@ fn test_slice()
         assert_eq!(a, b);
     }
     {
-        let mut a = Mat::new(4, 4).set_eye();
+        let mut a = Mat::new(4, 4).set_eye(1.);
         let b = Mat::new(4, 4).set_iter(&[
             0., 0., 0., 0.,
             0., 1., 0., 0.,
@@ -1141,7 +1141,7 @@ fn test_slice()
 fn test_ops()
 {
     {
-        let a = Mat::new(2, 2).set_eye();
+        let a = Mat::new(2, 2).set_eye(1.);
         let b = Mat::new(2, 2).set_iter(&[
             -1., 0.,
             0., -1.
@@ -1150,7 +1150,7 @@ fn test_ops()
         assert_eq!(c, b);
     }
     {
-        let a = Mat::new(2, 2).set_eye();
+        let a = Mat::new(2, 2).set_eye(1.);
         let b = Mat::new(2, 2).set_iter(&[
             -1., 0.,
             0., -1.
@@ -1160,7 +1160,7 @@ fn test_ops()
         println!("{}", a);
     }
     {
-        let a1 = Mat::new(2, 2).set_eye();
+        let a1 = Mat::new(2, 2).set_eye(1.);
         let a2 = Mat::new(2, 2).set_all(1.);
         let b = Mat::new(2, 2).set_iter(&[
             2., 1.,
@@ -1170,7 +1170,7 @@ fn test_ops()
         assert_eq!(c, b);
     }
     {
-        let a1 = Mat::new(2, 2).set_eye();
+        let a1 = Mat::new(2, 2).set_eye(1.);
         let a2 = Mat::new(2, 2).set_all(1.);
         let b = Mat::new(2, 2).set_iter(&[
             2., 1.,

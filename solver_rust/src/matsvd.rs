@@ -35,7 +35,7 @@ impl MatSVD
             transposed,
             u: Mat::new(u_nrows, u_ncols),
             s: Mat::new_vec(u_ncols),
-            v: Mat::new(u_ncols, u_ncols).set_eye()
+            v: Mat::new(u_ncols, u_ncols).set_eye(1.)
         };
 
         svd
@@ -120,7 +120,7 @@ impl MatSVD
             self.u.assign(&g.t());
         }
 
-        self.v.assign_eye();
+        self.v.assign_eye(1.);
 
         self.do_decomp();
     }
