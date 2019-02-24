@@ -1,0 +1,9 @@
+[package]
+name = "ctrl_toyprob"
+version = "0.1.0"
+authors = ["convexbrain <convexbrain@gmail.com>"]
+edition = "2018"
+publish = false
+
+[dependencies]
+totsu = {path = "../../solver_rust"}
