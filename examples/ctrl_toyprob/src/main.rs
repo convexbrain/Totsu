@@ -9,9 +9,9 @@ use std::fs::File;
 fn main() -> std::io::Result<()> {
 
     let t = 30;
-    let acc_max = 0.05;
-    let x_m1 = (1., 0.);
-    let x_m2 = (0., 1.);
+    let acc_max = 0.1;
+    let x_m1 = (0.5, -1.5);
+    let x_m2 = (0.25, 1.5);
     let x_e = (1., 1.);
 
     let n = t * 2;
@@ -22,9 +22,15 @@ fn main() -> std::io::Result<()> {
     let vec_q = vec![Mat::new_vec(n); m + 1];
     let mut scl_r = vec![0. as FP; m + 1];
 
-    let mut mat_d = Mat::new(n, n).set_eye(-1.);
-    mat_d.assign_by(|r, c| if r + 1 == c {Some(1.)} else {None});
-    mat_d[(n - 1, n - 1)] = 0.;
+    let mut mat_d = Mat::new(n, n);
+    for i in 0 .. t - 1 {
+        let ti = i;
+        mat_d[(ti, ti)] = -1.;
+        mat_d[(ti, ti + 1)] = 1.;
+        let ti = t + i;
+        mat_d[(ti, ti)] = -1.;
+        mat_d[(ti, ti + 1)] = 1.;
+    }
     mat_p[0].assign(&(mat_d.t() * &mat_d));
 
     for i in 0 .. t - 2 {
@@ -41,7 +47,7 @@ fn main() -> std::io::Result<()> {
 
         mat_p[mi].assign(&(mat_d.t() * &mat_d));
 
-        scl_r[mi] = -acc_max * acc_max;
+        scl_r[mi] = -0.5 * acc_max * acc_max;
     }
 
     let mut mat_a = Mat::new(p, n);
