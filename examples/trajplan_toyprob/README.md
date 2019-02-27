@@ -1,4 +1,4 @@
-# Example: ctrl_toyprob
+# Example: trajplan
 
 * Simple path planning or trajectory planning
 * Given 4 target positions including start and end points
