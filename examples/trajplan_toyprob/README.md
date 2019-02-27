@@ -1,6 +1,6 @@
 # Example: trajplan_toyprob
 
-* Simple path planning or trajectory planning
+* Simple path planning or trajectory planning in 2-dimensional space
 * Given four target positions including start and end points
 * Choose trajectory minimizing velocity with acceleration limits
 
