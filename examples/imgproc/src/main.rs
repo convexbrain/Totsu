@@ -14,13 +14,13 @@ fn clamp(v: FP) -> u8 {
 fn main() -> std::io::Result<()> {
     let mut rnd = XOR64::init();
 
-    let sz = 8;
+    let sz = 4;
     let ch = 3;
 
     let n: usize = sz * sz * ch + sz * sz;
     let m: usize = sz * sz;
-    //let p: usize = 4 * ch;
-    let p: usize = (sz * 4 - 4) * ch;
+    let p: usize = 4 * ch;
+    //let p: usize = (sz * 4 - 4) * ch;
 
     let mut vec_f = Mat::new_vec(n);
     vec_f.rows_mut(sz * sz * ch .. n).assign_all(1.);
@@ -55,6 +55,7 @@ fn main() -> std::io::Result<()> {
 
     let mut mat_a = Mat::new(p, n);
     let vec_b = Mat::new_vec(p).set_by(|_, _| rnd.next());
+    /*
     let mut ip = 0;
     for c in 0 .. ch {
         let co = c * sz * sz;
@@ -71,7 +72,7 @@ fn main() -> std::io::Result<()> {
             ip += 1;
         }
     }
-    /*
+    */
     {
         let mut i = 0;
         for c in 0 .. ch {
@@ -86,7 +87,6 @@ fn main() -> std::io::Result<()> {
             i += 1;
         }
     }
-    */
 
     //let param = PDIPMParam::default();
     let param = PDIPMParam {
@@ -103,8 +103,8 @@ fn main() -> std::io::Result<()> {
         let xx = x as usize;
         let yy = y as usize;
         let r = clamp(rslt[(xx + yy * sz, 0)]);
-        let g = clamp(rslt[(xx + yy * sz + sz * sz, 0)]);
-        let b = clamp(rslt[(xx + yy * sz + 2 * sz * sz, 0)]);
+        let g = if ch >= 2 {clamp(rslt[(xx + yy * sz + sz * sz, 0)])} else {r};
+        let b = if ch >= 3 {clamp(rslt[(xx + yy * sz + 2 * sz * sz, 0)])} else {g};
         *p = image::Rgb([r, g, b]);
     }
     img.save("img.png")?;
