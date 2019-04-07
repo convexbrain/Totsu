@@ -5,6 +5,9 @@ Primal-dual interior point method
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
 use super::matsvd::MatSVD;
 
+const TOL_STEP: FP = FP_EPSILON;
+const TOL_DIV0: FP = FP_MINPOS;
+
 use std::io::Write;
 macro_rules! writeln_or {
     ( $( $arg: expr ),* ) => {
@@ -215,6 +218,7 @@ impl PDIPM
           Fs: FnOnce(MatSliMu)
     {
         let eps_feas = param.eps;
+        let eps_eta = param.eps;
         let b_loop = param.n_loop;
 
         // allocate matrix
@@ -269,7 +273,7 @@ impl PDIPM
                 -self.f_i.prod(&lmd)
             }
             else {
-                param.eps
+                eps_eta
             };
 
             // inequality feasibility check
@@ -296,7 +300,7 @@ impl PDIPM
             writeln_or!(log, "|| r_pri  || : {:.3e}", r_pri_norm)?;
             writeln_or!(log, "   eta       : {:.3e}", eta)?;
 
-            if (r_dual_norm <= eps_feas) && (r_pri_norm <= eps_feas) && (eta <= param.eps) {
+            if (r_dual_norm <= eps_feas) && (r_pri_norm <= eps_feas) && (eta <= eps_eta) {
                 writeln_or!(log, "termination criteria satisfied")?;
                 break;
             }
@@ -356,7 +360,7 @@ impl PDIPM
                 let dlmd = dy.rows(n .. n + m);
 
                 for i in 0 .. m {
-                    if dlmd[(i, 0)] < -FP_MINPOS { // to avoid zero-division by Dlmd
+                    if dlmd[(i, 0)] < -TOL_DIV0 { // to avoid zero-division by Dlmd
                         s_max = s_max.min(-lmd[(i, 0)] / dlmd[(i, 0)]);
                     }
                 }
@@ -430,7 +434,7 @@ impl PDIPM
             writeln_or!(log, "s : {:.3e}", s)?;
 
             if bcnt < b_loop {
-                if (&y_p - &self.y).norm_p2() >= FP_EPSILON {
+                if (&y_p - &self.y).norm_p2() >= TOL_STEP {
                     writeln_or!(log, "update")?;
                     // update y
                     self.y.assign(&y_p);
