@@ -312,7 +312,7 @@ impl PDIPM
             kkt_x_dual.assign(&self.ddf);
             for i in 0 .. m {
                 dd_inequality(&x, &mut self.ddf, i);
-                kkt_x_dual += lmd[(i, 0)] * &self.ddf;
+                kkt_x_dual += lmd.get(i, 0) * &self.ddf;
             }
 
             if m > 0 {
@@ -360,8 +360,8 @@ impl PDIPM
                 let dlmd = dy.rows(n .. n + m);
 
                 for i in 0 .. m {
-                    if dlmd[(i, 0)] < -TOL_DIV0 { // to avoid zero-division by Dlmd
-                        s_max = s_max.min(-lmd[(i, 0)] / dlmd[(i, 0)]);
+                    if dlmd.get(i, 0) < -TOL_DIV0 { // to avoid zero-division by Dlmd
+                        s_max = s_max.min(-lmd.get(i, 0) / dlmd.get(i, 0));
                     }
                 }
             }

@@ -5,48 +5,51 @@ Matrix
 See also [`MatGen`](struct.MatGen.html) for supported methods.
 */
 
+use std::cmp::PartialEq;
+use std::ops::{Range, RangeBounds, Bound};
+use std::ops::{Neg, Add, Mul, Sub, Div, AddAssign, SubAssign, MulAssign, DivAssign};
+use std::fmt;
+use std::collections::HashMap;
+
 /// Scalar floating point type
 pub type FP = f64;
 pub use std::f64::EPSILON as FP_EPSILON;
 pub use std::f64::MIN_POSITIVE as FP_MINPOS;
 
+/// Matrix elements collection
+type Coll = HashMap<usize, FP>;
+
 /// Matrix
-pub type Mat = MatGen<Vec<FP>>;
+pub type Mat = MatGen<Coll>;
 /// Matrix slice
-pub type MatSlice<'a> = MatGen<&'a [FP]>;
+pub type MatSlice<'a> = MatGen<&'a Coll>;
 /// Matrix slice mutable
-pub type MatSliMu<'a> = MatGen<&'a mut[FP]>;
+pub type MatSliMu<'a> = MatGen<&'a mut Coll>;
 
-use std::cmp::PartialEq;
-use std::ops::{Range, RangeBounds, Bound};
-use std::ops::{Neg, Add, Mul, Sub, Div, AddAssign, SubAssign, MulAssign, DivAssign};
-use std::ops::{Index, IndexMut};
-use std::fmt;
-
-/// Ownership view of matrix array entity
+/// Ownership view of matrix elements collection
 pub trait View {
-    fn get_ref(&self) -> &[FP];
-    fn get_mut(&mut self) -> &mut[FP];
+    fn get_ref(&self) -> &Coll;
+    fn get_mut(&mut self) -> &mut Coll;
     fn get_len(&self) -> usize;
-    fn get_own(self) -> Vec<FP>;
+    fn get_own(self) -> Coll;
     fn is_own(&self) -> bool;
 }
 
-impl View for Vec<FP>
+impl View for Coll
 {
-    fn get_ref(&self) -> &[FP]
+    fn get_ref(&self) -> &Coll
     {
-        self.as_ref()
+        &self
     }
-    fn get_mut(&mut self) -> &mut[FP]
+    fn get_mut(&mut self) -> &mut Coll
     {
-        self.as_mut()
+        self
     }
     fn get_len(&self) -> usize
     {
         self.len()
     }
-    fn get_own(self) -> Vec<FP>
+    fn get_own(self) -> Coll
     {
         self
     }
@@ -56,13 +59,13 @@ impl View for Vec<FP>
     }
 }
 
-impl View for &[FP]
+impl View for &Coll
 {
-    fn get_ref(&self) -> &[FP]
+    fn get_ref(&self) -> &Coll
     {
         self
     }
-    fn get_mut(&mut self) -> &mut[FP]
+    fn get_mut(&mut self) -> &mut Coll
     {
         panic!("cannot borrow immutable as mutable");
     }
@@ -70,7 +73,7 @@ impl View for &[FP]
     {
         self.len()
     }
-    fn get_own(self) -> Vec<FP>
+    fn get_own(self) -> Coll
     {
         panic!("cannot own immutable");
     }
@@ -80,13 +83,13 @@ impl View for &[FP]
     }
 }
 
-impl View for &mut[FP]
+impl View for &mut Coll
 {
-    fn get_ref(&self) -> &[FP]
+    fn get_ref(&self) -> &Coll
     {
         self
     }
-    fn get_mut(&mut self) -> &mut[FP]
+    fn get_mut(&mut self) -> &mut Coll
     {
         self
     }
@@ -94,7 +97,7 @@ impl View for &mut[FP]
     {
         self.len()
     }
-    fn get_own(self) -> Vec<FP>
+    fn get_own(self) -> Coll
     {
         panic!("cannot own mutable");
     }
@@ -122,13 +125,13 @@ pub struct MatGen<V: View>
 impl<V: View> MatGen<V>
 {
     // private helper methods
-    fn h_index(&self, index: (usize, usize)) -> usize
+    fn h_index(&self, row: usize, col: usize) -> usize
     {
         if !self.transposed {
-            self.offset + self.stride * index.1 + index.0
+            self.offset + self.stride * col + row
         }
         else {
-            self.offset + self.stride * index.0 + index.1
+            self.offset + self.stride * row + col
         }
     }
     //
@@ -193,7 +196,7 @@ impl<V: View> MatGen<V>
             offset: 0,
             stride: nrows,
             transposed: false,
-            view: vec![0.0; nrows * ncols]
+            view: Coll::new()
         }
     }
     /// *new* - Makes a matrix of the same size.
@@ -207,6 +210,26 @@ impl<V: View> MatGen<V>
     pub fn new_vec(nrows: usize) -> Mat
     {
         Mat::new(nrows, 1)
+    }
+    //
+    /// Gets a value of an element
+    pub fn get(&self, row: usize, col: usize) -> FP
+    {
+        let i = self.h_index(row, col);
+
+        *self.view.get_ref().get(&i).unwrap_or(&0.)
+    }
+    /// Puts a value into an element
+    pub fn put(&mut self, row: usize, col: usize, val: FP)
+    {
+        let i = self.h_index(row, col);
+
+        if val.abs() < FP_MINPOS {
+            self.view.get_mut().remove(&i);
+        }
+        else {
+            self.view.get_mut().insert(i, val);
+        }
     }
     //
     /// *slice* - Slice block reference.
@@ -317,44 +340,31 @@ impl<V: View> MatGen<V>
             view: self.view.get_mut()
         }
     }
-    //
     /// *set* - Set by closure.
     pub fn set_by<F>(mut self, mut f: F) -> MatGen<V>
     where F: FnMut(usize, usize) -> FP
     {
-        let (nrows, ncols) = self.size();
-
-        for c in 0 .. ncols {
-            for r in 0 .. nrows {
-                self[(r, c)] = f(r, c);
-            }
-        }
+        self.assign_by(|r, c| Some(f(r, c)));
         self
     }
     /// *set* - Set by iterator.
     pub fn set_iter<'b, T>(mut self, iter: T) -> MatGen<V>
     where T: IntoIterator<Item=&'b FP>
     {
-        let (nrows, ncols) = self.size();
-        let mut i = iter.into_iter();
-
-        // NOTE: contents of iter is row-wise
-        for r in 0 .. nrows {
-            for c in 0 .. ncols {
-                self[(r, c)] = *i.next().unwrap_or(&0.);
-            }
-        }
+        self.assign_iter(iter);
         self
     }
     /// *set* - Set eye matrix with a value.
-    pub fn set_eye(self, value: FP) -> MatGen<V>
+    pub fn set_eye(mut self, value: FP) -> MatGen<V>
     {
-        self.set_by(|r, c| if r == c {value} else {0.})
+        self.assign_eye(value);
+        self
     }
     /// *set* - Set a value.
-    pub fn set_all(self, value: FP) -> MatGen<V>
+    pub fn set_all(mut self, value: FP) -> MatGen<V>
     {
-        self.set_by(|_, _| value)
+        self.assign_all(value);
+        self
     }
     /// *set* - Set transposed.
     pub fn set_t(mut self) -> MatGen<V>
@@ -376,7 +386,7 @@ impl<V: View> MatGen<V>
                 offset: self.offset,
                 stride: self.stride,
                 transposed: self.transposed,
-                view: self.view.get_ref().to_vec()
+                view: self.view.get_ref().clone()
             }
         }
         else {
@@ -394,22 +404,22 @@ impl<V: View> MatGen<V>
         let mut mat = Mat::new(l_nrows, l_nrows);
 
         for r in 0 .. l_nrows {
-            mat[(r, r)] = self[(r, 0)];
+            mat.put(r, r, self.get(r, 0));
         }
 
         mat
     }
     //
     /// *assign* - Assign by closure.
-    pub fn assign_by<F>(&mut self, f: F)
-    where F: Fn(usize, usize) -> Option<FP>
+    pub fn assign_by<F>(&mut self, mut f: F)
+    where F: FnMut(usize, usize) -> Option<FP>
     {
         let (l_nrows, l_ncols) = self.size();
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
                 if let Some(value) = f(r, c) {
-                    self[(r, c)] = value;
+                    self.put(r, c, value);
                 }
             }
         }
@@ -424,7 +434,7 @@ impl<V: View> MatGen<V>
         // NOTE: contents of iter is row-wise
         for r in 0 .. nrows {
             for c in 0 .. ncols {
-                self[(r, c)] = *i.next().unwrap_or(&0.);
+                self.put(r, c, *i.next().unwrap_or(&0.));
             }
         }
     }
@@ -447,7 +457,7 @@ impl<V: View> MatGen<V>
         assert_eq!(l_nrows, r_nrows);
         assert_eq!(l_ncols, r_ncols);
         
-        self.assign_by(|r, c| Some(rhs[(r, c)]));
+        self.assign_by(|r, c| Some(rhs.get(r, c)));
     }
     //
     /// Returns p=2 norm squared.
@@ -459,7 +469,7 @@ impl<V: View> MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                sum += self[(r, c)] * self[(r, c)];
+                sum += self.get(r, c) * self.get(r, c);
             }
         }
 
@@ -478,7 +488,7 @@ impl<V: View> MatGen<V>
         let mut sum = 0.;
 
         for i in 0 .. l_nrows.min(l_ncols) {
-            sum += self[(i, i)];
+            sum += self.get(i, i);
         }
 
         sum
@@ -496,7 +506,7 @@ impl<V: View> MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                sum += self[(r, c)] * rhs[(r, c)];
+                sum += self.get(r, c) * rhs.get(r, c);
             }
         }
 
@@ -511,12 +521,12 @@ impl<V: View> MatGen<V>
             return None;
         }
 
-        let mut m = self[(0, 0)];
+        let mut m = self.get(0, 0);
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                if self[(r, c)] > m {
-                    m = self[(r, c)];
+                if self.get(r, c) > m {
+                    m = self.get(r, c);
                 }
             }
         }
@@ -531,12 +541,12 @@ impl<V: View> MatGen<V>
             return None;
         }
         
-        let mut m = self[(0, 0)];
+        let mut m = self.get(0, 0);
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                if self[(r, c)] < m {
-                    m = self[(r, c)];
+                if self.get(r, c) < m {
+                    m = self.get(r, c);
                 }
             }
         }
@@ -558,29 +568,6 @@ impl<V: View> MatGen<V>
 
 //
 
-impl<V: View> Index<(usize, usize)> for MatGen<V>
-{
-    type Output = FP;
-    fn index(&self, index: (usize, usize)) -> &FP
-    {
-        let i = self.h_index(index);
-
-        &self.view.get_ref()[i]
-    }
-}
-
-impl<V: View> IndexMut<(usize, usize)> for MatGen<V>
-{
-    fn index_mut(&mut self, index: (usize, usize)) -> &mut FP
-    {
-        let i = self.h_index(index);
-
-        &mut self.view.get_mut()[i]
-    }
-}
-
-//
-
 impl<V: View> fmt::LowerExp for MatGen<V>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
@@ -590,7 +577,7 @@ impl<V: View> fmt::LowerExp for MatGen<V>
         writeln!(f, "[")?;
         for r in 0 .. l_nrows {
             for c in 0 .. l_ncols {
-                write!(f, "  {:.precision$e},", self[(r, c)], precision = f.precision().unwrap_or(3))?;
+                write!(f, "  {:.precision$e},", self.get(r, c), precision = f.precision().unwrap_or(3))?;
             }
             writeln!(f)?;
         }
@@ -620,7 +607,7 @@ impl<V: View, V2: View> PartialEq<MatGen<V2>> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                if self[(r, c)] != other[(r, c)] {
+                if self.get(r, c) != other.get(r, c) {
                     return false;
                 }
             }
@@ -658,7 +645,7 @@ impl<V: View> MatAcc for MatGen<V>
     //
     fn acc_get(&self, row: usize, col: usize) -> FP
     {
-        self[(row, col)]
+        self.get(row, col)
     }
 }
 
@@ -687,7 +674,7 @@ impl<V: View> Neg for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                mat[(r, c)] = -mat[(r, c)];
+                mat.put(r, c, -mat.get(r, c));
             }
         }
 
@@ -717,7 +704,7 @@ impl<V: View, T: MatAcc> AddAssign<T> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] += rhs.acc_get(r, c);
+                self.put(r, c, self.get(r, c) + rhs.acc_get(r, c));
             }
         }
     }
@@ -731,7 +718,7 @@ impl<V: View> AddAssign<FP> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] += rhs;
+                self.put(r, c, self.get(r, c) + rhs);
             }
         }
     }
@@ -813,7 +800,7 @@ impl<V: View, T: MatAcc> SubAssign<T> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] -= rhs.acc_get(r, c);
+                self.put(r, c, self.get(r, c) - rhs.acc_get(r, c));
             }
         }
     }
@@ -827,7 +814,7 @@ impl<V: View> SubAssign<FP> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] -= rhs;
+                self.put(r, c, self.get(r, c) - rhs);
             }
         }
     }
@@ -907,7 +894,7 @@ impl<V: View> MulAssign<FP> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] *= rhs;
+                self.put(r, c, self.get(r, c) * rhs);
             }
         }
     }
@@ -940,9 +927,9 @@ impl<V: View, T: MatAcc> Mul<T> for &MatGen<V>
             for r in 0 .. l_nrows {
                 let mut v: FP = 0.0;
                 for k in 0 .. l_ncols {
-                    v += self[(r, k)] * rhs.acc_get(k, c);
+                    v += self.get(r, k) * rhs.acc_get(k, c);
                 }
-                mat[(r, c)] = v;
+                mat.put(r, c, v);
             }
         }
 
@@ -1002,7 +989,7 @@ impl<V: View> DivAssign<FP> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] /= rhs;
+                self.put(r, c, self.get(r, c) / rhs);
             }
         }
     }
@@ -1065,6 +1052,7 @@ fn test_set()
             0., 1., 0.,
             0., 0., 1.
         ]);
+        println!("{:?}", b.view);
         assert_eq!(a, b);
     }
     {
@@ -1073,6 +1061,7 @@ fn test_set()
             0., 1., 2., 3.,
             4., 5., 6., 7.
         ]);
+        println!("{:?}", b.view);
         assert_eq!(a, b);
     }
 }

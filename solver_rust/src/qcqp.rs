@@ -107,7 +107,7 @@ impl QCQP for PDIPM
                     &mat_p[0] * x.rows(0 .. n) + &vec_q[0]
                 ));
                 // for a slack variable
-                df_o[(n, 0)] = 0.;
+                df_o.put(n, 0, 0.);
             },
             |_, ddf_o| {
                 ddf_o.slice_mut(0 .. n, 0 .. n).assign(&mat_p[0]);
@@ -122,7 +122,7 @@ impl QCQP for PDIPM
                     let tmp = xn.prod(&(&mat_p[i] * &xn)) / 2.
                             + vec_q[i].prod(&xn)
                             + scl_r[i];
-                    f_i[(r, 0)] = tmp - x[(n, 0)]; // minus a slack variable
+                    f_i.put(r, 0, tmp - x.get(n, 0)); // minus a slack variable
                 }
             },
             |x, df_i| {
@@ -132,7 +132,7 @@ impl QCQP for PDIPM
                     let tmp = &mat_p[i] * xn + &vec_q[i];
                     df_i.slice_mut(r ..= r, 0 .. n).assign(&tmp.t());
                     // for a slack variable
-                    df_i[(r, n)] = -1.;
+                    df_i.put(r, n, -1.);
                 }
             },
             |_, ddf_i, i| {
@@ -147,11 +147,11 @@ impl QCQP for PDIPM
                 a.slice_mut(0 .. p, 0 .. n).assign(mat_a);
                 b.rows_mut(0 .. p).assign(vec_b);
                 // for a slack variable
-                a[(p, n)] = 1.;
+                a.put(p, n, 1.);
             },
             |mut x| {
                 x.assign_all(0.);
-                x[(n, 0)] = s_initial;
+                x.put(n, 0, s_initial);
             }
         );
 

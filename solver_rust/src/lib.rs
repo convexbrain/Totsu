@@ -93,17 +93,18 @@ More practical examples are available [here](https://github.com/convexbrain/Tots
 pub mod mat;
 pub mod matsvd;
 pub mod pdipm;
-pub mod lp;
-pub mod qp;
-pub mod qcqp;
-pub mod socp;
-pub mod sdp;
 
 /// Prelude
 pub mod prelude {
     pub use crate::mat::{Mat, MatSlice, MatSliMu, FP};
     pub use crate::pdipm::{PDIPM, PDIPMParam, PDIPMErr};
 }
+
+pub mod lp;
+pub mod qp;
+pub mod qcqp;
+pub mod socp;
+pub mod sdp;
 
 /// Pre-defined solvers
 pub mod predef {

@@ -82,7 +82,7 @@ impl MatSVD
         for i in 0 .. n {
             let mut col = self.u.col_mut(i);
             let s = col.norm_p2();
-            self.s[(i, 0)] = s;
+            self.s.put(i, 0, s);
 
             if s.abs() < TOL_DIV0 {
                 continue;
@@ -145,14 +145,16 @@ impl MatSVD
         let (nrows, _) = self.s.size();
 
         for r in 0 .. nrows {
-            let s = sinv[(r, r)];
+            let s = sinv.get(r, r);
 
-            sinv[(r, r)] = if s.abs() < TOL_SINV {
-                0.
-            }
-            else {
-                1. / s
-            }
+            sinv.put(r, r,
+                if s.abs() < TOL_SINV {
+                    0.
+                }
+                else {
+                    1. / s
+                }
+            );
         }
 
         if !self.transposed {

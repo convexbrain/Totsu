@@ -119,7 +119,7 @@ impl SOCP for PDIPM
                 let xn = x.rows(0 .. n);
 
                 for r in 0 .. m {
-                    let xnr = x[(n + r, 0)];
+                    let xnr = x.get(n + r, 0);
 
                     let inv_s = if xnr.abs() > eps_div0 {
                         1. / xnr
@@ -130,10 +130,10 @@ impl SOCP for PDIPM
                     };
 
                     let tmp = &mat_g[r] * &xn + &vec_h[r];
-                    f_i[(r, 0)] = tmp.norm_p2sq() * inv_s - xnr;
+                    f_i.put(r, 0, tmp.norm_p2sq() * inv_s - xnr);
 
                     // for slack variables
-                    f_i[(r + m, 0)] = eps_bd - xnr;
+                    f_i.put(r + m, 0, eps_bd - xnr);
                 }
             },
             |x, df_i| {
@@ -142,7 +142,7 @@ impl SOCP for PDIPM
                 df_i.assign_all(0.);
 
                 for r in 0 .. m {
-                    let xnr = x[(n + r, 0)];
+                    let xnr = x.get(n + r, 0);
 
                     let inv_s = if xnr.abs() > eps_div0 {
                         1. / xnr
@@ -158,10 +158,10 @@ impl SOCP for PDIPM
                     df_i.slice_mut(r ..= r, 0 .. n).assign(&tmp2.t());
 
                     // for slack variables
-                    df_i[(r, n + r)] = -inv_s * inv_s * tmp1_norm_p2sq - 1.;
+                    df_i.put(r, n + r, -inv_s * inv_s * tmp1_norm_p2sq - 1.);
 
                     // for slack variables
-                    df_i[(r + m, n + r)] = -1.;
+                    df_i.put(r + m, n + r, -1.);
                 }
             },
             |x, ddf_i, i| {
@@ -169,7 +169,7 @@ impl SOCP for PDIPM
 
                 if i < m {
                     let xn = x.rows(0 .. n);
-                    let xni = x[(n + i, 0)];
+                    let xni = x.get(n + i, 0);
 
                     let inv_s =  if xni.abs() > eps_div0 {
                         1. / xni
@@ -194,7 +194,7 @@ impl SOCP for PDIPM
                     ddf_i.slice_mut(n + i ..= n + i, 0 .. n).assign(&tmp2.t());
 
                     // for slack variables
-                    ddf_i[(n + i, n + i)] = 2. * inv_s * inv_s * inv_s * tmp1_norm_p2sq;
+                    ddf_i.put(n + i, n + i, 2. * inv_s * inv_s * inv_s * tmp1_norm_p2sq);
                 }
             },
             |a, b| {
@@ -206,8 +206,8 @@ impl SOCP for PDIPM
                 // for a slack variable
                 for r in 0 .. m {
                     a.slice_mut(p + r ..= p + r, 0 .. n).assign(&vec_c[r].t());
-                    a[(p + r, n + r)] = -1.;
-                    b[(p + r, 0)] = -scl_d[r];
+                    a.put(p + r, n + r, -1.);
+                    b.put(p + r, 0, -scl_d[r]);
                 }
             },
             |mut x| {
@@ -222,7 +222,7 @@ impl SOCP for PDIPM
                         margin *= 2.;
                         s_initial = s + margin;
                     }
-                    x[(n + i, 0)] = s_initial;
+                    x.put(n + i, 0, s_initial);
                 }
             }
         );

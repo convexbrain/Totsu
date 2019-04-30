@@ -120,7 +120,7 @@ impl SDP for PDIPM
         let fx0 = &mat_f[n] - s_initial * &eye;
         svd_kk.decomp(&fx0); // re-use because of the same size
         for i in 0 .. n {
-            vec_q[(i, 0)] = svd_kk.solve(&mat_f[i]).tr();
+            vec_q.put(i, 0, svd_kk.solve(&mat_f[i]).tr());
         }
 
         let mut mat_p = Mat::new(n, p + 1);
@@ -130,13 +130,13 @@ impl SDP for PDIPM
         let mut svd_np1 = MatSVD::new(mat_p.size());
         svd_np1.decomp(&mat_p);
 
-        let mut t = svd_np1.solve(&vec_q)[(p, 0)];
+        let mut t = svd_np1.solve(&vec_q).get(p, 0);
         t = t.max(param.eps);
 
         // ----- start to solve
 
         let mut vec_xs = Mat::new_vec(n + 1);
-        vec_xs[(n, 0)] = s_initial;
+        vec_xs.put(n, 0, s_initial);
 
         let svd_cell = RefCell::new(svd_kk);
 
@@ -148,19 +148,19 @@ impl SDP for PDIPM
             let rslt = self.solve(param, log,
                 n + 1, m, p + 1, // '+ 1' is for a slack variable
                 |x, df_o| {
-                    let mut fx = - x[(n, 0)] * &eye;
+                    let mut fx = - x.get(n, 0) * &eye;
                     fx += &mat_f[n];
                     for i in 0 .. n {
-                        fx += &mat_f[i] * x[(i, 0)];
+                        fx += &mat_f[i] * x.get(i, 0);
                     }
                     let mut svd = svd_cell.borrow_mut();
                     svd.decomp(&fx);
                     //
                     for i in 0 .. n {
-                        df_o[(i, 0)] = t * vec_c[(i, 0)] - svd.solve(&mat_f[i]).tr();
+                        df_o.put(i, 0, t * vec_c.get(i, 0) - svd.solve(&mat_f[i]).tr());
                     }
                     // for a slack variable
-                    df_o[(n, 0)] = svd.solve(&eye).tr();
+                    df_o.put(n, 0, svd.solve(&eye).tr());
                 },
                 |_, ddf_o| {
                     // x won't change because dd_objective is called after d_objective with the same x
@@ -172,19 +172,19 @@ impl SDP for PDIPM
                         for r in 0 .. c {
                             let fr = svd.solve(&mat_f[r]);
                             let v = fr.prod(&fc); // tr(fr*fc)
-                            ddf_o[(r, c)] = v;
-                            ddf_o[(c, r)] = v;
+                            ddf_o.put(r, c, v);
+                            ddf_o.put(c, r, v);
                         }
                         let v = fc.norm_p2sq(); // tr(fc*fc)
-                        ddf_o[(c, c)] = v;
+                        ddf_o.put(c, c, v);
                         // for a slack variable
                         let v = -fc.prod(&feye); // tr(fc*-feye)
-                        ddf_o[(n, c)] = v;
-                        ddf_o[(c, n)] = v;
+                        ddf_o.put(n, c, v);
+                        ddf_o.put(c, n, v);
                     }
                     // for a slack variable
                     let v = feye.norm_p2sq(); // tr(-feye*-feye)
-                    ddf_o[(n, n)] = v;
+                    ddf_o.put(n, n, v);
                 },
                 |_, f_i| {
                     f_i.assign_all(0.);
@@ -201,7 +201,7 @@ impl SDP for PDIPM
                     a.slice_mut(0 .. p, 0 .. n).assign(mat_a);
                     b.rows_mut(0 .. p).assign(vec_b);
                     // for a slack variable
-                    a[(p, n)] = 1.;
+                    a.put(p, n, 1.);
                 },
                 |mut x| {
                     x.assign(&vec_xs);
