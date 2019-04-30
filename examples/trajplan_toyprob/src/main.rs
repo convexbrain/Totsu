@@ -40,11 +40,11 @@ fn main() -> std::io::Result<()> {
     let mut mat_d = Mat::new(n, n);
     for i in 0 .. t_cap - 1 {
         let ti = i;
-        mat_d[(ti, ti)] = -1. / dt;
-        mat_d[(ti, ti + 1)] = 1. / dt;
+        mat_d.put(ti, ti, -1. / dt);
+        mat_d.put(ti, ti + 1, 1. / dt);
         let ti = t_cap + i;
-        mat_d[(ti, ti)] = -1. / dt;
-        mat_d[(ti, ti + 1)] = 1. / dt;
+        mat_d.put(ti, ti, -1. / dt);
+        mat_d.put(ti, ti + 1, 1. / dt);
     }
     // minimize total squared magnitude of velocity
     mat_p[0].assign(&(mat_d.t() * &mat_d));
@@ -54,13 +54,13 @@ fn main() -> std::io::Result<()> {
         let mut mat_d = Mat::new(n, n);
         let mi = i + 1;
         let ti = i;
-        mat_d[(ti, ti)] = 1. / dtdt;
-        mat_d[(ti, ti + 1)] = -2. / dtdt;
-        mat_d[(ti, ti + 2)] = 1. / dtdt;
+        mat_d.put(ti, ti, 1. / dtdt);
+        mat_d.put(ti, ti + 1, -2. / dtdt);
+        mat_d.put(ti, ti + 2, 1. / dtdt);
         let ti = t_cap + i;
-        mat_d[(ti, ti)] = 1. / dtdt;
-        mat_d[(ti, ti + 1)] = -2. / dtdt;
-        mat_d[(ti, ti + 2)] = 1. / dtdt;
+        mat_d.put(ti, ti, 1. / dtdt);
+        mat_d.put(ti, ti + 1, -2. / dtdt);
+        mat_d.put(ti, ti + 2, 1. / dtdt);
 
         // limit acceleration magnitude
         mat_p[mi].assign(&(mat_d.t() * &mat_d));
@@ -72,49 +72,49 @@ fn main() -> std::io::Result<()> {
 
     // target point: x(0) = x_s, v(0) = 0
     // x0
-    mat_a[(0, 0)] = 1.;
-    vec_b[(0, 0)] = x_s.0;
+    mat_a.put(0, 0, 1.);
+    vec_b.put(0, 0, x_s.0);
     // x1
-    mat_a[(1, t_cap)] = 1.;
-    vec_b[(1, 0)] = x_s.0;
+    mat_a.put(1, t_cap, 1.);
+    vec_b.put(1, 0, x_s.0);
     // v0
-    mat_a[(2, 0)] = -1.;
-    mat_a[(2, 1)] = 1.;
+    mat_a.put(2, 0, -1.);
+    mat_a.put(2, 1, 1.);
     // v1
-    mat_a[(3, t_cap)] = -1.;
-    mat_a[(3, t_cap + 1)] = 1.;
+    mat_a.put(3, t_cap, -1.);
+    mat_a.put(3, t_cap + 1, 1.);
 
     // target point: x(1) = x_t, v(1) = 0
     // x0
-    mat_a[(4, t_cap - 1)] = 1.;
-    vec_b[(4, 0)] = x_t.0;
+    mat_a.put(4, t_cap - 1, 1.);
+    vec_b.put(4, 0, x_t.0);
     // x1
-    mat_a[(5, t_cap * 2 - 1)] = 1.;
-    vec_b[(5, 0)] = x_t.1;
+    mat_a.put(5, t_cap * 2 - 1, 1.);
+    vec_b.put(5, 0, x_t.1);
     // v0
-    mat_a[(6, t_cap - 2)] = -1.;
-    mat_a[(6, t_cap - 1)] = 1.;
+    mat_a.put(6, t_cap - 2, -1.);
+    mat_a.put(6, t_cap - 1, 1.);
     // v1
-    mat_a[(7, t_cap * 2 - 2)] = -1.;
-    mat_a[(7, t_cap * 2 - 1)] = 1.;
+    mat_a.put(7, t_cap * 2 - 2, -1.);
+    mat_a.put(7, t_cap * 2 - 1, 1.);
 
     // target point: x(1/3) = x_m1
     let t_m1 = t_cap / 3;
     // x0
-    mat_a[(8, t_m1)] = 1.;
-    vec_b[(8, 0)] = x_m1.0;
+    mat_a.put(8, t_m1, 1.);
+    vec_b.put(8, 0, x_m1.0);
     // x1
-    mat_a[(9, t_cap + t_m1)] = 1.;
-    vec_b[(9, 0)] = x_m1.1;
+    mat_a.put(9, t_cap + t_m1, 1.);
+    vec_b.put(9, 0, x_m1.1);
 
     // target point: x(2/3) = x_m2
     let t_m2 = t_cap * 2 / 3;
     // x0
-    mat_a[(10, t_m2)] = 1.;
-    vec_b[(10, 0)] = x_m2.0;
+    mat_a.put(10, t_m2, 1.);
+    vec_b.put(10, 0, x_m2.0);
     // x1
-    mat_a[(11, t_cap + t_m2)] = 1.;
-    vec_b[(11, 0)] = x_m2.1;
+    mat_a.put(11, t_cap + t_m2, 1.);
+    vec_b.put(11, 0, x_m2.1);
 
     //----- solve QCQP
 
@@ -135,7 +135,7 @@ fn main() -> std::io::Result<()> {
     let mut dat_point = BufWriter::new(File::create("dat_point")?);
 
     for i in 0 .. t_cap {
-        writeln!(dat_point, "{} {} {}", i as FP * dt, rslt[(i, 0)], rslt[(t_cap + i, 0)])?;
+        writeln!(dat_point, "{} {} {}", i as FP * dt, rslt.get(i, 0), rslt.get(t_cap + i, 0))?;
     }
 
     Ok(())
