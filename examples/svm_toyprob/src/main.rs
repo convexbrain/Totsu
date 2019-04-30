@@ -19,7 +19,7 @@ fn wx(x: &Mat, y: &Mat, alpha: &Mat, xi: &MatSlice) -> FP
 {
     let mut f: FP = 0.;
     for i in 0 .. y.size().0 {
-        f += alpha[(i, 0)] * y[(i, 0)] * kernel(&x.col(i), xi);
+        f += alpha.get(i, 0) * y.get(i, 0) * kernel(&x.col(i), xi);
     }
     f
 }
@@ -33,7 +33,7 @@ fn main() -> std::io::Result<()> {
     let l = 50; // # of samples
     let x = Mat::new(2, l).set_by(|_, _| rng.next()); // random 2-dimensional points
     let y = Mat::new_vec(l).set_by(|smp, _| {
-        let (d0, d1) = (x[(0, smp)] - 0.5, x[(1, smp)] - 0.5);
+        let (d0, d1) = (x.get(0, smp) - 0.5, x.get(1, smp) - 0.5);
         let r2 = d0 * d0 + d1 * d1;
         let r = r2.sqrt();
         if (r > 0.25) && (r < 0.4) {1.} else {-1.} // ring shape, 1 inside, -1 outside and hole
@@ -46,7 +46,7 @@ fn main() -> std::io::Result<()> {
     let p = 1;
 
     let mat_p = Mat::new(n, n).set_by(|r, c| {
-        y[(r, 0)] * y[(c, 0)] * kernel(&x.col(r), &x.col(c))
+        y.get(r, 0) * y.get(c, 0) * kernel(&x.col(r), &x.col(c))
     });
     let vec_q = Mat::new_vec(n).set_all(-1.);
 
@@ -71,8 +71,8 @@ fn main() -> std::io::Result<()> {
     let mut bias: FP = 0.;
     let mut cnt = 0;
     for i in 0 .. l {
-        if rslt[(i, 0)] > 1e-4 {
-            bias += y[(i, 0)] - wx(&x, &y, &rslt, &x.col(i));
+        if rslt.get(i, 0) > 1e-4 {
+            bias += y.get(i, 0) - wx(&x, &y, &rslt, &x.col(i));
             cnt += 1;
         }
     }
@@ -83,7 +83,7 @@ fn main() -> std::io::Result<()> {
     let mut dat_point = BufWriter::new(File::create("dat_point")?);
 
     for smp in 0 .. l {
-        writeln!(dat_point, "{} {} {} {}", x[(0, smp)], x[(1, smp)], y[(smp, 0)], rslt[(smp, 0)])?;
+        writeln!(dat_point, "{} {} {} {}", x.get(0, smp), x.get(1, smp), y.get(smp, 0), rslt.get(smp, 0))?;
     }
 
     let mut dat_grid = BufWriter::new(File::create("dat_grid")?);
