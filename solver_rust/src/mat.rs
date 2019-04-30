@@ -9,7 +9,6 @@ use std::cmp::PartialEq;
 use std::ops::{Range, RangeBounds, Bound};
 use std::ops::{Neg, Add, Mul, Sub, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 use std::fmt;
-use std::collections::HashMap;
 
 /// Scalar floating point type
 pub type FP = f64;
@@ -17,7 +16,8 @@ pub use std::f64::EPSILON as FP_EPSILON;
 pub use std::f64::MIN_POSITIVE as FP_MINPOS;
 
 /// Matrix elements collection
-type Coll = HashMap<usize, FP>;
+type Coll = Vec<FP>;
+//type Coll = std::collections::HashMap<usize, FP>;
 
 /// Matrix
 pub type Mat = MatGen<Coll>;
@@ -196,7 +196,8 @@ impl<V: View> MatGen<V>
             offset: 0,
             stride: nrows,
             transposed: false,
-            view: Coll::new()
+            view: vec![0.; nrows * ncols]
+            //view: Coll::new()
         }
     }
     /// *new* - Makes a matrix of the same size.
@@ -217,19 +218,23 @@ impl<V: View> MatGen<V>
     {
         let i = self.h_index(row, col);
 
-        *self.view.get_ref().get(&i).unwrap_or(&0.)
+        self.view.get_ref()[i]
+        //*self.view.get_ref().get(&i).unwrap_or(&0.)
     }
     /// Puts a value into an element
     pub fn put(&mut self, row: usize, col: usize, val: FP)
     {
         let i = self.h_index(row, col);
 
+        self.view.get_mut()[i] = val;
+        /*
         if val.abs() < FP_MINPOS {
             self.view.get_mut().remove(&i);
         }
         else {
             self.view.get_mut().insert(i, val);
         }
+        */
     }
     //
     /// *slice* - Slice block reference.
