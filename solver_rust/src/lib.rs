@@ -91,6 +91,7 @@ More practical examples are available [here](https://github.com/convexbrain/Tots
 */
 
 pub mod mat;
+pub mod matsolver;
 pub mod matsvd;
 pub mod pdipm;
 
