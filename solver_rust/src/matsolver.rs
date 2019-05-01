@@ -34,7 +34,7 @@ pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
     //let beta_1 = norm_b;
     let (mut alpha_1, mut v_1) = normalize(&(mat_a.t() * &u_1));
     let mut alpha_b1 = alpha_1;
-    let mut eta_b1 = alpha_1 * norm_b;
+    let mut zeta_b1 = alpha_1 * norm_b;
     let mut rho_0 = ONE;
     let mut rho_b0 = ONE;
     let mut c_b0 = ONE;
@@ -48,7 +48,7 @@ pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
     let mut rho_d0 = ONE;
     let mut tau_tm1 = ZERO;
     let mut theta_t0 = ZERO;
-    let mut eta_0 = ZERO;
+    let mut zeta_0 = ZERO;
     //
     let mut sqnorm_b_1 = ZERO;
     let mut min_rho_b0 = rho_b0;
@@ -74,12 +74,12 @@ pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
         let rho_b1 = theta_2.hypot(c_b0 * rho_1);
         let c_b1 = c_b0 * rho_1 / rho_b1;
         let s_b1 = theta_2 / rho_b1;
-        let eta_1 = c_b1 * eta_b1;
-        let eta_b2 = -s_b1 * eta_b1;
+        let zeta_1 = c_b1 * zeta_b1;
+        let zeta_b2 = -s_b1 * zeta_b1;
 
         // 6. Update h, h_b, x
         let h_b1 = &h_1 - (theta_b1 * rho_1 / (rho_0 * rho_b0)) * h_b0;
-        let x_1 = x_0 + (eta_1 / (rho_1 * rho_b1)) * &h_b1;
+        let x_1 = x_0 + (zeta_1 / (rho_1 * rho_b1)) * &h_b1;
         let h_2 = &v_2 - (theta_2 / rho_1) * h_1;
 
         // ||r_1|| 3. Apply rotation P_1
@@ -96,8 +96,8 @@ pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
         let beta_d1 = -s_t0 * beta_d0 + c_t0 * beta_h1;
 
         // ||r_1|| 5. Update t_t1 by forward substitution
-        let tau_t0 = (eta_0 - theta_t0 * tau_tm1) / rho_t0;
-        let tau_d1 = (eta_1 - theta_t1 * tau_t0) / rho_d1;
+        let tau_t0 = (zeta_0 - theta_t0 * tau_tm1) / rho_t0;
+        let tau_d1 = (zeta_1 - theta_t1 * tau_t0) / rho_d1;
 
         // ||r_1|| 6. Form ||r_1||
         let norm_r_1 = beta_u2.hypot(beta_d1 - tau_d1);
@@ -118,14 +118,22 @@ pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
         let cond_a = max_rho / min_rho;
 
         // (computing ||A'r_1||)
-        let norm_ar_1 = eta_b2.abs();
+        let norm_ar_1 = zeta_b2.abs();
 
         // (stopping criteria)
         let s1 = norm_r_1 <= BTOL * norm_b + ATOL * norm_a * norm_x_1;
         let s2 = norm_ar_1 <= ATOL * norm_a * norm_r_1;
         let s3 = cond_a >= CONLIM;
 
+        println!("{} {} {} {}  {} {}", norm_r_1, norm_b, norm_a, norm_x_1, norm_ar_1, cond_a);
+        println!("{} {}", BTOL * norm_b, ATOL * norm_a * norm_x_1);
+        println!("{}", BTOL * norm_b + ATOL * norm_a * norm_x_1);
         if s1 || s2 || s3 {
+            println!("{} {} {}", s1, s2, s3);
+            //println!("{}", x_1);
+            //println!("{}", mat_a);
+            //println!("{}", vec_b);
+            //println!("{}", mat_a * &x_1);
             return x_1;
         }
 
@@ -142,8 +150,8 @@ pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
         rho_b0 = rho_b1;
         c_b0 = c_b1;
         s_b0 = s_b1;
-        eta_0 = eta_1;
-        eta_b1 = eta_b2;
+        zeta_0 = zeta_1;
+        zeta_b1 = zeta_b2;
         //
         h_b0 = h_b1;
         x_0 = x_1;
@@ -159,3 +167,59 @@ pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
         sqnorm_b_1 = sqnorm_b_2;
     }
 }
+
+#[test]
+fn test_solve1()
+{
+    const TOL_RMSE: FP = 1.0 / (1u64 << 32) as FP;
+
+    let mat = Mat::new(2, 2).set_iter(&[
+        1., 2.,
+        3., 4.
+    ]);
+
+    let vec = Mat::new_vec(2).set_iter(&[
+        5., 6.
+    ]);
+
+    let x = solve(&mat, &vec);
+    println!("x = {}", x);
+
+    let h = &mat * &x;
+    println!("vec reconstructed = {}", h);
+
+    let h_size = h.size();
+    let h_err = (h - vec).norm_p2sq() / ((h_size.0 * h_size.1) as FP);
+    assert!(h_err < TOL_RMSE);
+}
+
+#[test]
+fn test_solve2()
+{
+    const TOL_RMSE: FP = 1.0 / (1u64 << 32) as FP;
+
+    let mat = Mat::new(4, 4).set_iter(&[
+        4.296e5,  0.000e0,  4.296e5,  0.000e0,
+        0.000e0,  4.296e5,  4.296e5,  0.000e0,
+        4.296e5,  4.296e5,  8.591e5,  1.000e0,
+        0.000e0,  0.000e0,  1.000e0,  0.000e0
+    ]);
+
+    let vec = Mat::new_vec(4).set_iter(&[
+        -9.460e1,
+        -9.460e1,
+        5.831e2,
+        3.859e-3
+    ]);
+
+    let x = solve(&mat, &vec);
+    println!("x = {}", x);
+
+    let h = &mat * &x;
+    println!("vec reconstructed = {}", h);
+
+    let h_size = h.size();
+    let h_err = (h - vec).norm_p2sq() / ((h_size.0 * h_size.1) as FP);
+    assert!(h_err < TOL_RMSE);
+}
+
