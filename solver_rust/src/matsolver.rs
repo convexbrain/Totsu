@@ -1,9 +1,6 @@
-//! LSMR: iterative least-squares solver
-//! D. C.-L. Fong and M. A. Saunders, LSMR: An iterative algorithm for sparse least-squares problems,
-//! SIAM J. Sci. Comput. 33:5, 2950-2971, published electronically Oct 27, 2011.
-//! http://web.stanford.edu/group/SOL/software/lsmr/
+//! Matrix linear algebra
 
-use super::mat::{Mat, FP};
+use super::mat::{Mat, FP, FP_EPSILON};
 
 fn normalize(vec: &Mat) -> (FP, Mat)
 {
@@ -17,11 +14,17 @@ fn normalize(vec: &Mat) -> (FP, Mat)
     (n, u)
 }
 
+/// Linear system solver by LSMR
+/// 
+/// References
+/// * [http://web.stanford.edu/group/SOL/software/lsmr/](http://web.stanford.edu/group/SOL/software/lsmr/)
+/// * D. C.-L. Fong and M. A. Saunders, "LSMR: An iterative algorithm for sparse least-squares problems,"
+///   SIAM J. Sci. Comput. 33:5, 2950-2971, published electronically Oct 27, 2011.
 pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
 {
-    const ATOL: FP = 1e-6; // 6 digits accurate
-    const BTOL: FP = 1e-6; // 6 digits accurate
-    const CONLIM: FP = 0.7e7; // about 1 / (10 * sqrt(eps))
+    const ATOL: FP = FP_EPSILON;
+    const BTOL: FP = FP_EPSILON;
+    const CONLIM: FP = 1. / FP_EPSILON;
     
     let (m, n) = mat_a.size();
     const ZERO: FP = 0.;
@@ -125,15 +128,7 @@ pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
         let s2 = norm_ar_1 <= ATOL * norm_a * norm_r_1;
         let s3 = cond_a >= CONLIM;
 
-        println!("{} {} {} {}  {} {}", norm_r_1, norm_b, norm_a, norm_x_1, norm_ar_1, cond_a);
-        println!("{} {}", BTOL * norm_b, ATOL * norm_a * norm_x_1);
-        println!("{}", BTOL * norm_b + ATOL * norm_a * norm_x_1);
         if s1 || s2 || s3 {
-            println!("{} {} {}", s1, s2, s3);
-            //println!("{}", x_1);
-            //println!("{}", mat_a);
-            //println!("{}", vec_b);
-            //println!("{}", mat_a * &x_1);
             return x_1;
         }
 
@@ -222,4 +217,3 @@ fn test_solve2()
     let h_err = (h - vec).norm_p2sq() / ((h_size.0 * h_size.1) as FP);
     assert!(h_err < TOL_RMSE);
 }
-
