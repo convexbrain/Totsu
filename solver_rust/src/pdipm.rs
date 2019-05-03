@@ -3,7 +3,7 @@ Primal-dual interior point method
 */
 
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
-use super::matsvd::MatSVD;
+use super::matlinalg;
 
 const TOL_STEP: FP = FP_EPSILON;
 const TOL_DIV0: FP = FP_MINPOS;
@@ -53,10 +53,7 @@ pub struct PDIPM
     f_i: Mat,
     r_t: Mat,
     df_i: Mat,
-    ddf: Mat,
-
-    /***** KKT matrix decomposition solver *****/
-    svd: MatSVD
+    ddf: Mat
 }
 
 /// Primal-Dual Interior-Point Method solver parameters.
@@ -79,8 +76,6 @@ pub struct PDIPMParam
     /// Max iteration number of outer-loop for the Newton step.
     /// Max iteration number of inner-loop for the backtracking line search.
     pub n_loop: usize,
-    /// Enables to warm-start svd.
-    pub svd_warm: bool,
     /// Enables to log kkt matrix.
     pub log_kkt: bool
 }
@@ -97,7 +92,6 @@ impl Default for PDIPMParam
             s_coef: 0.99,
             margin: 1.,
             n_loop: 256,
-            svd_warm: true,
             log_kkt: false
         }
     }
@@ -144,8 +138,7 @@ impl PDIPM
             f_i: Mat::new_vec(0),
             r_t: Mat::new_vec(0),
             df_i: Mat::new(0, 0),
-            ddf: Mat::new(0, 0),
-            svd: MatSVD::new((0, 0))
+            ddf: Mat::new(0, 0)
         }
     }
 
@@ -162,7 +155,6 @@ impl PDIPM
             self.r_t = Mat::new_vec(n + m + p);
             self.df_i = Mat::new(m, n);
             self.ddf = Mat::new(n, n);
-            self.svd = MatSVD::new((n + m + p, n + m + p));
         }
     }
 
@@ -229,6 +221,8 @@ impl PDIPM
         start_point(x);
         let mut lmd = self.y.rows_mut(n .. n + m);
         lmd.assign_all(param.margin);
+        let mut nu = self.y.rows_mut(n + m .. n + m + p);
+        nu.assign_all(0.);
         equality(&mut self.a, &mut self.b);
 
         // initial df_o, f_i, df_i
@@ -340,14 +334,7 @@ impl PDIPM
                 writeln_or!(log, "kkt : {}", self.kkt)?;
             }
 
-            if param.svd_warm {
-                self.svd.decomp_warm(&self.kkt);
-            }
-            else {
-                self.svd.decomp(&self.kkt);
-            }
-            
-            let dy = self.svd.solve(&(-&self.r_t));
+            let dy = matlinalg::solve(&self.kkt, &(-&self.r_t));
 
             writeln_or!(log, "y : {}", self.y.t())?;
             writeln_or!(log, "r_t : {}", self.r_t.t())?;
