@@ -91,7 +91,7 @@ More practical examples are available [here](https://github.com/convexbrain/Tots
 */
 
 pub mod mat;
-pub mod matsolver;
+pub mod matlinalg;
 pub mod matsvd;
 pub mod pdipm;
 
@@ -258,7 +258,10 @@ mod tests {
         let mat_a = Mat::new(p, n);
         let vec_b = Mat::new_vec(p);
 
-        let param = PDIPMParam::default();
+        let param = PDIPMParam {
+            eps: 1e-4, // solve_sdp() is not so accurate
+            .. PDIPMParam::default()
+        };
         let rslt = PDIPM::new().solve_sdp(&param, &mut std::io::sink(),
                                           &vec_c, &mat_f,
                                           &mat_a, &vec_b).unwrap();
@@ -266,8 +269,7 @@ mod tests {
         let exp = Mat::new_vec(n).set_iter(&[
             3., 4.
         ]);
-        let eps = 1e-6; // solve_sdp() is not so accurate
         println!("rslt = {}", rslt);
-        assert!((&rslt - exp).norm_p2() < eps);
+        assert!((&rslt - exp).norm_p2() < param.eps);
     }
 }

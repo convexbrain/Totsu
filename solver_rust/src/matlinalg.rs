@@ -1,17 +1,19 @@
 //! Matrix linear algebra
 
-use super::mat::{Mat, FP, FP_EPSILON};
+use super::mat::{Mat, MatSlice, FP, FP_EPSILON};
 
-fn normalize(vec: &Mat) -> (FP, Mat)
+fn normalize(vec: MatSlice) -> (FP, Mat)
 {
     assert_eq!(vec.size().1, 1);
 
     let n = vec.norm_p2();
 
-    assert!(n > 0.);
-
-    let u = vec / n;
-    (n, u)
+    if n > 0. {
+        (n, vec / n)
+}
+    else {
+        (0., vec.clone_sz())
+    }
 }
 
 /// Linear system solver by LSMR
@@ -20,7 +22,7 @@ fn normalize(vec: &Mat) -> (FP, Mat)
 /// * [http://web.stanford.edu/group/SOL/software/lsmr/](http://web.stanford.edu/group/SOL/software/lsmr/)
 /// * D. C.-L. Fong and M. A. Saunders, "LSMR: An iterative algorithm for sparse least-squares problems,"
 ///   SIAM J. Sci. Comput. 33:5, 2950-2971, published electronically Oct 27, 2011.
-pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
+fn solve_lsmr(mat_a: &Mat, vec_b: MatSlice) -> Mat
 {
     const ATOL: FP = FP_EPSILON;
     const BTOL: FP = FP_EPSILON;
@@ -35,7 +37,7 @@ pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
     // 1. Initialize
     let (norm_b, mut u_1) = normalize(vec_b);
     //let beta_1 = norm_b;
-    let (mut alpha_1, mut v_1) = normalize(&(mat_a.t() * &u_1));
+    let (mut alpha_1, mut v_1) = normalize((mat_a.t() * &u_1).as_slice());
     let mut alpha_b1 = alpha_1;
     let mut zeta_b1 = alpha_1 * norm_b;
     let mut rho_0 = ONE;
@@ -57,13 +59,17 @@ pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
     let mut min_rho_b0 = rho_b0;
     let mut max_rho_b0 = rho_b0;
 
+    if !(norm_b > 0.) || !(alpha_1 > 0.) {
+        return x_0;
+    }
+
     // 2. For k = 1, 2, 3 . . . , repeat steps 3–6.
     loop {
         // (indexing is shown as if k = 1)
 
         // 3. Continue the bidiagonalization
-        let (beta_2, u_2) = normalize(&(mat_a * &v_1 - alpha_1 * u_1));
-        let (alpha_2, v_2) = normalize(&(mat_a.t() * &u_2 - beta_2 * v_1));
+        let (beta_2, u_2) = normalize((mat_a * &v_1 - alpha_1 * u_1).as_slice());
+        let (alpha_2, v_2) = normalize((mat_a.t() * &u_2 - beta_2 * v_1).as_slice());
 
         // 4. Construct and apply rotation P_1
         let rho_1 = alpha_b1.hypot(beta_2);
@@ -163,8 +169,24 @@ pub fn solve(mat_a: &Mat, vec_b: &Mat) -> Mat
     }
 }
 
+pub fn solve(mat_a: &Mat, mat_b: &Mat) -> Mat
+{
+    let (_, xr) = mat_a.size();
+    let (_, xc) = mat_b.size();
+    let mut mat_x = Mat::new(xr, xc);
+
+    for c in 0 .. xc {
+        let vec_b = mat_b.col(c);
+        let mut vec_x = mat_x.col_mut(c);
+        vec_x.assign(&solve_lsmr(mat_a, vec_b));
+    }
+
+    mat_x
+}
+
+
 #[test]
-fn test_solve1()
+fn test_lsmr1()
 {
     const TOL_RMSE: FP = 1.0 / (1u64 << 32) as FP;
 
@@ -189,7 +211,7 @@ fn test_solve1()
 }
 
 #[test]
-fn test_solve2()
+fn test_lsmr2()
 {
     const TOL_RMSE: FP = 1.0 / (1u64 << 32) as FP;
 
