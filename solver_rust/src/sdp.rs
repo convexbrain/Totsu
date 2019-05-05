@@ -210,7 +210,6 @@ impl SDP for PDIPM
 
             match rslt {
                 Ok(y) => vec_xs.assign(&y.rows(0 .. n + 1)),
-                //Err(PDIPMErr::Inaccurate(y)) => vec_xs.assign(&y.rows(0 .. n + 1)), // TODO
                 Err(other) => return Err(other.into())
             };
 

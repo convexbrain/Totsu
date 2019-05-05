@@ -106,10 +106,8 @@ impl Default for PDIPMParam
 /// Primal-Dual Interior-Point Method solver errors.
 pub enum PDIPMErr<'a>
 {
-    /// Ended in an inaccurate result because of a too small step.
-    Inaccurate(&'a Mat),
-    /// Did not converged.
-    NotConverged,
+    /// Did not converged, and ended in an inaccurate result.
+    NotConverged(&'a Mat),
     /// Did not meet inequality feasibility.
     Infeasible,
     /// Failed to log due to I/O error.
@@ -121,8 +119,7 @@ impl<'a> From<PDIPMErr<'a>> for String
     fn from(err: PDIPMErr) -> String
     {
         match err {
-            PDIPMErr::Inaccurate(_) => "PDIPM Inaccurate".into(),
-            PDIPMErr::NotConverged => "PDIPM Not Converged".into(),
+            PDIPMErr::NotConverged(_) => "PDIPM Not Converged".into(),
             PDIPMErr::Infeasible => "PDIPM Infeasible".into(),
             PDIPMErr::LogFailure => "PDIPM Log Failure".into(),
         }
@@ -393,7 +390,7 @@ impl PDIPM
             }
             else {
                 writeln_or!(log, "infeasible in this direction")?;
-                return Err(PDIPMErr::NotConverged);
+                return Err(PDIPMErr::NotConverged(&self.y));
             }
 
             let org_r_t_norm = self.r_t.norm_p2();
@@ -443,12 +440,12 @@ impl PDIPM
                 }
                 else {
                     writeln_or!(log, "too small step")?;
-                    return Err(PDIPMErr::Inaccurate(&self.y));
+                    return Err(PDIPMErr::NotConverged(&self.y));
                 }
             }
             else {
                 writeln_or!(log, "B-iteration limit")?;
-                return Err(PDIPMErr::NotConverged);
+                return Err(PDIPMErr::NotConverged(&self.y));
             }
 
             /***** back tracking line search - to here *****/
@@ -458,7 +455,7 @@ impl PDIPM
 
         if !(cnt < param.n_loop) {
             writeln_or!(log, "N-iteration limit")?;
-            return Err(PDIPMErr::NotConverged);
+            return Err(PDIPMErr::NotConverged(&self.y));
         }
 
         writeln_or!(log)?;
