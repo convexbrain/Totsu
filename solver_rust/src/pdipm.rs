@@ -334,27 +334,27 @@ impl PDIPM
                 writeln_or!(log, "kkt : {}", self.kkt)?;
             }
 
-            let dy = matlinalg::solve(&self.kkt, &(-&self.r_t));
+            let neg_dy = matlinalg::solve(&self.kkt, &self.r_t); // negative dy
 
             writeln_or!(log, "y : {}", self.y.t())?;
             writeln_or!(log, "r_t : {}", self.r_t.t())?;
-            writeln_or!(log, "dy : {}", dy.t())?;
+            writeln_or!(log, "neg_dy : {}", neg_dy.t())?;
 
             /***** back tracking line search - from here *****/
 
             let mut s_max: FP = 1.;
             {
-                let dlmd = dy.rows(n .. n + m);
+                let neg_dlmd = neg_dy.rows(n .. n + m);
 
                 for i in 0 .. m {
-                    if dlmd.get(i, 0) < -TOL_DIV0 { // to avoid zero-division by Dlmd
-                        s_max = s_max.min(-lmd.get(i, 0) / dlmd.get(i, 0));
+                    if neg_dlmd.get(i, 0) > TOL_DIV0 { // to avoid zero-division by Dlmd
+                        s_max = s_max.min(lmd.get(i, 0) / neg_dlmd.get(i, 0));
                     }
                 }
             }
             let mut s = param.s_coef * s_max;
 
-            let mut y_p = &self.y + s * &dy;
+            let mut y_p = &self.y - s * &neg_dy;
 
             let mut bcnt = 0;
             while bcnt < b_loop {
@@ -366,7 +366,7 @@ impl PDIPM
 
                 if (self.f_i.max().unwrap_or(-1.) < 0.) && (lmd_p.min().unwrap_or(1.) > 0.) {break;}
                 s *= param.beta;
-                y_p = &self.y + s * &dy;
+                y_p = &self.y - s * &neg_dy;
 
                 bcnt += 1;
             }
@@ -413,7 +413,7 @@ impl PDIPM
 
                 if self.r_t.norm_p2() <= (1. - param.alpha * s) * org_r_t_norm {break;}
                 s *= param.beta;
-                y_p = &self.y + s * &dy;
+                y_p = &self.y - s * &neg_dy;
 
                 bcnt += 1;
             }

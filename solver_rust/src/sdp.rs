@@ -1,7 +1,6 @@
 //! Semidefinite program
 
 use super::prelude::*;
-use super::matsvd::MatSVD;
 use super::matlinalg;
 
 use std::io::Write;
@@ -102,10 +101,8 @@ impl SDP for PDIPM
 
         // ----- initial value of a slack variable
 
-        let mut svd_kk = MatSVD::new((k, k));
-        svd_kk.decomp(&mat_f[n]);
+        let s = matlinalg::dom_eig(&mat_f[n]);
 
-        let s = svd_kk.s().max().unwrap(); // TODO
         let mut margin = param.margin;
         let mut s_initial = s + margin;
         while s_initial <= s {

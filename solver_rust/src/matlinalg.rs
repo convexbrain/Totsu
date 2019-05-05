@@ -16,12 +16,6 @@ fn normalize(vec: MatSlice) -> (FP, Mat)
     }
 }
 
-/// Linear system solver by LSMR
-/// 
-/// References
-/// * [http://web.stanford.edu/group/SOL/software/lsmr/](http://web.stanford.edu/group/SOL/software/lsmr/)
-/// * D. C.-L. Fong and M. A. Saunders, "LSMR: An iterative algorithm for sparse least-squares problems,"
-///   SIAM J. Sci. Comput. 33:5, 2950-2971, published electronically Oct 27, 2011.
 fn solve_lsmr(mat_a: &Mat, vec_b: MatSlice) -> Mat
 {
     const ATOL: FP = FP_EPSILON;
@@ -169,6 +163,12 @@ fn solve_lsmr(mat_a: &Mat, vec_b: MatSlice) -> Mat
     }
 }
 
+/// Linear equation solver by LSMR
+/// 
+/// References
+/// * [http://web.stanford.edu/group/SOL/software/lsmr/](http://web.stanford.edu/group/SOL/software/lsmr/)
+/// * D. C.-L. Fong and M. A. Saunders, "LSMR: An iterative algorithm for sparse least-squares problems,"
+///   SIAM J. Sci. Comput. 33:5, 2950-2971, published electronically Oct 27, 2011.
 pub fn solve(mat_a: &Mat, mat_b: &Mat) -> Mat
 {
     let (_, xr) = mat_a.size();
@@ -182,6 +182,33 @@ pub fn solve(mat_a: &Mat, mat_b: &Mat) -> Mat
     }
 
     mat_x
+}
+
+/// Finds dominant eigenvalue by power iteration
+pub fn dom_eig(mat_a: &Mat) -> FP
+{
+    let (m, n) = mat_a.size();
+    assert_eq!(m, n);
+
+    if n == 0 {
+        return 0.;
+    }
+
+    let mut v = Mat::new_vec(n).set_all(1.);
+    let mut lambda = 0.;
+
+    loop {
+        let w = mat_a * &v;
+        let lambda_n = v.prod(&w);
+
+        if (lambda_n - lambda).abs() <= FP_EPSILON {
+            return lambda_n;
+        }
+
+        let (_, v_n) = normalize(w.as_slice());
+        v = v_n;
+        lambda = lambda_n;
+    }
 }
 
 
