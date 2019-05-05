@@ -19,7 +19,7 @@ fn wx(x: &Mat, alpha: &MatSlice, xi: &MatSlice) -> FP
 {
     let mut f: FP = 0.;
     for i in 0 .. alpha.size().0 {
-        f += alpha.get(i, 0) * kernel(&x.col(i), xi);
+        f += alpha[(i, 0)] * kernel(&x.col(i), xi);
     }
     f
 }
@@ -33,8 +33,8 @@ fn main() -> std::io::Result<()> {
     let l = 20; // # of samples
     let x = Mat::new(2, l).set_by(|_, _| rng.next()); // random 2-dimensional points
     let y = Mat::new_vec(l).set_by(|smp, _| {
-        let x0 = (5. * x.get(0, smp)).cos();
-        let x1 = (7. * x.get(1, smp)).cos();
+        let x0 = (5. * x[(0, smp)]).cos();
+        let x1 = (7. * x[(1, smp)]).cos();
         x0 * x1 // wavy-shaped points
     });
 
@@ -82,14 +82,14 @@ fn main() -> std::io::Result<()> {
                                      &mat_a, &vec_b).unwrap();
     //println!("{}", rslt);
     let alpha = rslt.rows(l .. l * 2);
-    let bias = rslt.get(l * 3, 0);
+    let bias = rslt[(l * 3, 0)];
 
     //----- file output for graph plot
 
     let mut dat_point = BufWriter::new(File::create("dat_point")?);
 
     for smp in 0 .. l {
-        writeln!(dat_point, "{} {} {} {}", x.get(0, smp), x.get(1, smp), y.get(smp, 0), alpha.get(smp, 0))?;
+        writeln!(dat_point, "{} {} {} {}", x[(0, smp)], x[(1, smp)], y[(smp, 0)], alpha[(smp, 0)])?;
     }
 
     let mut dat_grid = BufWriter::new(File::create("dat_grid")?);
