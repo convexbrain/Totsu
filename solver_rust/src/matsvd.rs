@@ -141,25 +141,22 @@ impl MatSVD
     /// Solves linear equations using the last SVD result.
     pub fn solve(&self, h: &Mat) -> Mat
     {
-        let mut sinv = self.s.clone_diag();
-        let (nrows, _) = self.s.size();
+        let sinv = Mat::new_like(&self.s).set_by(|r, _| {
+            let s = self.s[(r, 0)];
 
-        for r in 0 .. nrows {
-            let s = sinv[(r, r)];
-
-            sinv[(r, r)] = if s.abs() < TOL_SINV {
+            if s.abs() < TOL_SINV {
                 0.
             }
             else {
                 1. / s
             }
-        }
+        });
 
         if !self.transposed {
-            &self.v * (sinv * (self.u.t() * h))
+            &self.v * sinv.diag_mul(&(self.u.t() * h))
         }
         else {
-            &self.u * (sinv * (self.v.t() * h))
+            &self.u * sinv.diag_mul(&(self.v.t() * h))
         }
     }
     //
@@ -189,10 +186,10 @@ fn test_decomp()
     //
 
     let g = if !svd.transposed {
-        &svd.u * svd.s.clone_diag() * svd.v.t()
+        &svd.u * svd.s.diag_mul(&svd.v.t())
     }
     else {
-        &svd.v * svd.s.clone_diag() * svd.u.t()
+        &svd.v * svd.s.diag_mul(&svd.u.t())
     };
     println!("mat reconstructed = {}", g);
 

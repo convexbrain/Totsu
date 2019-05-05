@@ -268,12 +268,7 @@ impl PDIPM
 
             /***** calc t *****/
 
-            let eta = if m > 0 {
-                -self.f_i.prod(&lmd)
-            }
-            else {
-                eps_eta
-            };
+            let eta = if m > 0 {-self.f_i.prod(&lmd)} else {eps_eta};
 
             // inequality feasibility check
             if eta < 0. {return Err(PDIPMErr::Infeasible);} // never happen
@@ -284,7 +279,7 @@ impl PDIPM
 
             if m > 0 {
                 let mut r_cent = self.r_t.rows_mut(n .. n + m);
-                r_cent.assign(&(-lmd.clone_diag() * &self.f_i - inv_t.unwrap()));
+                r_cent.assign_s(&(lmd.diag_mul(&self.f_i) + inv_t.unwrap()), -1.);
             }
 
             /***** termination criteria *****/
@@ -319,10 +314,10 @@ impl PDIPM
                 kkt_lmd_dual.assign(&self.df_i.t());
 
                 let mut kkt_x_cent = self.kkt.slice_mut(n .. n + m, 0 .. n);
-                kkt_x_cent.assign(&(-lmd.clone_diag() * &self.df_i));
+                kkt_x_cent.assign_s(&lmd.diag_mul(&self.df_i), -1.);
 
                 let mut kkt_lmd_cent = self.kkt.slice_mut(n .. n + m, n .. n + m);
-                kkt_lmd_cent.assign(&(-self.f_i.clone_diag()));
+                kkt_lmd_cent.assign_s(&self.f_i.clone_diag(), -1.);
             }
 
             if p > 0 {
@@ -416,7 +411,7 @@ impl PDIPM
                 }
                 if m > 0 {
                     let mut r_cent = self.r_t.rows_mut(n .. n + m);
-                    r_cent.assign(&(-lmd_p.clone_diag() * &self.f_i - inv_t.unwrap()));
+                    r_cent.assign_s(&(lmd_p.diag_mul(&self.f_i) + inv_t.unwrap()), -1.);
                 }
                 if p > 0 {
                     let mut r_pri = self.r_t.rows_mut(n + m .. n + m + p);

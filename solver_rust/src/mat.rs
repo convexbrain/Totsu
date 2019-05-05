@@ -425,8 +425,8 @@ impl<V: View> MatGen<V>
     {
         self.assign_by(|_, _| Some(value));
     }
-    /// *assign* - Assign matrix.
-    pub fn assign<V2: View>(&mut self, rhs: &MatGen<V2>)
+    /// *assign* - Assign matrix with scaling.
+    pub fn assign_s<V2: View>(&mut self, rhs: &MatGen<V2>, value: FP)
     {
         let (l_nrows, l_ncols) = self.size();
         let (r_nrows, r_ncols) = rhs.size();
@@ -434,7 +434,30 @@ impl<V: View> MatGen<V>
         assert_eq!(l_nrows, r_nrows);
         assert_eq!(l_ncols, r_ncols);
         
-        self.assign_by(|r, c| Some(rhs[(r, c)]));
+        self.assign_by(|r, c| Some(value * rhs[(r, c)]));
+    }
+    /// *assign* - Assign matrix.
+    pub fn assign<V2: View>(&mut self, rhs: &MatGen<V2>)
+    {
+        self.assign_s(rhs, 1.);
+    }
+    //
+    /// Made into diagonal matrix and multiplied.
+    pub fn diag_mul<V2: View>(&self, rhs: &MatGen<V2>) -> Mat
+    {
+        let (l_nrows, l_ncols) = self.size();
+        let (r_nrows, _) = rhs.size();
+
+        assert_eq!(l_ncols, 1);
+        assert_eq!(l_nrows, r_nrows);
+
+        let mut mat = Mat::new_like(rhs);
+
+        for r in 0 .. l_nrows {
+            mat.row_mut(r).assign(&(self[(r, 0)] * rhs.row(r)));
+        }
+
+        mat
     }
     //
     /// Returns p=2 norm squared.
