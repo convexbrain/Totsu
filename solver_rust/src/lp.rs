@@ -104,7 +104,7 @@ impl LP for PDIPM
             |_, df_o| {
                 df_o.rows_mut(0 .. n).assign(&vec_c);
                 // for a slack variable
-                df_o.put(n, 0, 0.);
+                df_o[(n, 0)] = 0.;
             },
             |_, ddf_o| {
                 ddf_o.assign_all(0.);
@@ -112,7 +112,7 @@ impl LP for PDIPM
             |x, f_i| {
                 f_i.assign(&(
                     mat_g * x.rows(0 .. n) - vec_h
-                    - x.get(n, 0) // minus a slack variable
+                    - x[(n, 0)] // minus a slack variable
                 ))
             },
             |_, df_i| {
@@ -129,11 +129,11 @@ impl LP for PDIPM
                 a.slice_mut(0 .. p, 0 .. n).assign(mat_a);
                 b.rows_mut(0 .. p).assign(vec_b);
                 // for a slack variable
-                a.put(p, n, 1.);
+                a[(p, n)] = 1.;
             },
             |mut x| {
                 x.assign_all(0.);
-                x.put(n, 0, s_initial);
+                x[(n, 0)] = s_initial;
             }
         );
 

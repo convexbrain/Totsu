@@ -3,7 +3,7 @@ Primal-dual interior point method
 */
 
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
-use super::matlinalg;
+use super::matsvd::MatSVD;
 
 const TOL_STEP: FP = FP_EPSILON;
 const TOL_DIV0: FP = FP_MINPOS;
@@ -53,7 +53,10 @@ pub struct PDIPM
     f_i: Mat,
     r_t: Mat,
     df_i: Mat,
-    ddf: Mat
+    ddf: Mat,
+
+    /***** KKT matrix decomposition solver *****/
+    svd: MatSVD
 }
 
 /// Primal-Dual Interior-Point Method solver parameters.
@@ -76,6 +79,8 @@ pub struct PDIPMParam
     /// Max iteration number of outer-loop for the Newton step.
     /// Max iteration number of inner-loop for the backtracking line search.
     pub n_loop: usize,
+    /// Enables to warm-start svd.
+    pub svd_warm: bool,
     /// Enables to log kkt matrix.
     pub log_kkt: bool
 }
@@ -92,6 +97,7 @@ impl Default for PDIPMParam
             s_coef: 0.99,
             margin: 1.,
             n_loop: 256,
+            svd_warm: true,
             log_kkt: false
         }
     }
@@ -138,7 +144,8 @@ impl PDIPM
             f_i: Mat::new_vec(0),
             r_t: Mat::new_vec(0),
             df_i: Mat::new(0, 0),
-            ddf: Mat::new(0, 0)
+            ddf: Mat::new(0, 0),
+            svd: MatSVD::new((0, 0))
         }
     }
 
@@ -155,6 +162,7 @@ impl PDIPM
             self.r_t = Mat::new_vec(n + m + p);
             self.df_i = Mat::new(m, n);
             self.ddf = Mat::new(n, n);
+            self.svd = MatSVD::new((n + m + p, n + m + p));
         }
     }
 
@@ -306,7 +314,7 @@ impl PDIPM
             kkt_x_dual.assign(&self.ddf);
             for i in 0 .. m {
                 dd_inequality(&x, &mut self.ddf, i);
-                kkt_x_dual += lmd.get(i, 0) * &self.ddf;
+                kkt_x_dual += lmd[(i, 0)] * &self.ddf;
             }
 
             if m > 0 {
@@ -334,7 +342,14 @@ impl PDIPM
                 writeln_or!(log, "kkt : {}", self.kkt)?;
             }
 
-            let neg_dy = matlinalg::solve(&self.kkt, &self.r_t); // negative dy
+            if param.svd_warm {
+                self.svd.decomp_warm(&self.kkt);
+            }
+            else {
+                self.svd.decomp(&self.kkt);
+            }
+            
+            let neg_dy = self.svd.solve(&self.r_t); // negative dy
 
             writeln_or!(log, "y : {}", self.y.t())?;
             writeln_or!(log, "r_t : {}", self.r_t.t())?;
@@ -347,8 +362,8 @@ impl PDIPM
                 let neg_dlmd = neg_dy.rows(n .. n + m);
 
                 for i in 0 .. m {
-                    if neg_dlmd.get(i, 0) > TOL_DIV0 { // to avoid zero-division by Dlmd
-                        s_max = s_max.min(lmd.get(i, 0) / neg_dlmd.get(i, 0));
+                    if neg_dlmd[(i, 0)] > TOL_DIV0 { // to avoid zero-division by Dlmd
+                        s_max = s_max.min(lmd[(i, 0)] / neg_dlmd[(i, 0)]);
                     }
                 }
             }
