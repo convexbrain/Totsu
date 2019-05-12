@@ -4,6 +4,7 @@ Primal-dual interior point method
 
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
 use super::matsvd::MatSVD;
+use super::matsvdsolve;
 
 const TOL_STEP: FP = FP_EPSILON;
 const TOL_DIV0: FP = FP_MINPOS;
@@ -334,6 +335,7 @@ impl PDIPM
                 writeln_or!(log, "kkt : {}", self.kkt)?;
             }
 
+            /*
             if param.svd_warm {
                 self.svd.decomp_warm(&self.kkt);
             }
@@ -342,6 +344,8 @@ impl PDIPM
             }
             
             let neg_dy = self.svd.solve(&self.r_t); // negative dy
+            */
+            let neg_dy = matsvdsolve::solve(&self.kkt, &self.r_t); // negative dy
 
             writeln_or!(log, "y : {}", self.y.t())?;
             writeln_or!(log, "r_t : {}", self.r_t.t())?;
