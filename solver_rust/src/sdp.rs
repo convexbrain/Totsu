@@ -1,7 +1,8 @@
 //! Semidefinite program
 
 use super::prelude::*;
-use super::matsvd::MatSVD;
+use super::matsvdsolve;
+use super::matlinalg;
 
 use std::io::Write;
 macro_rules! writeln_or {
@@ -101,10 +102,7 @@ impl SDP for PDIPM
 
         // ----- initial value of a slack variable
 
-        let mut svd_kk = MatSVD::new((k, k));
-        svd_kk.decomp(&mat_f[n]);
-
-        let s = svd_kk.s().max().unwrap();
+        let s = matlinalg::dom_eig(&mat_f[n]);
         let mut margin = param.margin;
         let mut s_initial = s + margin;
         while s_initial <= s {
@@ -118,19 +116,15 @@ impl SDP for PDIPM
 
         let mut vec_q = Mat::new_vec(n);
         let fx0 = &mat_f[n] - s_initial * &eye;
-        svd_kk.decomp(&fx0); // re-use because of the same size
         for i in 0 .. n {
-            vec_q[(i, 0)] = svd_kk.solve(&mat_f[i]).tr();
+            vec_q[(i, 0)] = matsvdsolve::solve(&fx0, &mat_f[i]).tr();
         }
 
         let mut mat_p = Mat::new(n, p + 1);
         mat_p.cols_mut(0 .. p).assign(&mat_a.t());
         mat_p.col_mut(p).assign(&vec_c);
 
-        let mut svd_np1 = MatSVD::new(mat_p.size());
-        svd_np1.decomp(&mat_p);
-
-        let mut t = svd_np1.solve(&vec_q)[(p, 0)];
+        let mut t = matsvdsolve::solve(&mat_p, &vec_q)[(p, 0)];
         t = t.max(param.eps);
 
         // ----- start to solve
@@ -138,7 +132,7 @@ impl SDP for PDIPM
         let mut vec_xs = Mat::new_vec(n + 1);
         vec_xs[(n, 0)] = s_initial;
 
-        let svd_cell = RefCell::new(svd_kk);
+        let fx_cell = RefCell::new(Mat::new(k, k));
 
         loop {
             writeln_or!(log)?;
@@ -148,29 +142,28 @@ impl SDP for PDIPM
             let rslt = self.solve(param, log,
                 n + 1, m, p + 1, // '+ 1' is for a slack variable
                 |x, df_o| {
-                    let mut fx = - x[(n, 0)] * &eye;
-                    fx += &mat_f[n];
+                    let mut fx = fx_cell.borrow_mut();
+                    *fx = - x[(n, 0)] * &eye;
+                    *fx += &mat_f[n];
                     for i in 0 .. n {
-                        fx += &mat_f[i] * x[(i, 0)];
+                        *fx += &mat_f[i] * x[(i, 0)];
                     }
-                    let mut svd = svd_cell.borrow_mut();
-                    svd.decomp(&fx);
                     //
                     for i in 0 .. n {
-                        df_o[(i, 0)] = t * vec_c[(i, 0)] - svd.solve(&mat_f[i]).tr();
+                        df_o[(i, 0)] = t * vec_c[(i, 0)] - matsvdsolve::solve(&fx, &mat_f[i]).tr();
                     }
                     // for a slack variable
-                    df_o[(n, 0)] = svd.solve(&eye).tr();
+                    df_o[(n, 0)] =  matsvdsolve::solve(&fx, &eye).tr();
                 },
                 |_, ddf_o| {
                     // x won't change because dd_objective is called after d_objective with the same x
-                    let svd = svd_cell.borrow();
+                    let fx = fx_cell.borrow_mut();
                     //
-                    let feye = svd.solve(&eye);
+                    let feye = matsvdsolve::solve(&fx, &eye);
                     for c in 0 .. n {
-                        let fc = svd.solve(&mat_f[c]);
+                        let fc = matsvdsolve::solve(&fx, &mat_f[c]);
                         for r in 0 .. c {
-                            let fr = svd.solve(&mat_f[r]);
+                            let fr = matsvdsolve::solve(&fx, &mat_f[r]);
                             let v = fr.prod(&fc); // tr(fr*fc)
                             ddf_o[(r, c)] = v;
                             ddf_o[(c, r)] = v;

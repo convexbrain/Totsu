@@ -3,7 +3,6 @@ Primal-dual interior point method
 */
 
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
-use super::matsvd::MatSVD;
 use super::matsvdsolve;
 
 const TOL_STEP: FP = FP_EPSILON;
@@ -55,9 +54,6 @@ pub struct PDIPM
     r_t: Mat,
     df_i: Mat,
     ddf: Mat,
-
-    /***** KKT matrix decomposition solver *****/
-    svd: MatSVD
 }
 
 /// Primal-Dual Interior-Point Method solver parameters.
@@ -80,8 +76,6 @@ pub struct PDIPMParam
     /// Max iteration number of outer-loop for the Newton step.
     /// Max iteration number of inner-loop for the backtracking line search.
     pub n_loop: usize,
-    /// Enables to warm-start svd.
-    pub svd_warm: bool,
     /// Enables to log kkt matrix.
     pub log_kkt: bool
 }
@@ -98,7 +92,6 @@ impl Default for PDIPMParam
             s_coef: 0.99,
             margin: 1.,
             n_loop: 256,
-            svd_warm: true,
             log_kkt: false
         }
     }
@@ -142,8 +135,7 @@ impl PDIPM
             f_i: Mat::new_vec(0),
             r_t: Mat::new_vec(0),
             df_i: Mat::new(0, 0),
-            ddf: Mat::new(0, 0),
-            svd: MatSVD::new((0, 0))
+            ddf: Mat::new(0, 0)
         }
     }
 
@@ -160,7 +152,6 @@ impl PDIPM
             self.r_t = Mat::new_vec(n + m + p);
             self.df_i = Mat::new(m, n);
             self.ddf = Mat::new(n, n);
-            self.svd = MatSVD::new((n + m + p, n + m + p));
         }
     }
 
@@ -335,16 +326,6 @@ impl PDIPM
                 writeln_or!(log, "kkt : {}", self.kkt)?;
             }
 
-            /*
-            if param.svd_warm {
-                self.svd.decomp_warm(&self.kkt);
-            }
-            else {
-                self.svd.decomp(&self.kkt);
-            }
-            
-            let neg_dy = self.svd.solve(&self.r_t); // negative dy
-            */
             let neg_dy = matsvdsolve::solve(&self.kkt, &self.r_t); // negative dy
 
             writeln_or!(log, "y : {}", self.y.t())?;
