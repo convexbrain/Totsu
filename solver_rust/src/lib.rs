@@ -92,9 +92,10 @@ More practical examples are available [here](https://github.com/convexbrain/Tots
 
 pub mod mat;
 pub mod matlinalg;
-//pub mod matsvd;
+pub mod matsvd;
 pub mod matsvdsolve;
 pub mod pdipm;
+pub mod operator;
 
 /// Prelude
 pub mod prelude {

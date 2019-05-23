@@ -1,6 +1,7 @@
 //! Matrix singular value decomposition
 
 use super::mat::{Mat, FP, FP_EPSILON};
+use super::operator::LinOp;
 
 const TOL_CNV_SQ: FP = FP_EPSILON * FP_EPSILON * 4.;
 const TOL_SINV_SQ: FP = FP_EPSILON * FP_EPSILON;
@@ -102,7 +103,14 @@ impl SVD
     }
 }
 
+// TODO: rename
 pub fn solve(g: &Mat, h: &Mat) -> Mat
 {
     SVD::new(g.clone_sz(), h.clone_sz()).decomp().solve()
+}
+
+// TODO: rename
+pub fn lin_solve<L: LinOp>(g: &L, h: &Mat) -> Mat
+{
+    SVD::new(g.mat(), h.clone_sz()).decomp().solve()
 }
