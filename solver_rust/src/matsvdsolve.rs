@@ -14,6 +14,7 @@ struct SVD
     vt_h: Mat
 }
 
+// TODO: refactor along with matsvd
 impl SVD
 {
     /// Makes a SVD workplace for factorizing a specified size matrix.
