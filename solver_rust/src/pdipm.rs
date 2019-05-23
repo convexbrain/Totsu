@@ -69,7 +69,44 @@ impl LinOp for KKTOp
 
         kkt
     }
-    // TODO: efficient apply() and t_apply()
+
+    fn apply(&self, vec: &Mat) -> Mat {
+        assert_eq!(vec.size().1, 1);
+
+        let (n, m) = self.lmd_dual.size();
+        let (p, _) = self.x_pri.size();
+
+        let x = vec.rows(0 .. n);
+        let lmd = vec.rows(n .. n + m);
+        let nu = vec.rows(n + m .. n + m + p);
+
+        let mut v = Mat::new_vec(n + m + p);
+
+        v.rows_mut(0 .. n).assign(&(&self.x_dual * &x + &self.lmd_dual * &lmd + &self.nu_dual * &nu));
+        v.rows_mut(n .. n + m).assign(&(&self.x_cent * &x + &self.lmd_cent * &lmd));
+        v.rows_mut(n + m .. n + m + p).assign(&(&self.x_pri * &x));
+        
+        v
+    }
+
+    fn t_apply(&self, vec: &Mat) -> Mat {
+        assert_eq!(vec.size().1, 1);
+
+        let (n, m) = self.lmd_dual.size();
+        let (p, _) = self.x_pri.size();
+
+        let x = vec.rows(0 .. n);
+        let lmd = vec.rows(n .. n + m);
+        let nu = vec.rows(n + m .. n + m + p);
+
+        let mut v = Mat::new_vec(n + m + p);
+
+        v.rows_mut(0 .. n).assign(&(&self.x_dual.t() * &x + &self.x_cent.t() * &lmd + &self.x_pri.t() * &nu));
+        v.rows_mut(n .. n + m).assign(&(&self.lmd_dual.t() * &x + &self.lmd_cent.t() * &lmd));
+        v.rows_mut(n + m .. n + m + p).assign(&(&self.nu_dual.t() * &x));
+        
+        v
+    }
 }
 
 /**
