@@ -4,6 +4,7 @@ Primal-dual interior point method
 
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
 use super::matsvdsolve;
+use super::operator::LinOp;
 
 const TOL_STEP: FP = FP_EPSILON;
 const TOL_DIV0: FP = FP_MINPOS;
@@ -13,6 +14,55 @@ macro_rules! writeln_or {
     ( $( $arg: expr ),* ) => {
         writeln!( $( $arg ),* ).or(Err(PDIPMErr::LogFailure))
     };
+}
+
+struct KKTOp
+{
+    //kkt: Mat, // TODO: reuse memory
+    // TODO: memory optimization
+    x_dual: Mat,
+    lmd_dual: Mat,
+    nu_dual: Mat,
+    x_cent: Mat,
+    lmd_cent: Mat,
+    x_pri: Mat
+}
+
+impl KKTOp
+{
+    fn new(n: usize, m: usize, p: usize) -> KKTOp
+    {
+        KKTOp {
+            //kkt: Mat::new(n + m + p, n + m + p),
+            x_dual: Mat::new(n, n),
+            lmd_dual: Mat::new(n, m),
+            nu_dual: Mat::new(n, p),
+            x_cent: Mat::new(m, n),
+            lmd_cent: Mat::new(m, m),
+            x_pri: Mat::new(p, n)
+        }
+    }
+}
+
+impl LinOp for KKTOp
+{
+    fn mat(&self) -> Mat
+    {
+        let (n, m) = self.lmd_dual.size();
+        let (p, _) = self.x_pri.size();
+
+        let mut kkt = Mat::new(n + m + p, n + m + p);
+
+        kkt.slice_mut(0 .. n, 0 .. n).assign(&self.x_dual);
+        kkt.slice_mut(0 .. n, n .. n + m).assign(&self.lmd_dual);
+        kkt.slice_mut(0 .. n, n + m .. n + m + p).assign(&self.nu_dual);
+        kkt.slice_mut(n .. n + m, 0 .. n).assign(&self.x_cent);
+        kkt.slice_mut(n .. n + m, n .. n + m).assign(&self.lmd_cent);
+        kkt.slice_mut(n + m .. n + m + p, 0 .. n).assign(&self.x_pri);
+
+        kkt
+    }
+    // TODO: efficient apply() and t_apply()
 }
 
 /**
@@ -47,7 +97,7 @@ pub struct PDIPM
     b: Mat,
     // loop variable
     y: Mat,
-    kkt: Mat,
+    kkt_op: KKTOp,
     // temporal in loop
     df_o: Mat,
     f_i: Mat,
@@ -130,7 +180,7 @@ impl PDIPM
             a: Mat::new(0, 0),
             b: Mat::new_vec(0),
             y: Mat::new_vec(0),
-            kkt: Mat::new(0, 0),
+            kkt_op: KKTOp::new(0, 0, 0),
             df_o: Mat::new_vec(0),
             f_i: Mat::new_vec(0),
             r_t: Mat::new_vec(0),
@@ -146,7 +196,7 @@ impl PDIPM
             self.a = Mat::new(p, n);
             self.b = Mat::new_vec(p);
             self.y = Mat::new_vec(n + m + p);
-            self.kkt = Mat::new(n + m + p, n + m + p);
+            self.kkt_op = KKTOp::new(n, m, p);
             self.df_o = Mat::new_vec(n);
             self.f_i = Mat::new_vec(m);
             self.r_t = Mat::new_vec(n + m + p);
@@ -293,40 +343,36 @@ impl PDIPM
 
             /***** calc kkt matrix *****/
             
-            let mut kkt_x_dual = self.kkt.slice_mut(0 .. n, 0 .. n);
             dd_objective(&x, &mut self.ddf);
-            kkt_x_dual.assign(&self.ddf);
+            self.kkt_op.x_dual.assign(&self.ddf);
             for i in 0 .. m {
                 dd_inequality(&x, &mut self.ddf, i);
-                kkt_x_dual += lmd[(i, 0)] * &self.ddf;
+                self.kkt_op.x_dual += lmd[(i, 0)] * &self.ddf;
             }
 
             if m > 0 {
-                let mut kkt_lmd_dual = self.kkt.slice_mut(0 .. n, n .. n + m);
-                kkt_lmd_dual.assign(&self.df_i.t());
+                self.kkt_op.lmd_dual.assign(&self.df_i.t());
 
-                let mut kkt_x_cent = self.kkt.slice_mut(n .. n + m, 0 .. n);
-                kkt_x_cent.assign_s(&lmd.diag_mul(&self.df_i), -1.);
+                self.kkt_op.x_cent.assign_s(&lmd.diag_mul(&self.df_i), -1.);
 
-                let mut kkt_lmd_cent = self.kkt.slice_mut(n .. n + m, n .. n + m);
-                kkt_lmd_cent.assign_s(&self.f_i.clone_diag(), -1.);
+                self.kkt_op.lmd_cent.assign_s(&self.f_i.clone_diag(), -1.);
             }
 
             if p > 0 {
-                let mut kkt_nu_dual = self.kkt.slice_mut(0 .. n, n + m .. n + m + p);
-                kkt_nu_dual.assign(&self.a.t());
+                self.kkt_op.nu_dual.assign(&self.a.t());
 
-                let mut kkt_x_pri = self.kkt.slice_mut(n + m .. n + m + p, 0 .. n);
-                kkt_x_pri.assign(&self.a);
+                self.kkt_op.x_pri.assign(&self.a);
             }
 
             /***** calc search direction *****/
 
             if param.log_kkt {
-                writeln_or!(log, "kkt : {}", self.kkt)?;
+                // TODO: log_kkt
+                //writeln_or!(log, "kkt : {}", self.kkt)?;
             }
 
-            let neg_dy = matsvdsolve::solve(&self.kkt, &self.r_t); // negative dy
+            // TODO: reuse memory
+            let neg_dy = matsvdsolve::lin_solve(&self.kkt_op, &self.r_t); // negative dy
 
             writeln_or!(log, "y : {}", self.y.t())?;
             writeln_or!(log, "r_t : {}", self.r_t.t())?;
