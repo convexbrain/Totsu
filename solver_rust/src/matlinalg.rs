@@ -1,6 +1,7 @@
 //! Matrix linear algebra
 
 use super::mat::{Mat, MatSlice, FP, FP_EPSILON};
+use super::operator::LinOp;
 
 fn normalize(vec: MatSlice) -> (FP, Mat)
 {
@@ -16,13 +17,13 @@ fn normalize(vec: MatSlice) -> (FP, Mat)
     }
 }
 
-fn solve_lsmr(mat_a: &Mat, vec_b: MatSlice) -> Mat
+fn solve_lsmr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
 {
     const ATOL: FP = FP_EPSILON;
     const BTOL: FP = FP_EPSILON;
     const CONLIM: FP = 1. / FP_EPSILON;
     
-    let (m, n) = mat_a.size();
+    let (m, n) = lop_a.size();
     const ZERO: FP = 0.;
     const ONE: FP = 1.;
 
@@ -31,7 +32,7 @@ fn solve_lsmr(mat_a: &Mat, vec_b: MatSlice) -> Mat
     // 1. Initialize
     let (norm_b, mut u_1) = normalize(vec_b);
     //let beta_1 = norm_b;
-    let (mut alpha_1, mut v_1) = normalize((mat_a.t() * &u_1).as_slice());
+    let (mut alpha_1, mut v_1) = normalize(lop_a.t_apply(&u_1).as_slice());
     let mut alpha_b1 = alpha_1;
     let mut zeta_b1 = alpha_1 * norm_b;
     let mut rho_0 = ONE;
@@ -62,8 +63,8 @@ fn solve_lsmr(mat_a: &Mat, vec_b: MatSlice) -> Mat
         // (indexing is shown as if k = 1)
 
         // 3. Continue the bidiagonalization
-        let (beta_2, u_2) = normalize((mat_a * &v_1 - alpha_1 * u_1).as_slice());
-        let (alpha_2, v_2) = normalize((mat_a.t() * &u_2 - beta_2 * v_1).as_slice());
+        let (beta_2, u_2) = normalize((lop_a.apply(&v_1) - alpha_1 * u_1).as_slice());
+        let (alpha_2, v_2) = normalize((lop_a.t_apply(&u_2) - beta_2 * v_1).as_slice());
 
         // 4. Construct and apply rotation P_1
         let rho_1 = alpha_b1.hypot(beta_2);
@@ -169,16 +170,16 @@ fn solve_lsmr(mat_a: &Mat, vec_b: MatSlice) -> Mat
 /// * [http://web.stanford.edu/group/SOL/software/lsmr/](http://web.stanford.edu/group/SOL/software/lsmr/)
 /// * D. C.-L. Fong and M. A. Saunders, "LSMR: An iterative algorithm for sparse least-squares problems,"
 ///   SIAM J. Sci. Comput. 33:5, 2950-2971, published electronically Oct 27, 2011.
-pub fn solve(mat_a: &Mat, mat_b: &Mat) -> Mat
+pub fn lin_solve<L: LinOp>(lop_a: &L, mat_b: &Mat) -> Mat
 {
-    let (_, xr) = mat_a.size();
+    let (_, xr) = lop_a.size();
     let (_, xc) = mat_b.size();
     let mut mat_x = Mat::new(xr, xc);
 
     for c in 0 .. xc {
         let vec_b = mat_b.col(c);
         let mut vec_x = mat_x.col_mut(c);
-        vec_x.assign(&solve_lsmr(mat_a, vec_b));
+        vec_x.assign(&solve_lsmr(lop_a, vec_b));
     }
 
     mat_x
@@ -217,19 +218,33 @@ fn test_lsmr1()
 {
     const TOL_RMSE: FP = 1.0 / (1u64 << 32) as FP;
 
-    let mat = Mat::new(2, 2).set_iter(&[
-        1., 2.,
-        3., 4.
-    ]);
+    struct LOP {
+        mat: Mat
+    }
+    impl LinOp for LOP {
+        fn size(&self) -> (usize, usize) {
+            self.mat.size()
+        }
+        fn mat(&self) -> Mat {
+            self.mat.clone_sz()
+        }
+    }
+
+    let lop = LOP {
+        mat: Mat::new(2, 2).set_iter(&[
+            1., 2.,
+            3., 4.
+        ])
+    };
 
     let vec = Mat::new_vec(2).set_iter(&[
         5., 6.
     ]);
 
-    let x = solve(&mat, &vec);
+    let x = lin_solve(&lop, &vec);
     println!("x = {}", x);
 
-    let h = &mat * &x;
+    let h = lop.apply(&x);
     println!("vec reconstructed = {}", h);
 
     let h_size = h.size();
@@ -242,12 +257,26 @@ fn test_lsmr2()
 {
     const TOL_RMSE: FP = 1.0 / (1u64 << 32) as FP;
 
-    let mat = Mat::new(4, 4).set_iter(&[
-        4.296e5,  0.000e0,  4.296e5,  0.000e0,
-        0.000e0,  4.296e5,  4.296e5,  0.000e0,
-        4.296e5,  4.296e5,  8.591e5,  1.000e0,
-        0.000e0,  0.000e0,  1.000e0,  0.000e0
-    ]);
+    struct LOP {
+        mat: Mat
+    }
+    impl LinOp for LOP {
+        fn size(&self) -> (usize, usize) {
+            self.mat.size()
+        }
+        fn mat(&self) -> Mat {
+            self.mat.clone_sz()
+        }
+    }
+
+    let lop = LOP {
+        mat: Mat::new(4, 4).set_iter(&[
+            4.296e5,  0.000e0,  4.296e5,  0.000e0,
+            0.000e0,  4.296e5,  4.296e5,  0.000e0,
+            4.296e5,  4.296e5,  8.591e5,  1.000e0,
+            0.000e0,  0.000e0,  1.000e0,  0.000e0
+        ])
+    };
 
     let vec = Mat::new_vec(4).set_iter(&[
         -9.460e1,
@@ -256,10 +285,10 @@ fn test_lsmr2()
         3.859e-3
     ]);
 
-    let x = solve(&mat, &vec);
+    let x = lin_solve(&lop, &vec);
     println!("x = {}", x);
 
-    let h = &mat * &x;
+    let h = lop.apply(&x);
     println!("vec reconstructed = {}", h);
 
     let h_size = h.size();

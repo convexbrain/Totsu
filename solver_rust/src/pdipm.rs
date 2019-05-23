@@ -4,6 +4,7 @@ Primal-dual interior point method
 
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
 use super::matsvdsolve;
+use super::matlinalg;
 use super::operator::LinOp;
 
 const TOL_STEP: FP = FP_EPSILON;
@@ -18,7 +19,6 @@ macro_rules! writeln_or {
 
 struct KKTOp
 {
-    //kkt: Mat, // TODO: reuse memory
     // TODO: memory optimization
     x_dual: Mat,
     lmd_dual: Mat,
@@ -33,7 +33,6 @@ impl KKTOp
     fn new(n: usize, m: usize, p: usize) -> KKTOp
     {
         KKTOp {
-            //kkt: Mat::new(n + m + p, n + m + p),
             x_dual: Mat::new(n, n),
             lmd_dual: Mat::new(n, m),
             nu_dual: Mat::new(n, p),
@@ -46,6 +45,14 @@ impl KKTOp
 
 impl LinOp for KKTOp
 {
+    fn size(&self) -> (usize, usize)
+    {
+        let (n, m) = self.lmd_dual.size();
+        let (p, _) = self.x_pri.size();
+
+        (n + m + p, n + m + p)
+    }
+
     fn mat(&self) -> Mat
     {
         let (n, m) = self.lmd_dual.size();
@@ -372,7 +379,8 @@ impl PDIPM
             }
 
             // TODO: reuse memory
-            let neg_dy = matsvdsolve::lin_solve(&self.kkt_op, &self.r_t); // negative dy
+            //let neg_dy = matsvdsolve::lin_solve(&self.kkt_op, &self.r_t); // negative dy
+            let neg_dy = matlinalg::lin_solve(&self.kkt_op, &self.r_t); // negative dy
 
             writeln_or!(log, "y : {}", self.y.t())?;
             writeln_or!(log, "r_t : {}", self.r_t.t())?;
