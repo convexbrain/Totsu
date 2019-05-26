@@ -170,6 +170,8 @@ pub struct PDIPMParam
     /// Max iteration number of outer-loop for the Newton step.
     /// Max iteration number of inner-loop for the backtracking line search.
     pub n_loop: usize,
+    /// Enables to log vector status.
+    pub log_vecs: bool,
     /// Enables to log kkt matrix.
     pub log_kkt: bool
 }
@@ -186,6 +188,7 @@ impl Default for PDIPMParam
             s_coef: 0.99,
             margin: 1.,
             n_loop: 256,
+            log_vecs: false,
             log_kkt: false
         }
     }
@@ -419,9 +422,11 @@ impl PDIPM
             //let neg_dy = matsvdsolve::lin_solve(&self.kkt_op, &self.r_t); // negative dy
             let neg_dy = matlinalg::lin_solve(&self.kkt_op, &self.r_t); // negative dy
 
-            writeln_or!(log, "y : {}", self.y.t())?;
-            writeln_or!(log, "r_t : {}", self.r_t.t())?;
-            writeln_or!(log, "neg_dy : {}", neg_dy.t())?;
+            if param.log_vecs {
+                writeln_or!(log, "y : {}", self.y.t())?;
+                writeln_or!(log, "r_t : {}", self.r_t.t())?;
+                writeln_or!(log, "neg_dy : {}", neg_dy.t())?;
+            }
 
             /***** back tracking line search - from here *****/
 
