@@ -260,6 +260,67 @@ fn solve_lsqr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
     }
 }
 
+fn solve_bicgstab<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
+{
+    let (m, n) = lop_a.size();
+
+    assert_eq!(vec_b.size(), (m, 1));
+
+    let mut x_0 = Mat::new_vec(n);
+    let mut r_0 = &vec_b - lop_a.apply(&x_0);
+    let r_a0 = r_0.clone_sz();
+    let mut p_0 = r_0.clone_sz();
+
+    let mat = lop_a.mat();
+    let ki = Mat::new_vec(n).set_by(|r, _| {
+        if r < m && r < n {
+            let v = mat[(r, r)];
+            if v.abs() < FP_EPSILON {
+                1.
+            }
+            else {
+                v.recip()
+            }
+        }
+        else {
+            1.
+        }
+    });
+
+    for _i in 0 .. 10000 {
+        let u = lop_a.apply(&ki.diag_mul(&p_0));
+        let c = r_a0.prod(&r_0);
+        let alpha_0 = c / r_a0.prod(&u);
+        let s_0 = r_0 - alpha_0 * &u;
+        let v = lop_a.apply(&ki.diag_mul(&s_0));
+        let omega_0 = v.prod(&s_0) / v.norm_p2sq();
+        let x_1 = x_0 + alpha_0 * &ki.diag_mul(&p_0) + omega_0 * &ki.diag_mul(&s_0);
+        let r_1 = s_0 - omega_0 * v;
+        let beta_0 = alpha_0 / omega_0 * r_a0.prod(&r_1) / c;
+        let p_1 = &r_1 + beta_0 * (p_0 - omega_0 * u);
+
+        // update
+        x_0 = x_1;
+        r_0 = r_1;
+        p_0 = p_1;
+
+        //println!("{} {:.3e}", _i, r_0.norm_p2());
+        if r_0.norm_p2() <= FP_EPSILON {
+            return x_0;
+        }
+    }
+    /*
+    println!("{:.3e}", r_0.norm_p2());
+    println!("{}", lop_a.mat());
+    println!("{}", vec_b);
+    println!("{}", lop_a.apply(&x_0));
+    println!("{}", x_0);
+    panic!();
+    */
+
+    x_0
+}
+
 /// Linear equation solver by LSMR
 /// 
 /// References
