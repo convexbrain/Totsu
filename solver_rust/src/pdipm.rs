@@ -305,6 +305,7 @@ impl PDIPM
     {
         let eps_feas = param.eps;
         let eps_eta = param.eps;
+        let eps_sol = param.eps * 1e-1;
         let b_loop = param.n_loop;
 
         // allocate matrix
@@ -420,7 +421,7 @@ impl PDIPM
 
             // TODO: reuse memory
             //let neg_dy = matsvdsolve::lin_solve(&self.kkt_op, &self.r_t); // negative dy
-            let neg_dy = matlinalg::lin_solve(&self.kkt_op, &self.r_t); // negative dy
+            let neg_dy = matlinalg::lin_solve(&self.kkt_op, &self.r_t, eps_sol); // negative dy
 
             if param.log_vecs {
                 writeln_or!(log, "y : {}", self.y.t())?;

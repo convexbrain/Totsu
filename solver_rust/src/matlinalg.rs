@@ -17,7 +17,7 @@ fn normalize(vec: MatSlice) -> (FP, Mat)
     }
 }
 
-fn solve_lsmr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
+fn _solve_lsmr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
 {
     const ATOL: FP = FP_EPSILON;
     const BTOL: FP = FP_EPSILON;
@@ -164,10 +164,10 @@ fn solve_lsmr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
     }
 }
 
-fn solve_lsqr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
+fn solve_lsqr<L: LinOp>(lop_a: &L, vec_b: MatSlice, eps: FP) -> Mat
 {
     const ATOL: FP = FP_EPSILON;
-    const BTOL: FP = FP_EPSILON;
+    let btol = eps;
     const CONLIM: FP = 1. / FP_EPSILON;
     
     let (m, n) = lop_a.size();
@@ -232,7 +232,7 @@ fn solve_lsqr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
         let cond_a = (sqnorm_b_1 * sqnorm_d_1).sqrt();
 
         // (stopping criteria)
-        let s1 = norm_r_1 <= BTOL * norm_b + ATOL * norm_a * norm_x_1;
+        let s1 = norm_r_1 <= btol * norm_b + ATOL * norm_a * norm_x_1;
         let s2 = norm_ar_1 <= ATOL * norm_a * norm_r_1;
         let s3 = cond_a >= CONLIM;
 
@@ -260,7 +260,7 @@ fn solve_lsqr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
     }
 }
 
-fn solve_bicgstab<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
+fn _solve_bicgstab<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
 {
     let (m, n) = lop_a.size();
 
@@ -321,13 +321,13 @@ fn solve_bicgstab<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
     x_0
 }
 
-/// Linear equation solver by LSMR
+/// Linear equation solver by LSQR
 /// 
 /// References
-/// * [http://web.stanford.edu/group/SOL/software/lsmr/](http://web.stanford.edu/group/SOL/software/lsmr/)
-/// * D. C.-L. Fong and M. A. Saunders, "LSMR: An iterative algorithm for sparse least-squares problems,"
-///   SIAM J. Sci. Comput. 33:5, 2950-2971, published electronically Oct 27, 2011.
-pub fn lin_solve<L: LinOp>(lop_a: &L, mat_b: &Mat) -> Mat
+/// * [http://web.stanford.edu/group/SOL/software/lsqr/](http://web.stanford.edu/group/SOL/software/lsqr/)
+/// * C. C. Paige and M. A. Saunders, "LSQR: An algorithm for sparse linear equations and sparse least squares,"
+///   TOMS 8(1), 43-71 (1982).
+pub fn lin_solve<L: LinOp>(lop_a: &L, mat_b: &Mat, eps: FP) -> Mat
 {
     let (_, xr) = lop_a.size();
     let (_, xc) = mat_b.size();
@@ -336,7 +336,7 @@ pub fn lin_solve<L: LinOp>(lop_a: &L, mat_b: &Mat) -> Mat
     for c in 0 .. xc {
         let vec_b = mat_b.col(c);
         let mut vec_x = mat_x.col_mut(c);
-        vec_x.assign(&solve_lsqr(lop_a, vec_b));
+        vec_x.assign(&solve_lsqr(lop_a, vec_b, eps));
     }
 
     mat_x
@@ -398,7 +398,7 @@ fn test_lsmr1()
         5., 6.
     ]);
 
-    let x = lin_solve(&lop, &vec);
+    let x = lin_solve(&lop, &vec, TOL_RMSE);
     println!("x = {}", x);
 
     let h = lop.apply(&x);
@@ -442,7 +442,7 @@ fn test_lsmr2()
         3.859e-3
     ]);
 
-    let x = lin_solve(&lop, &vec);
+    let x = lin_solve(&lop, &vec, TOL_RMSE);
     println!("x = {}", x);
 
     let h = lop.apply(&x);

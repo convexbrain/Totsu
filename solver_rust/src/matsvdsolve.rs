@@ -3,7 +3,8 @@
 use super::mat::{Mat, FP, FP_EPSILON};
 use super::operator::LinOp;
 
-const TOL_CNV_SQ: FP = FP_EPSILON * FP_EPSILON * 4.;
+const TOL_CNV1_SQ: FP = FP_EPSILON * FP_EPSILON * 4.;
+const TOL_CNV2_SQ: FP = FP_EPSILON * FP_EPSILON;
 const TOL_SINV_SQ: FP = FP_EPSILON * FP_EPSILON;
 
 /// Matrix singular value decomposition
@@ -36,7 +37,7 @@ impl SVD
         let b = self.u.col(c2).norm_p2sq();
         let d = self.u.col(c1).prod(&self.u.col(c2));
 
-        if (d * d <= TOL_CNV_SQ * a * b) || (d.abs() <= TOL_CNV_SQ) {
+        if (d * d <= TOL_CNV1_SQ * a * b) || (d * d <= TOL_CNV2_SQ) {
             true
         }
         else {
@@ -92,7 +93,7 @@ impl SVD
 
             let sigma_sq = ut_col.norm_p2sq();
 
-            if sigma_sq < TOL_SINV_SQ * TOL_SINV_SQ {
+            if sigma_sq < TOL_SINV_SQ {
                 vt_h_row.assign_all(0.);
             }
             else {
