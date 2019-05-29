@@ -20,6 +20,7 @@ macro_rules! writeln_or {
 struct KKTOp
 {
     // TODO: memory optimization
+    sparse: Vec<(usize, usize, FP)>,
     x_dual: Mat,
     lmd_dual: Mat,
     nu_dual: Mat,
@@ -33,12 +34,29 @@ impl KKTOp
     fn new(n: usize, m: usize, p: usize) -> KKTOp
     {
         KKTOp {
+            sparse: Vec::new(),
             x_dual: Mat::new(n, n),
             lmd_dual: Mat::new(n, m),
             nu_dual: Mat::new(n, p),
             x_cent: Mat::new(m, n),
             lmd_cent: Mat::new(m, m),
             x_pri: Mat::new(p, n)
+        }
+    }
+
+    fn prepare(&mut self)
+    {
+        self.sparse.clear();
+
+        let m = self.mat();
+
+        for c in 0 .. m.size().1 {
+            for r in 0 .. m.size().0 {
+                let e = m[(r, c)];
+                if e.abs() >= FP_EPSILON {
+                    self.sparse.push((r, c, e));
+                }
+            }
         }
     }
 }
@@ -76,16 +94,12 @@ impl LinOp for KKTOp
         let (n, m) = self.lmd_dual.size();
         let (p, _) = self.x_pri.size();
 
-        let x = vec.rows(0 .. n);
-        let lmd = vec.rows(n .. n + m);
-        let nu = vec.rows(n + m .. n + m + p);
-
         let mut v = Mat::new_vec(n + m + p);
 
-        v.rows_mut(0 .. n).assign(&(&self.x_dual * &x + &self.lmd_dual * &lmd + &self.nu_dual * &nu));
-        v.rows_mut(n .. n + m).assign(&(&self.x_cent * &x + &self.lmd_cent * &lmd));
-        v.rows_mut(n + m .. n + m + p).assign(&(&self.x_pri * &x));
-        
+        for (r, c, e) in &self.sparse {
+            v[(*r, 0)] += e * vec[(*c, 0)];
+        }
+
         v
     }
 
@@ -95,16 +109,12 @@ impl LinOp for KKTOp
         let (n, m) = self.lmd_dual.size();
         let (p, _) = self.x_pri.size();
 
-        let x = vec.rows(0 .. n);
-        let lmd = vec.rows(n .. n + m);
-        let nu = vec.rows(n + m .. n + m + p);
-
         let mut v = Mat::new_vec(n + m + p);
 
-        v.rows_mut(0 .. n).assign(&(&self.x_dual.t() * &x + &self.x_cent.t() * &lmd + &self.x_pri.t() * &nu));
-        v.rows_mut(n .. n + m).assign(&(&self.lmd_dual.t() * &x + &self.lmd_cent.t() * &lmd));
-        v.rows_mut(n + m .. n + m + p).assign(&(&self.nu_dual.t() * &x));
-        
+        for (c, r, e) in &self.sparse {
+            v[(*r, 0)] += e * vec[(*c, 0)];
+        }
+
         v
     }
 }
@@ -305,7 +315,6 @@ impl PDIPM
     {
         let eps_feas = param.eps;
         let eps_eta = param.eps;
-        let eps_sol = param.eps * 1e-1;
         let b_loop = param.n_loop;
 
         // allocate matrix
@@ -421,7 +430,7 @@ impl PDIPM
 
             // TODO: reuse memory
             //let neg_dy = matsvdsolve::lin_solve(&self.kkt_op, &self.r_t); // negative dy
-            let neg_dy = matlinalg::lin_solve(&self.kkt_op, &self.r_t, eps_sol); // negative dy
+            self.kkt_op.prepare(); let neg_dy = matlinalg::lin_solve(&self.kkt_op, &self.r_t); // negative dy
 
             if param.log_vecs {
                 writeln_or!(log, "y : {}", self.y.t())?;
