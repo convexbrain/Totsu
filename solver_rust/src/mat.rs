@@ -225,7 +225,7 @@ impl<V: View> MatGen<V>
         }
     }
     /// *slice* - Slice block mutable reference.
-    pub fn slice_mut<'b, RR, CR>(&'b mut self, rows: RR, cols: CR) -> MatSliMu
+    pub fn slice_mut<RR, CR>(&mut self, rows: RR, cols: CR) -> MatSliMu
     where RR: RangeBounds<usize>,  CR: RangeBounds<usize>
     {
         let (row_range, col_range) = self.h_bound(rows, cols);
