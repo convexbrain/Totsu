@@ -161,7 +161,7 @@ impl Clone for Mat
 
 /// Ownership view of matrix array entity
 pub trait View {
-    type OwnColl;
+    type OwnColl: View;
 
     fn new_own(sz: usize) -> Self::OwnColl;
     fn get_ref(&self) -> &Self::OwnColl;
@@ -241,7 +241,6 @@ impl<V: View> MatGen<V>
     }
     //
     fn h_own(self) -> MatGen<V::OwnColl>
-    where V::OwnColl: View
     {
         if self.view.is_own() {
             MatGen {
@@ -260,7 +259,6 @@ impl<V: View> MatGen<V>
     //
     /// *new* - Makes a matrix.
     pub fn new(nrows: usize, ncols: usize) -> MatGen<V::OwnColl>
-    where V::OwnColl: View
     {
         MatGen {
             nrows,
@@ -273,7 +271,6 @@ impl<V: View> MatGen<V>
     }
     /// *new* - Makes a matrix of the same size.
     pub fn new_like<V2: View>(mat: &MatGen<V2>) -> MatGen<V::OwnColl>
-    where V::OwnColl: View, V2::OwnColl: View
     {
         let (nrows, ncols) = mat.size();
 
@@ -281,7 +278,6 @@ impl<V: View> MatGen<V>
     }
     /// *new* - Makes a column vector.
     pub fn new_vec(nrows: usize) -> MatGen<V::OwnColl>
-    where V::OwnColl: View
     {
         MatGen::<V>::new(nrows, 1)
     }
@@ -437,7 +433,6 @@ impl<V: View> MatGen<V>
     //
     /// *clone* - Clone with shrinking size.
     pub fn clone_sz(&self) -> MatGen<V::OwnColl>
-    where V::OwnColl: View
     {
         let (l_nrows, l_ncols) = self.size();
         let sz = self.view.get_len();
@@ -460,7 +455,6 @@ impl<V: View> MatGen<V>
     }
     /// *clone* - Clone into diagonal matrix.
     pub fn clone_diag(&self) -> MatGen<V::OwnColl>
-    where V::OwnColl: View
     {
         let (l_nrows, l_ncols) = self.size();
         assert_eq!(l_ncols, 1);
@@ -644,7 +638,7 @@ impl<V: View> MatGen<V>
     //
     /// Made into diagonal matrix and multiplied.
     pub fn diag_mul<'a, V2: View>(&self, rhs: &'a MatGen<V2>) -> MatGen<V::OwnColl>
-    where V::OwnColl: View, V2::OwnColl: View, &'a V2::OwnColl: View
+    where &'a V2::OwnColl: View
     {
         let (l_nrows, l_ncols) = self.size();
         let (r_nrows, r_ncols) = rhs.size();
@@ -673,7 +667,6 @@ impl<V: View> MatGen<V>
             }
         }
     }
-
 }
 
 //
@@ -787,7 +780,6 @@ impl<V: View> MatAcc for &MatGen<V>
 
 //
 impl<V: View> Neg for MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -800,7 +792,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Neg for &MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -844,7 +835,6 @@ impl<V: View> AddAssign<FP> for MatGen<V>
 }
 
 impl<V: View, T: MatAcc> Add<T> for MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -857,7 +847,6 @@ where V::OwnColl: View
 }
 
 impl<V: View, T: MatAcc> Add<T> for &MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -870,7 +859,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Add<FP> for MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -883,7 +871,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Add<FP> for &MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -896,7 +883,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Add<MatGen<V>> for FP
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -907,7 +893,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Add<&MatGen<V>> for FP
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -950,7 +935,6 @@ impl<V: View> SubAssign<FP> for MatGen<V>
 }
 
 impl<V: View, T: MatAcc> Sub<T> for MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -963,7 +947,6 @@ where V::OwnColl: View
 }
 
 impl<V: View, T: MatAcc> Sub<T> for &MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -976,7 +959,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Sub<FP> for MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -989,7 +971,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Sub<FP> for &MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1002,7 +983,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Sub<MatGen<V>> for FP
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1015,7 +995,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Sub<&MatGen<V>> for FP
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1044,7 +1023,6 @@ impl<V: View> MulAssign<FP> for MatGen<V>
 }
 
 impl<V: View, T: MatAcc> Mul<T> for MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1055,7 +1033,6 @@ where V::OwnColl: View
 }
 
 impl<V: View, T: MatAcc> Mul<T> for &MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1083,7 +1060,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Mul<FP> for MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1096,7 +1072,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Mul<FP> for &MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1109,7 +1084,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Mul<MatGen<V>> for FP
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1120,7 +1094,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Mul<&MatGen<V>> for FP
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1147,7 +1120,6 @@ impl<V: View> DivAssign<FP> for MatGen<V>
 }
 
 impl<V: View> Div<FP> for MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1160,7 +1132,6 @@ where V::OwnColl: View
 }
 
 impl<V: View> Div<FP> for &MatGen<V>
-where V::OwnColl: View
 {
     type Output = MatGen<V::OwnColl>;
 
