@@ -19,26 +19,23 @@ pub use std::f64::MIN_POSITIVE as FP_MINPOS;
 /// Matrix
 pub type Mat = MatGen<Vec<FP>>;
 /// Matrix slice
-pub type MatSlice<'a> = MatGen<&'a [FP]>;
+pub type MatSlice<'a> = MatGen<&'a Vec<FP>>;
 /// Matrix slice mutable
-pub type MatSliMu<'a> = MatGen<&'a mut[FP]>;
-
-/// Ownership view of matrix array entity
-pub trait View {
-    fn get_ref(&self) -> &[FP];
-    fn get_mut(&mut self) -> &mut[FP];
-    fn get_len(&self) -> usize;
-    fn get_own(self) -> Vec<FP>;
-    fn is_own(&self) -> bool;
-}
+pub type MatSliMu<'a> = MatGen<&'a mut Vec<FP>>;
 
 impl View for Vec<FP>
 {
-    fn get_ref(&self) -> &[FP]
+    type OwnColl = Vec<FP>;
+
+    fn new_own(sz: usize) -> Self::OwnColl
+    {
+        vec![0.; sz]
+    }
+    fn get_ref(&self) -> &Self::OwnColl
     {
         self.as_ref()
     }
-    fn get_mut(&mut self) -> &mut[FP]
+    fn get_mut(&mut self) -> &mut Self::OwnColl
     {
         self.as_mut()
     }
@@ -46,7 +43,7 @@ impl View for Vec<FP>
     {
         self.len()
     }
-    fn get_own(self) -> Vec<FP>
+    fn get_own(self) -> Self::OwnColl
     {
         self
     }
@@ -54,15 +51,33 @@ impl View for Vec<FP>
     {
         true
     }
+    fn clone_own(&self) -> Self::OwnColl
+    {
+        self.to_vec()
+    }
+    fn get_index(&self, i: usize) -> &FP
+    {
+        &self[i]
+    }
+    fn get_index_mut(&mut self, i: usize) -> &mut FP
+    {
+        &mut self[i]
+    }
 }
 
-impl View for &[FP]
+impl View for &Vec<FP>
 {
-    fn get_ref(&self) -> &[FP]
+    type OwnColl = Vec<FP>;
+
+    fn new_own(sz: usize) -> Self::OwnColl
+    {
+        vec![0.; sz]
+    }
+    fn get_ref(&self) -> &Self::OwnColl
     {
         self
     }
-    fn get_mut(&mut self) -> &mut[FP]
+    fn get_mut(&mut self) -> &mut Self::OwnColl
     {
         panic!("cannot borrow immutable as mutable");
     }
@@ -70,7 +85,7 @@ impl View for &[FP]
     {
         self.len()
     }
-    fn get_own(self) -> Vec<FP>
+    fn get_own(self) -> Self::OwnColl
     {
         panic!("cannot own immutable");
     }
@@ -78,15 +93,33 @@ impl View for &[FP]
     {
         false
     }
+    fn clone_own(&self) -> Self::OwnColl
+    {
+        self.to_vec()
+    }
+    fn get_index(&self, i: usize) -> &FP
+    {
+        &self[i]
+    }
+    fn get_index_mut(&mut self, _i: usize) -> &mut FP
+    {
+        panic!("cannot borrow immutable as mutable");
+    }
 }
 
-impl View for &mut[FP]
+impl View for &mut Vec<FP>
 {
-    fn get_ref(&self) -> &[FP]
+    type OwnColl = Vec<FP>;
+
+    fn new_own(sz: usize) -> Self::OwnColl
+    {
+        vec![0.; sz]
+    }
+    fn get_ref(&self) -> &Self::OwnColl
     {
         self
     }
-    fn get_mut(&mut self) -> &mut[FP]
+    fn get_mut(&mut self) -> &mut Self::OwnColl
     {
         self
     }
@@ -94,7 +127,7 @@ impl View for &mut[FP]
     {
         self.len()
     }
-    fn get_own(self) -> Vec<FP>
+    fn get_own(self) -> Self::OwnColl
     {
         panic!("cannot own mutable");
     }
@@ -102,6 +135,43 @@ impl View for &mut[FP]
     {
         false
     }
+    fn clone_own(&self) -> Self::OwnColl
+    {
+        self.to_vec()
+    }
+    fn get_index(&self, i: usize) -> &FP
+    {
+        &self[i]
+    }
+    fn get_index_mut(&mut self, i: usize) -> &mut FP
+    {
+        &mut self[i]
+    }
+}
+
+impl Clone for Mat
+{
+    fn clone(&self) -> Mat
+    {
+        self.clone_sz()
+    }
+}
+
+//
+
+/// Ownership view of matrix array entity
+pub trait View {
+    type OwnColl;
+
+    fn new_own(sz: usize) -> Self::OwnColl;
+    fn get_ref(&self) -> &Self::OwnColl;
+    fn get_mut(&mut self) -> &mut Self::OwnColl;
+    fn get_len(&self) -> usize;
+    fn get_own(self) -> Self::OwnColl;
+    fn is_own(&self) -> bool;
+    fn clone_own(&self) -> Self::OwnColl;
+    fn get_index(&self, i: usize) -> &FP;
+    fn get_index_mut(&mut self, i: usize) -> &mut FP;
 }
 
 /// Generic struct of matrix
@@ -167,7 +237,8 @@ impl<V: View> MatGen<V>
         }
     }
     //
-    fn h_own(self) -> Mat
+    fn h_own(self) -> MatGen<V::OwnColl>
+    where V::OwnColl: View
     {
         if self.view.is_own() {
             MatGen {
@@ -185,7 +256,8 @@ impl<V: View> MatGen<V>
     }
     //
     /// *new* - Makes a matrix.
-    pub fn new(nrows: usize, ncols: usize) -> Mat
+    pub fn new(nrows: usize, ncols: usize) -> MatGen<V::OwnColl>
+    where V::OwnColl: View
     {
         MatGen {
             nrows,
@@ -193,25 +265,27 @@ impl<V: View> MatGen<V>
             offset: 0,
             stride: nrows,
             transposed: false,
-            view: vec![0.; nrows * ncols]
+            view: V::new_own(nrows * ncols)
         }
     }
     /// *new* - Makes a matrix of the same size.
-    pub fn new_like<V2: View>(mat: &MatGen<V2>) -> Mat
+    pub fn new_like<V2: View>(mat: &MatGen<V2>) -> MatGen<V::OwnColl>
+    where V::OwnColl: View, V2::OwnColl: View
     {
         let (nrows, ncols) = mat.size();
 
-        Mat::new(nrows, ncols)
+        MatGen::<V>::new(nrows, ncols)
     }
     /// *new* - Makes a column vector.
-    pub fn new_vec(nrows: usize) -> Mat
+    pub fn new_vec(nrows: usize) -> MatGen<V::OwnColl>
+    where V::OwnColl: View
     {
-        Mat::new(nrows, 1)
+        MatGen::<V>::new(nrows, 1)
     }
     //
     /// *slice* - Slice block reference.
-    pub fn slice<RR, CR>(&self, rows: RR, cols: CR) -> MatSlice
-    where RR: RangeBounds<usize>,  CR: RangeBounds<usize>
+    pub fn slice<'a, RR, CR>(&'a self, rows: RR, cols: CR) -> MatGen<&V::OwnColl>
+    where RR: RangeBounds<usize>,  CR: RangeBounds<usize>, &'a V::OwnColl: View
     {
         let (row_range, col_range) = self.h_bound(rows, cols);
 
@@ -225,8 +299,8 @@ impl<V: View> MatGen<V>
         }
     }
     /// *slice* - Slice block mutable reference.
-    pub fn slice_mut<RR, CR>(&mut self, rows: RR, cols: CR) -> MatSliMu
-    where RR: RangeBounds<usize>,  CR: RangeBounds<usize>
+    pub fn slice_mut<'a, RR, CR>(&'a mut self, rows: RR, cols: CR) -> MatGen<&mut V::OwnColl>
+    where RR: RangeBounds<usize>,  CR: RangeBounds<usize>, &'a mut V::OwnColl: View
     {
         let (row_range, col_range) = self.h_bound(rows, cols);
 
@@ -240,61 +314,68 @@ impl<V: View> MatGen<V>
         }
     }
     /// *slice* - Row vectors reference.
-    pub fn rows<RR>(&self, rows: RR) -> MatSlice
-    where RR: RangeBounds<usize>
+    pub fn rows<'a, RR>(&'a self, rows: RR) -> MatGen<&V::OwnColl>
+    where RR: RangeBounds<usize>, &'a V::OwnColl: View
     {
         self.slice(rows, ..)
     }
     /// *slice* - Column vectors reference.
-    pub fn cols<CR>(&self, cols: CR) -> MatSlice
-    where CR: RangeBounds<usize>
+    pub fn cols<'a, CR>(&'a self, cols: CR) -> MatGen<&V::OwnColl>
+    where CR: RangeBounds<usize>, &'a V::OwnColl: View
     {
         self.slice(.., cols)
     }
     /// *slice* - A row vector reference.
-    pub fn row(&self, r: usize) -> MatSlice
+    pub fn row<'a>(&'a self, r: usize) -> MatGen<&V::OwnColl>
+    where &'a V::OwnColl: View
     {
         self.rows(r ..= r)
     }
     /// *slice* - A column vector reference.
-    pub fn col(&self, c: usize) -> MatSlice
+    pub fn col<'a>(&'a self, c: usize) -> MatGen<&V::OwnColl>
+    where &'a V::OwnColl: View
     {
         self.cols(c ..= c)
     }
     /// *slice* - Row vectors mutable reference.
-    pub fn rows_mut<RR>(&mut self, rows: RR) -> MatSliMu
-    where RR: RangeBounds<usize>
+    pub fn rows_mut<'a, RR>(&'a mut self, rows: RR) -> MatGen<&mut V::OwnColl>
+    where RR: RangeBounds<usize>, &'a mut V::OwnColl: View
     {
         self.slice_mut(rows, ..)
     }
     /// *slice* - Column vectors mutable reference.
-    pub fn cols_mut<CR>(&mut self, cols: CR) -> MatSliMu
-    where CR: RangeBounds<usize>
+    pub fn cols_mut<'a, CR>(&'a mut self, cols: CR) -> MatGen<&mut V::OwnColl>
+    where CR: RangeBounds<usize>, &'a mut V::OwnColl: View
     {
         self.slice_mut(.., cols)
     }
     /// *slice* - A row vector mutable reference.
-    pub fn row_mut(&mut self, r: usize) -> MatSliMu
+    pub fn row_mut<'a>(&'a mut self, r: usize) -> MatGen<&mut V::OwnColl>
+    where &'a mut V::OwnColl: View
     {
         self.rows_mut(r ..= r)
     }
     /// *slice* - A column vector mutable reference.
-    pub fn col_mut(&mut self, c: usize) -> MatSliMu
+    pub fn col_mut<'a>(&'a mut self, c: usize) -> MatGen<&mut V::OwnColl>
+    where &'a mut V::OwnColl: View
     {
         self.cols_mut(c ..= c)
     }
     /// *slice* - Whole reference.
-    pub fn as_slice(&self) -> MatSlice
+    pub fn as_slice<'a>(&'a self) -> MatGen<&V::OwnColl>
+    where &'a V::OwnColl: View
     {
         self.slice(.., ..)
     }
     /// *slice* - Whole mutable reference.
-    pub fn as_slice_mut(&mut self) -> MatSliMu
+    pub fn as_slice_mut<'a>(&'a mut self) -> MatGen<&mut V::OwnColl>
+    where &'a mut V::OwnColl: View
     {
         self.slice_mut(.., ..)
     }
     /// *slice* - Transopsed reference.
-    pub fn t(&self) -> MatSlice
+    pub fn t<'a>(&'a self) -> MatGen<&V::OwnColl>
+    where &'a V::OwnColl: View
     {
         MatGen {
             nrows: self.nrows,
@@ -306,7 +387,8 @@ impl<V: View> MatGen<V>
         }
     }
     /// *slice* - Transopsed mutable reference.
-    pub fn t_mut(&mut self) -> MatSliMu
+    pub fn t_mut<'a>(&'a mut self) -> MatGen<&mut V::OwnColl>
+    where &'a mut V::OwnColl: View
     {
         MatGen {
             nrows: self.nrows,
@@ -351,7 +433,8 @@ impl<V: View> MatGen<V>
     }
     //
     /// *clone* - Clone with shrinking size.
-    pub fn clone_sz(&self) -> Mat
+    pub fn clone_sz(&self) -> MatGen<V::OwnColl>
+    where V::OwnColl: View
     {
         let (l_nrows, l_ncols) = self.size();
         let sz = self.view.get_len();
@@ -363,22 +446,23 @@ impl<V: View> MatGen<V>
                 offset: self.offset,
                 stride: self.stride,
                 transposed: self.transposed,
-                view: self.view.get_ref().to_vec()
+                view: self.view.clone_own()
             }
         }
         else {
-            let mut mat = Mat::new(l_nrows, l_ncols);
+            let mut mat = MatGen::<V>::new(l_nrows, l_ncols);
             mat.assign(self);
             mat
         }
     }
     /// *clone* - Clone into diagonal matrix.
-    pub fn clone_diag(&self) -> Mat
+    pub fn clone_diag(&self) -> MatGen<V::OwnColl>
+    where V::OwnColl: View
     {
         let (l_nrows, l_ncols) = self.size();
         assert_eq!(l_ncols, 1);
 
-        let mut mat = Mat::new(l_nrows, l_nrows);
+        let mut mat = MatGen::<V>::new(l_nrows, l_nrows);
 
         for r in 0 .. l_nrows {
             mat[(r, r)] = self[(r, 0)];
@@ -440,24 +524,6 @@ impl<V: View> MatGen<V>
     pub fn assign<V2: View>(&mut self, rhs: &MatGen<V2>)
     {
         self.assign_s(rhs, 1.);
-    }
-    //
-    /// Made into diagonal matrix and multiplied.
-    pub fn diag_mul<V2: View>(&self, rhs: &MatGen<V2>) -> Mat
-    {
-        let (l_nrows, l_ncols) = self.size();
-        let (r_nrows, _) = rhs.size();
-
-        assert_eq!(l_ncols, 1);
-        assert_eq!(l_nrows, r_nrows);
-
-        let mut mat = Mat::new_like(rhs);
-
-        for r in 0 .. l_nrows {
-            mat.row_mut(r).assign(&(self[(r, 0)] * rhs.row(r)));
-        }
-
-        mat
     }
     //
     /// Returns p=2 norm squared.
@@ -564,6 +630,39 @@ impl<V: View> MatGen<V>
             (self.ncols, self.nrows)
         }
     }
+    //
+    /// Made into diagonal matrix and multiplied.
+    pub fn diag_mul<'a, V2: View>(&self, rhs: &'a MatGen<V2>) -> MatGen<V::OwnColl>
+    where V::OwnColl: View, V2::OwnColl: View, &'a V2::OwnColl: View
+    {
+        let (l_nrows, l_ncols) = self.size();
+        let (r_nrows, r_ncols) = rhs.size();
+
+        assert_eq!(l_ncols, 1);
+        assert_eq!(l_nrows, r_nrows);
+
+        let mut mat = MatGen::<V>::new_like(rhs);
+
+        for c in 0 .. r_ncols {
+            for r in 0 .. r_nrows {
+                mat[(r, c)] = self[(r, 0)] * rhs[(r, c)];
+            }
+        }
+
+        mat
+    }
+    //
+    fn ops_neg(&mut self)
+    {
+        let (l_nrows, l_ncols) = self.size();
+
+        for c in 0 .. l_ncols {
+            for r in 0 .. l_nrows {
+                self[(r, c)] = -self[(r, c)];
+            }
+        }
+    }
+
 }
 
 //
@@ -575,7 +674,7 @@ impl<V: View> Index<(usize, usize)> for MatGen<V>
     {
         let i = self.h_index(index);
 
-        &self.view.get_ref()[i]
+        self.view.get_index(i)
     }
 }
 
@@ -585,7 +684,7 @@ impl<V: View> IndexMut<(usize, usize)> for MatGen<V>
     {
         let i = self.h_index(index);
 
-        &mut self.view.get_mut()[i]
+        self.view.get_index_mut(i)
     }
 }
 
@@ -642,16 +741,6 @@ impl<V: View, V2: View> PartialEq<MatGen<V2>> for MatGen<V>
 
 //
 
-impl Clone for Mat
-{
-    fn clone(&self) -> Mat
-    {
-        self.clone_sz()
-    }
-}
-
-//
-
 /// Helper matrix accessor for operator overload
 pub trait MatAcc
 {
@@ -687,36 +776,32 @@ impl<V: View> MatAcc for &MatGen<V>
 
 //
 impl<V: View> Neg for MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn neg(self) -> Mat
+    fn neg(self) -> MatGen<V::OwnColl>
     {
         let mut mat = self.h_own();
-        let (l_nrows, l_ncols) = mat.size();
-
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                mat[(r, c)] = -mat[(r, c)];
-            }
-        }
-
+        mat.ops_neg();
         mat
     }
 }
 
 impl<V: View> Neg for &MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn neg(self) -> Mat
+    fn neg(self) -> MatGen<V::OwnColl>
     {
-        self.clone_sz().neg()
+        let mut mat = self.clone_sz();
+        mat.ops_neg();
+        mat
     }
 }
 
 //
-
 impl<V: View, T: MatAcc> AddAssign<T> for MatGen<V>
 {
     fn add_assign(&mut self, rhs: T)
@@ -748,10 +833,11 @@ impl<V: View> AddAssign<FP> for MatGen<V>
 }
 
 impl<V: View, T: MatAcc> Add<T> for MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn add(self, rhs: T) -> Mat
+    fn add(self, rhs: T) -> MatGen<V::OwnColl>
     {
         let mut mat = self.h_own();
         mat.add_assign(rhs);
@@ -760,20 +846,24 @@ impl<V: View, T: MatAcc> Add<T> for MatGen<V>
 }
 
 impl<V: View, T: MatAcc> Add<T> for &MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn add(self, rhs: T) -> Mat
+    fn add(self, rhs: T) -> MatGen<V::OwnColl>
     {
-        self.clone_sz().add(rhs)
+        let mut mat = self.clone_sz();
+        mat.add_assign(rhs);
+        mat
     }
 }
 
 impl<V: View> Add<FP> for MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn add(self, rhs: FP) -> Mat
+    fn add(self, rhs: FP) -> MatGen<V::OwnColl>
     {
         let mut mat = self.h_own();
         mat.add_assign(rhs);
@@ -782,30 +872,35 @@ impl<V: View> Add<FP> for MatGen<V>
 }
 
 impl<V: View> Add<FP> for &MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn add(self, rhs: FP) -> Mat
+    fn add(self, rhs: FP) -> MatGen<V::OwnColl>
     {
-        self.clone_sz().add(rhs)
+        let mut mat = self.clone_sz();
+        mat.add_assign(rhs);
+        mat
     }
 }
 
 impl<V: View> Add<MatGen<V>> for FP
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn add(self, rhs: MatGen<V>) -> Mat
+    fn add(self, rhs: MatGen<V>) -> MatGen<V::OwnColl>
     {
         rhs.add(self)
     }
 }
 
 impl<V: View> Add<&MatGen<V>> for FP
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn add(self, rhs: &MatGen<V>) -> Mat
+    fn add(self, rhs: &MatGen<V>) -> MatGen<V::OwnColl>
     {
         rhs.add(self)
     }
@@ -844,10 +939,11 @@ impl<V: View> SubAssign<FP> for MatGen<V>
 }
 
 impl<V: View, T: MatAcc> Sub<T> for MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn sub(self, rhs: T) -> Mat
+    fn sub(self, rhs: T) -> MatGen<V::OwnColl>
     {
         let mut mat = self.h_own();
         mat.sub_assign(rhs);
@@ -856,20 +952,24 @@ impl<V: View, T: MatAcc> Sub<T> for MatGen<V>
 }
 
 impl<V: View, T: MatAcc> Sub<T> for &MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn sub(self, rhs: T) -> Mat
+    fn sub(self, rhs: T) -> MatGen<V::OwnColl>
     {
-        self.clone_sz().sub(rhs)
+        let mut mat = self.clone_sz();
+        mat.sub_assign(rhs);
+        mat
     }
 }
 
 impl<V: View> Sub<FP> for MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn sub(self, rhs: FP) -> Mat
+    fn sub(self, rhs: FP) -> MatGen<V::OwnColl>
     {
         let mut mat = self.h_own();
         mat.sub_assign(rhs);
@@ -878,32 +978,41 @@ impl<V: View> Sub<FP> for MatGen<V>
 }
 
 impl<V: View> Sub<FP> for &MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn sub(self, rhs: FP) -> Mat
+    fn sub(self, rhs: FP) -> MatGen<V::OwnColl>
     {
-        self.clone_sz().sub(rhs)
+        let mut mat = self.clone_sz();
+        mat.sub_assign(rhs);
+        mat
     }
 }
 
 impl<V: View> Sub<MatGen<V>> for FP
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn sub(self, rhs: MatGen<V>) -> Mat
+    fn sub(self, rhs: MatGen<V>) -> MatGen<V::OwnColl>
     {
-        rhs.neg().add(self)
+        let mut mat = rhs.neg();
+        mat.add_assign(self);
+        mat
     }
 }
 
 impl<V: View> Sub<&MatGen<V>> for FP
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn sub(self, rhs: &MatGen<V>) -> Mat
+    fn sub(self, rhs: &MatGen<V>) -> MatGen<V::OwnColl>
     {
-        rhs.neg().add(self)
+        let mut mat = rhs.neg();
+        mat.add_assign(self);
+        mat
     }
 }
 
@@ -924,27 +1033,29 @@ impl<V: View> MulAssign<FP> for MatGen<V>
 }
 
 impl<V: View, T: MatAcc> Mul<T> for MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn mul(self, rhs: T) -> Mat
+    fn mul(self, rhs: T) -> MatGen<V::OwnColl>
     {
         (&self).mul(rhs)
     }
 }
 
 impl<V: View, T: MatAcc> Mul<T> for &MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn mul(self, rhs: T) -> Mat
+    fn mul(self, rhs: T) -> MatGen<V::OwnColl>
     {
         let (l_nrows, l_ncols) = self.size();
         let (r_nrows, r_ncols) = rhs.acc_size();
 
         assert_eq!(l_ncols, r_nrows);
 
-        let mut mat = Mat::new(l_nrows, r_ncols);
+        let mut mat = MatGen::<V>::new(l_nrows, r_ncols);
 
         for c in 0 .. r_ncols {
             for r in 0 .. l_nrows {
@@ -961,10 +1072,11 @@ impl<V: View, T: MatAcc> Mul<T> for &MatGen<V>
 }
 
 impl<V: View> Mul<FP> for MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn mul(self, rhs: FP) -> Mat
+    fn mul(self, rhs: FP) -> MatGen<V::OwnColl>
     {
         let mut mat = self.h_own();
         mat.mul_assign(rhs);
@@ -973,30 +1085,35 @@ impl<V: View> Mul<FP> for MatGen<V>
 }
 
 impl<V: View> Mul<FP> for &MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn mul(self, rhs: FP) -> Mat
+    fn mul(self, rhs: FP) -> MatGen<V::OwnColl>
     {
-        self.clone_sz().mul(rhs)
+        let mut mat = self.clone_sz();
+        mat.mul_assign(rhs);
+        mat
     }
 }
 
 impl<V: View> Mul<MatGen<V>> for FP
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn mul(self, rhs: MatGen<V>) -> Mat
+    fn mul(self, rhs: MatGen<V>) -> MatGen<V::OwnColl>
     {
         rhs.mul(self)
     }
 }
 
 impl<V: View> Mul<&MatGen<V>> for FP
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn mul(self, rhs: &MatGen<V>) -> Mat
+    fn mul(self, rhs: &MatGen<V>) -> MatGen<V::OwnColl>
     {
         rhs.mul(self)
     }
@@ -1019,10 +1136,11 @@ impl<V: View> DivAssign<FP> for MatGen<V>
 }
 
 impl<V: View> Div<FP> for MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn div(self, rhs: FP) -> Mat
+    fn div(self, rhs: FP) -> MatGen<V::OwnColl>
     {
         let mut mat = self.h_own();
         mat.div_assign(rhs);
@@ -1031,12 +1149,15 @@ impl<V: View> Div<FP> for MatGen<V>
 }
 
 impl<V: View> Div<FP> for &MatGen<V>
+where V::OwnColl: View
 {
-    type Output = Mat;
+    type Output = MatGen<V::OwnColl>;
 
-    fn div(self, rhs: FP) -> Mat
+    fn div(self, rhs: FP) -> MatGen<V::OwnColl>
     {
-        self.clone_sz().div(rhs)
+        let mut mat = self.clone_sz();
+        mat.div_assign(rhs);
+        mat
     }
 }
 
