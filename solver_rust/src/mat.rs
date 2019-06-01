@@ -33,11 +33,11 @@ impl View for Vec<FP>
     }
     fn get_ref(&self) -> &Self::OwnColl
     {
-        self.as_ref()
+        self
     }
     fn get_mut(&mut self) -> &mut Self::OwnColl
     {
-        self.as_mut()
+        self
     }
     fn get_len(&self) -> usize
     {
@@ -53,7 +53,7 @@ impl View for Vec<FP>
     }
     fn clone_own(&self) -> Self::OwnColl
     {
-        self.to_vec()
+        self.clone()
     }
     fn get_index(&self, i: usize) -> &FP
     {
@@ -95,7 +95,7 @@ impl View for &Vec<FP>
     }
     fn clone_own(&self) -> Self::OwnColl
     {
-        self.to_vec()
+        (*self).clone()
     }
     fn get_index(&self, i: usize) -> &FP
     {
@@ -137,7 +137,7 @@ impl View for &mut Vec<FP>
     }
     fn clone_own(&self) -> Self::OwnColl
     {
-        self.to_vec()
+        (*self).clone()
     }
     fn get_index(&self, i: usize) -> &FP
     {
