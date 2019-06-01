@@ -172,6 +172,9 @@ pub trait View {
     fn clone_own(&self) -> Self::OwnColl;
     fn get_index(&self, i: usize) -> &FP;
     fn get_index_mut(&mut self, i: usize) -> &mut FP;
+    fn put(&mut self, i: usize, val: FP) {
+        *self.get_index_mut(i) = val;
+    }
 }
 
 /// Generic struct of matrix
@@ -465,10 +468,18 @@ impl<V: View> MatGen<V>
         let mut mat = MatGen::<V>::new(l_nrows, l_nrows);
 
         for r in 0 .. l_nrows {
-            mat[(r, r)] = self[(r, 0)];
+            mat.a((r, r), self[(r, 0)]);
         }
 
         mat
+    }
+    //
+    /// *assign* - Assign by index
+    pub fn a(&mut self, index: (usize, usize), val: FP)
+    {
+        let i = self.h_index(index);
+
+        self.view.put(i, val);
     }
     //
     /// *assign* - Assign by closure.
@@ -480,7 +491,7 @@ impl<V: View> MatGen<V>
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
                 if let Some(value) = f(r, c) {
-                    self[(r, c)] = value;
+                    self.a((r, c), value);
                 }
             }
         }
@@ -495,7 +506,7 @@ impl<V: View> MatGen<V>
         // NOTE: contents of iter is row-wise
         for r in 0 .. nrows {
             for c in 0 .. ncols {
-                self[(r, c)] = *i.next().unwrap_or(&0.);
+                self.a((r, c), *i.next().unwrap_or(&0.));
             }
         }
     }
@@ -645,7 +656,7 @@ impl<V: View> MatGen<V>
 
         for c in 0 .. r_ncols {
             for r in 0 .. r_nrows {
-                mat[(r, c)] = self[(r, 0)] * rhs[(r, c)];
+                mat.a((r, c), self[(r, 0)] * rhs[(r, c)]);
             }
         }
 
@@ -658,7 +669,7 @@ impl<V: View> MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] = -self[(r, c)];
+                self.a((r, c), -self[(r, c)]);
             }
         }
     }
@@ -812,7 +823,7 @@ impl<V: View, T: MatAcc> AddAssign<T> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] += rhs.acc_get(r, c);
+                self.a((r, c), self[(r, c)] + rhs.acc_get(r, c));
             }
         }
     }
@@ -826,7 +837,7 @@ impl<V: View> AddAssign<FP> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] += rhs;
+                self.a((r, c), self[(r, c)] + rhs);
             }
         }
     }
@@ -918,7 +929,7 @@ impl<V: View, T: MatAcc> SubAssign<T> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] -= rhs.acc_get(r, c);
+                self.a((r, c), self[(r, c)] - rhs.acc_get(r, c));
             }
         }
     }
@@ -932,7 +943,7 @@ impl<V: View> SubAssign<FP> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] -= rhs;
+                self.a((r, c), self[(r, c)] - rhs);
             }
         }
     }
@@ -1026,7 +1037,7 @@ impl<V: View> MulAssign<FP> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] *= rhs;
+                self.a((r, c), self[(r, c)] * rhs);
             }
         }
     }
@@ -1063,7 +1074,7 @@ where V::OwnColl: View
                 for k in 0 .. l_ncols {
                     v += self[(r, k)] * rhs.acc_get(k, c);
                 }
-                mat[(r, c)] = v;
+                mat.a((r, c), v);
             }
         }
 
@@ -1129,7 +1140,7 @@ impl<V: View> DivAssign<FP> for MatGen<V>
 
         for c in 0 .. l_ncols {
             for r in 0 .. l_nrows {
-                self[(r, c)] /= rhs;
+                self.a((r, c), self[(r, c)] / rhs);
             }
         }
     }

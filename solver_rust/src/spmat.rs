@@ -1,4 +1,4 @@
-use super::mat::{MatGen, FP, View};
+use super::mat::{MatGen, FP, FP_MINPOS, View};
 
 use std::collections::BTreeMap;
 
@@ -49,6 +49,15 @@ impl View for BTreeMap<usize, FP>
     {
         self.entry(i).or_insert(0.)
     }
+    fn put(&mut self, i: usize, val: FP)
+    {
+        if val.abs() < FP_MINPOS {
+            self.remove(&i);
+        }
+        else {
+            *self.get_index_mut(i) = val;
+        }
+    }
 }
 
 impl View for &BTreeMap<usize, FP>
@@ -88,6 +97,10 @@ impl View for &BTreeMap<usize, FP>
         self.get(&i).unwrap_or(&0.)
     }
     fn get_index_mut(&mut self, _i: usize) -> &mut FP
+    {
+        panic!("cannot borrow immutable as mutable");
+    }
+    fn put(&mut self, _i: usize, _val: FP)
     {
         panic!("cannot borrow immutable as mutable");
     }
@@ -132,6 +145,15 @@ impl View for &mut BTreeMap<usize, FP>
     fn get_index_mut(&mut self, i: usize) -> &mut FP
     {
         self.entry(i).or_insert(0.)
+    }
+    fn put(&mut self, i: usize, val: FP)
+    {
+        if val.abs() < FP_MINPOS {
+            self.remove(&i);
+        }
+        else {
+            *self.get_index_mut(i) = val;
+        }
     }
 }
 
