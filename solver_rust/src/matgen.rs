@@ -26,7 +26,7 @@ pub trait MatView {
         *self.get_index_mut(i) = val;
     }
     fn is_less(&self, _sz: (usize, usize)) -> bool {
-        true // TODO
+        false
     }
     fn get_iter<'a>(&'a self) -> Box<dyn Iterator<Item=(usize, &FP)> + 'a>;
     fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a>;

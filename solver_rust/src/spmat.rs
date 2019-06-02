@@ -66,6 +66,10 @@ impl MatView for BTreeMap<usize, FP>
     {
         Box::new(self.iter_mut().map(|(ref_idx, val)| (*ref_idx, val)))
     }
+    fn is_less(&self, sz: (usize, usize)) -> bool
+    {
+        self.len() < sz.0 * sz.1
+    }
 }
 
 impl MatView for &BTreeMap<usize, FP>
@@ -119,6 +123,10 @@ impl MatView for &BTreeMap<usize, FP>
     fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a>
     {
         panic!("cannot borrow immutable as mutable");
+    }
+    fn is_less(&self, sz: (usize, usize)) -> bool
+    {
+        self.len() < sz.0 * sz.1
     }
 }
 
@@ -178,6 +186,10 @@ impl MatView for &mut BTreeMap<usize, FP>
     fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a>
     {
         Box::new(self.iter_mut().map(|(ref_idx, val)| (*ref_idx, val)))
+    }
+    fn is_less(&self, sz: (usize, usize)) -> bool
+    {
+        self.len() < sz.0 * sz.1
     }
 }
 

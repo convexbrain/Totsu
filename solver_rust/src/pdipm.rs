@@ -3,6 +3,7 @@ Primal-dual interior point method
 */
 
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
+use super::spmat::SpMat;
 use super::matsvdsolve;
 use super::matlinalg;
 use super::operator::LinOp;
@@ -19,14 +20,7 @@ macro_rules! writeln_or {
 
 struct KKTOp
 {
-    // TODO: memory optimization
-    sparse: Vec<(usize, usize, FP)>,
-    x_dual: Mat,
-    lmd_dual: Mat,
-    nu_dual: Mat,
-    x_cent: Mat,
-    lmd_cent: Mat,
-    x_pri: Mat
+    kkt: SpMat,
 }
 
 impl KKTOp
@@ -34,29 +28,7 @@ impl KKTOp
     fn new(n: usize, m: usize, p: usize) -> KKTOp
     {
         KKTOp {
-            sparse: Vec::new(),
-            x_dual: Mat::new(n, n),
-            lmd_dual: Mat::new(n, m),
-            nu_dual: Mat::new(n, p),
-            x_cent: Mat::new(m, n),
-            lmd_cent: Mat::new(m, m),
-            x_pri: Mat::new(p, n)
-        }
-    }
-
-    fn prepare(&mut self)
-    {
-        self.sparse.clear();
-
-        let m = self.mat();
-
-        for c in 0 .. m.size().1 {
-            for r in 0 .. m.size().0 {
-                let e = m[(r, c)];
-                if e.abs() >= FP_EPSILON {
-                    self.sparse.push((r, c, e));
-                }
-            }
+            kkt: SpMat::new(n + m + p, n + m + p)
         }
     }
 }
@@ -65,57 +37,22 @@ impl LinOp for KKTOp
 {
     fn size(&self) -> (usize, usize)
     {
-        let (n, m) = self.lmd_dual.size();
-        let (p, _) = self.x_pri.size();
-
-        (n + m + p, n + m + p)
+        self.kkt.size()
     }
 
     fn mat(&self) -> Mat
     {
-        let (n, m) = self.lmd_dual.size();
-        let (p, _) = self.x_pri.size();
-
-        let mut kkt = Mat::new(n + m + p, n + m + p);
-
-        kkt.slice_mut(0 .. n, 0 .. n).assign(&self.x_dual);
-        kkt.slice_mut(0 .. n, n .. n + m).assign(&self.lmd_dual);
-        kkt.slice_mut(0 .. n, n + m .. n + m + p).assign(&self.nu_dual);
-        kkt.slice_mut(n .. n + m, 0 .. n).assign(&self.x_cent);
-        kkt.slice_mut(n .. n + m, n .. n + m).assign(&self.lmd_cent);
-        kkt.slice_mut(n + m .. n + m + p, 0 .. n).assign(&self.x_pri);
-
-        kkt
+        let mut mat = Mat::new_like(&self.kkt);
+        mat.assign(&self.kkt);
+        mat
     }
 
     fn apply(&self, vec: &Mat) -> Mat {
-        assert_eq!(vec.size().1, 1);
-
-        let (n, m) = self.lmd_dual.size();
-        let (p, _) = self.x_pri.size();
-
-        let mut v = Mat::new_vec(n + m + p);
-
-        for (r, c, e) in &self.sparse {
-            v[(*r, 0)] += e * vec[(*c, 0)];
-        }
-
-        v
+        self.kkt.transform(&vec)
     }
 
     fn t_apply(&self, vec: &Mat) -> Mat {
-        assert_eq!(vec.size().1, 1);
-
-        let (n, m) = self.lmd_dual.size();
-        let (p, _) = self.x_pri.size();
-
-        let mut v = Mat::new_vec(n + m + p);
-
-        for (c, r, e) in &self.sparse {
-            v[(*r, 0)] += e * vec[(*c, 0)];
-        }
-
-        v
+        self.kkt.t().transform(&vec)
     }
 }
 
@@ -400,37 +337,41 @@ impl PDIPM
 
             /***** calc kkt matrix *****/
             
+            let mut kkt_x_dual = self.kkt_op.kkt.slice_mut(0 .. n, 0 .. n);
             dd_objective(&x, &mut self.ddf);
-            self.kkt_op.x_dual.assign(&self.ddf);
+            kkt_x_dual.assign(&self.ddf);
             for i in 0 .. m {
                 dd_inequality(&x, &mut self.ddf, i);
-                self.kkt_op.x_dual += lmd[(i, 0)] * &self.ddf;
+                kkt_x_dual += lmd[(i, 0)] * &self.ddf;
             }
 
             if m > 0 {
-                self.kkt_op.lmd_dual.assign(&self.df_i.t());
+                let mut kkt_lmd_dual = self.kkt_op.kkt.slice_mut(0 .. n, n .. n + m);
+                kkt_lmd_dual.assign(&self.df_i.t());
 
-                self.kkt_op.x_cent.assign_s(&lmd.diag_mul(&self.df_i), -1.);
+                let mut kkt_x_cent = self.kkt_op.kkt.slice_mut(n .. n + m, 0 .. n);
+                kkt_x_cent.assign_s(&lmd.diag_mul(&self.df_i), -1.);
 
-                self.kkt_op.lmd_cent.assign_s(&self.f_i.clone_diag(), -1.);
+                let mut kkt_lmd_cent = self.kkt_op.kkt.slice_mut(n .. n + m, n .. n + m);
+                kkt_lmd_cent.assign_s(&self.f_i.clone_diag(), -1.);
             }
 
             if p > 0 {
-                self.kkt_op.nu_dual.assign(&self.a.t());
+                let mut kkt_nu_dual = self.kkt_op.kkt.slice_mut(0 .. n, n + m .. n + m + p);
+                kkt_nu_dual.assign(&self.a.t());
 
-                self.kkt_op.x_pri.assign(&self.a);
+                let mut kkt_x_pri = self.kkt_op.kkt.slice_mut(n + m .. n + m + p, 0 .. n);
+                kkt_x_pri.assign(&self.a);
             }
 
             /***** calc search direction *****/
 
             if param.log_kkt {
-                // TODO: log_kkt
-                //writeln_or!(log, "kkt : {}", self.kkt)?;
+                writeln_or!(log, "kkt : {}", self.kkt_op.kkt)?;
             }
 
-            // TODO: reuse memory
             //let neg_dy = matsvdsolve::lin_solve(&self.kkt_op, &self.r_t); // negative dy
-            self.kkt_op.prepare(); let neg_dy = matlinalg::lin_solve(&self.kkt_op, &self.r_t); // negative dy
+            let neg_dy = matlinalg::lin_solve(&self.kkt_op, &self.r_t); // negative dy
 
             if param.log_vecs {
                 writeln_or!(log, "y : {}", self.y.t())?;
