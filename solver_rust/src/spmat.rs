@@ -58,6 +58,9 @@ impl View for BTreeMap<usize, FP>
             *self.get_index_mut(i) = val;
         }
     }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a> {
+        Box::new(self.iter_mut().map(|(ref_idx, val)| (*ref_idx, val)))
+    }
 }
 
 impl View for &BTreeMap<usize, FP>
@@ -102,6 +105,9 @@ impl View for &BTreeMap<usize, FP>
     }
     fn put(&mut self, _i: usize, _val: FP)
     {
+        panic!("cannot borrow immutable as mutable");
+    }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a> {
         panic!("cannot borrow immutable as mutable");
     }
 }
@@ -155,6 +161,9 @@ impl View for &mut BTreeMap<usize, FP>
             *self.get_index_mut(i) = val;
         }
     }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a> {
+        Box::new(self.iter_mut().map(|(ref_idx, val)| (*ref_idx, val)))
+    }
 }
 
 impl Clone for SpMat
@@ -162,5 +171,50 @@ impl Clone for SpMat
     fn clone(&self) -> SpMat
     {
         self.clone_sz()
+    }
+}
+
+#[test]
+fn test_spmat()
+{
+    {
+        let a = SpMat::new(2, 2).set_eye(1.);
+        let b = SpMat::new(2, 2).set_iter(&[
+            -1., 0.,
+            0., -1.
+        ]);
+        let c = -a;
+        assert_eq!(c, b);
+    }
+    {
+        let a = SpMat::new(2, 2).set_eye(1.);
+        let b = SpMat::new(2, 2).set_iter(&[
+            -1., 0.,
+            0., -1.
+        ]);
+        let c = -&a;
+        assert_eq!(c, b);
+        println!("{:?}", a);
+    }
+    {
+        let a1 = SpMat::new(2, 2).set_eye(1.);
+        let a2 = SpMat::new(2, 2).set_all(1.);
+        let b = SpMat::new(2, 2).set_iter(&[
+            2., 1.,
+            1., 2.
+        ]);
+        let c = a1 + a2;
+        assert_eq!(c, b);
+    }
+    {
+        let a1 = SpMat::new(2, 2).set_eye(1.);
+        let a2 = SpMat::new(2, 2).set_all(1.);
+        let b = SpMat::new(2, 2).set_iter(&[
+            2., 1.,
+            1., 2.
+        ]);
+        let c = &a1 + &a2;
+        assert_eq!(c, b);
+        println!("{}", a1);
     }
 }

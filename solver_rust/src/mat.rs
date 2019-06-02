@@ -63,6 +63,9 @@ impl View for Vec<FP>
     {
         &mut self[i]
     }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a> {
+        Box::new(self.iter_mut().enumerate())
+    }
 }
 
 impl View for &Vec<FP>
@@ -103,6 +106,9 @@ impl View for &Vec<FP>
     }
     fn get_index_mut(&mut self, _i: usize) -> &mut FP
     {
+        panic!("cannot borrow immutable as mutable");
+    }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a> {
         panic!("cannot borrow immutable as mutable");
     }
 }
@@ -147,6 +153,9 @@ impl View for &mut Vec<FP>
     {
         &mut self[i]
     }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a> {
+        Box::new(self.iter_mut().enumerate())
+    }
 }
 
 impl Clone for Mat
@@ -175,6 +184,10 @@ pub trait View {
     fn put(&mut self, i: usize, val: FP) {
         *self.get_index_mut(i) = val;
     }
+    fn is_less(&self, _sz: (usize, usize)) -> bool {
+        true // TODO
+    }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a>;
 }
 
 /// Generic struct of matrix
@@ -659,13 +672,97 @@ impl<V: View> MatGen<V>
     //
     fn ops_neg(&mut self)
     {
-        let (l_nrows, l_ncols) = self.size();
-
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                self.a((r, c), -self[(r, c)]);
+        if self.view.is_less(self.size()) {
+            for (_, _, val) in self.iter_mut() {
+                *val = -(*val);
             }
         }
+        else {
+            let (l_nrows, l_ncols) = self.size();
+
+            for c in 0 .. l_ncols {
+                for r in 0 .. l_nrows {
+                    self.a((r, c), -self[(r, c)]);
+                }
+            }
+        }
+    }
+    //
+    fn iter_mut(&mut self) -> MatIterMut
+    {
+        MatIterMut {
+            p: MatProp {
+                nrows: self.nrows,
+                ncols: self.ncols,
+                offset: self.offset,
+                stride: self.stride,
+                transposed: self.transposed
+            },
+            iter: self.view.get_iter_mut()
+        }
+    }
+}
+
+// TODO
+
+#[derive(Clone)]
+struct MatProp
+{
+    nrows: usize,
+    ncols: usize,
+    //
+    offset: usize,
+    stride: usize,
+    //
+    transposed: bool
+}
+
+struct MatIterMut<'a>
+{
+    p: MatProp,
+    //
+    iter: Box<dyn Iterator<Item=(usize, &'a mut FP)> + 'a>
+}
+
+impl MatProp
+{
+    fn in_index(&self, i: usize) -> Option<(usize, usize)>
+    {
+        if i >= self.offset {
+            let i = i - self.offset;
+
+            let i0 = i % self.stride;
+            let i1 = i / self.stride;
+
+            if !self.transposed {
+                if i0 < self.nrows && i1 < self.ncols {
+                    return Some((i0, i1));
+                }
+            }
+            else {
+                if i1 < self.nrows && i0 < self.ncols {
+                    return Some((i1, i0));
+                }
+            }
+        }
+
+        None
+    }
+}
+
+impl<'a> Iterator for MatIterMut<'a>
+{
+    type Item = (usize, usize, &'a mut FP);
+
+    fn next(&mut self) -> Option<Self::Item>
+    {
+        while let Some((idx, val)) = self.iter.next() {
+            if let Some((r, c)) = self.p.in_index(idx) {
+                return Some((r, c, val));
+            }
+        }
+
+        None
     }
 }
 
