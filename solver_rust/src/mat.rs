@@ -23,7 +23,7 @@ pub type MatSlice<'a> = MatGen<&'a Vec<FP>>;
 /// Matrix slice mutable
 pub type MatSliMu<'a> = MatGen<&'a mut Vec<FP>>;
 
-impl View for Vec<FP>
+impl MatView for Vec<FP>
 {
     type OwnColl = Vec<FP>;
 
@@ -68,7 +68,7 @@ impl View for Vec<FP>
     }
 }
 
-impl View for &Vec<FP>
+impl MatView for &Vec<FP>
 {
     type OwnColl = Vec<FP>;
 
@@ -113,7 +113,7 @@ impl View for &Vec<FP>
     }
 }
 
-impl View for &mut Vec<FP>
+impl MatView for &mut Vec<FP>
 {
     type OwnColl = Vec<FP>;
 
@@ -169,8 +169,8 @@ impl Clone for Mat
 //
 
 /// Ownership view of matrix array entity
-pub trait View {
-    type OwnColl: View;
+pub trait MatView {
+    type OwnColl: MatView;
 
     fn new_own(sz: usize) -> Self::OwnColl;
     fn get_ref(&self) -> &Self::OwnColl;
@@ -192,7 +192,7 @@ pub trait View {
 
 /// Generic struct of matrix
 #[derive(Debug)]
-pub struct MatGen<V: View>
+pub struct MatGen<V: MatView>
 {
     nrows: usize,
     ncols: usize,
@@ -205,7 +205,7 @@ pub struct MatGen<V: View>
     view: V
 }
 
-impl<V: View> MatGen<V>
+impl<V: MatView> MatGen<V>
 {
     // private helper methods
     fn h_index(&self, index: (usize, usize)) -> usize
@@ -283,7 +283,7 @@ impl<V: View> MatGen<V>
         }
     }
     /// *new* - Makes a matrix of the same size.
-    pub fn new_like<V2: View>(mat: &MatGen<V2>) -> MatGen<V::OwnColl>
+    pub fn new_like<V2: MatView>(mat: &MatGen<V2>) -> MatGen<V::OwnColl>
     {
         let (nrows, ncols) = mat.size();
 
@@ -297,7 +297,7 @@ impl<V: View> MatGen<V>
     //
     /// *slice* - Slice block reference.
     pub fn slice<'a, RR, CR>(&'a self, rows: RR, cols: CR) -> MatGen<&V::OwnColl>
-    where RR: RangeBounds<usize>,  CR: RangeBounds<usize>, &'a V::OwnColl: View
+    where RR: RangeBounds<usize>,  CR: RangeBounds<usize>, &'a V::OwnColl: MatView
     {
         let (row_range, col_range) = self.h_bound(rows, cols);
 
@@ -312,7 +312,7 @@ impl<V: View> MatGen<V>
     }
     /// *slice* - Slice block mutable reference.
     pub fn slice_mut<'a, RR, CR>(&'a mut self, rows: RR, cols: CR) -> MatGen<&mut V::OwnColl>
-    where RR: RangeBounds<usize>,  CR: RangeBounds<usize>, &'a mut V::OwnColl: View
+    where RR: RangeBounds<usize>,  CR: RangeBounds<usize>, &'a mut V::OwnColl: MatView
     {
         let (row_range, col_range) = self.h_bound(rows, cols);
 
@@ -327,67 +327,67 @@ impl<V: View> MatGen<V>
     }
     /// *slice* - Row vectors reference.
     pub fn rows<'a, RR>(&'a self, rows: RR) -> MatGen<&V::OwnColl>
-    where RR: RangeBounds<usize>, &'a V::OwnColl: View
+    where RR: RangeBounds<usize>, &'a V::OwnColl: MatView
     {
         self.slice(rows, ..)
     }
     /// *slice* - Column vectors reference.
     pub fn cols<'a, CR>(&'a self, cols: CR) -> MatGen<&V::OwnColl>
-    where CR: RangeBounds<usize>, &'a V::OwnColl: View
+    where CR: RangeBounds<usize>, &'a V::OwnColl: MatView
     {
         self.slice(.., cols)
     }
     /// *slice* - A row vector reference.
     pub fn row<'a>(&'a self, r: usize) -> MatGen<&V::OwnColl>
-    where &'a V::OwnColl: View
+    where &'a V::OwnColl: MatView
     {
         self.rows(r ..= r)
     }
     /// *slice* - A column vector reference.
     pub fn col<'a>(&'a self, c: usize) -> MatGen<&V::OwnColl>
-    where &'a V::OwnColl: View
+    where &'a V::OwnColl: MatView
     {
         self.cols(c ..= c)
     }
     /// *slice* - Row vectors mutable reference.
     pub fn rows_mut<'a, RR>(&'a mut self, rows: RR) -> MatGen<&mut V::OwnColl>
-    where RR: RangeBounds<usize>, &'a mut V::OwnColl: View
+    where RR: RangeBounds<usize>, &'a mut V::OwnColl: MatView
     {
         self.slice_mut(rows, ..)
     }
     /// *slice* - Column vectors mutable reference.
     pub fn cols_mut<'a, CR>(&'a mut self, cols: CR) -> MatGen<&mut V::OwnColl>
-    where CR: RangeBounds<usize>, &'a mut V::OwnColl: View
+    where CR: RangeBounds<usize>, &'a mut V::OwnColl: MatView
     {
         self.slice_mut(.., cols)
     }
     /// *slice* - A row vector mutable reference.
     pub fn row_mut<'a>(&'a mut self, r: usize) -> MatGen<&mut V::OwnColl>
-    where &'a mut V::OwnColl: View
+    where &'a mut V::OwnColl: MatView
     {
         self.rows_mut(r ..= r)
     }
     /// *slice* - A column vector mutable reference.
     pub fn col_mut<'a>(&'a mut self, c: usize) -> MatGen<&mut V::OwnColl>
-    where &'a mut V::OwnColl: View
+    where &'a mut V::OwnColl: MatView
     {
         self.cols_mut(c ..= c)
     }
     /// *slice* - Whole reference.
     pub fn as_slice<'a>(&'a self) -> MatGen<&V::OwnColl>
-    where &'a V::OwnColl: View
+    where &'a V::OwnColl: MatView
     {
         self.slice(.., ..)
     }
     /// *slice* - Whole mutable reference.
     pub fn as_slice_mut<'a>(&'a mut self) -> MatGen<&mut V::OwnColl>
-    where &'a mut V::OwnColl: View
+    where &'a mut V::OwnColl: MatView
     {
         self.slice_mut(.., ..)
     }
     /// *slice* - Transopsed reference.
     pub fn t<'a>(&'a self) -> MatGen<&V::OwnColl>
-    where &'a V::OwnColl: View
+    where &'a V::OwnColl: MatView
     {
         MatGen {
             nrows: self.nrows,
@@ -400,7 +400,7 @@ impl<V: View> MatGen<V>
     }
     /// *slice* - Transopsed mutable reference.
     pub fn t_mut<'a>(&'a mut self) -> MatGen<&mut V::OwnColl>
-    where &'a mut V::OwnColl: View
+    where &'a mut V::OwnColl: MatView
     {
         MatGen {
             nrows: self.nrows,
@@ -528,7 +528,7 @@ impl<V: View> MatGen<V>
         self.assign_by(|_, _| Some(value));
     }
     /// *assign* - Assign matrix with scaling.
-    pub fn assign_s<V2: View>(&mut self, rhs: &MatGen<V2>, value: FP)
+    pub fn assign_s<V2: MatView>(&mut self, rhs: &MatGen<V2>, value: FP)
     {
         let (l_nrows, l_ncols) = self.size();
         let (r_nrows, r_ncols) = rhs.size();
@@ -539,7 +539,7 @@ impl<V: View> MatGen<V>
         self.assign_by(|r, c| Some(value * rhs[(r, c)]));
     }
     /// *assign* - Assign matrix.
-    pub fn assign<V2: View>(&mut self, rhs: &MatGen<V2>)
+    pub fn assign<V2: MatView>(&mut self, rhs: &MatGen<V2>)
     {
         self.assign_s(rhs, 1.);
     }
@@ -578,7 +578,7 @@ impl<V: View> MatGen<V>
         sum
     }
     /// Returns inner product.
-    pub fn prod<V2: View>(&self, rhs: &MatGen<V2>) -> FP
+    pub fn prod<V2: MatView>(&self, rhs: &MatGen<V2>) -> FP
     {
         let (l_nrows, l_ncols) = self.size();
         let (r_nrows, r_ncols) = rhs.size();
@@ -650,8 +650,8 @@ impl<V: View> MatGen<V>
     }
     //
     /// Made into diagonal matrix and multiplied.
-    pub fn diag_mul<'a, V2: View>(&self, rhs: &'a MatGen<V2>) -> MatGen<V::OwnColl>
-    where &'a V2::OwnColl: View
+    pub fn diag_mul<'a, V2: MatView>(&self, rhs: &'a MatGen<V2>) -> MatGen<V::OwnColl>
+    where &'a V2::OwnColl: MatView
     {
         let (l_nrows, l_ncols) = self.size();
         let (r_nrows, r_ncols) = rhs.size();
@@ -768,7 +768,7 @@ impl<'a> Iterator for MatIterMut<'a>
 
 //
 
-impl<V: View> Index<(usize, usize)> for MatGen<V>
+impl<V: MatView> Index<(usize, usize)> for MatGen<V>
 {
     type Output = FP;
     fn index(&self, index: (usize, usize)) -> &FP
@@ -779,7 +779,7 @@ impl<V: View> Index<(usize, usize)> for MatGen<V>
     }
 }
 
-impl<V: View> IndexMut<(usize, usize)> for MatGen<V>
+impl<V: MatView> IndexMut<(usize, usize)> for MatGen<V>
 {
     fn index_mut(&mut self, index: (usize, usize)) -> &mut FP
     {
@@ -791,7 +791,7 @@ impl<V: View> IndexMut<(usize, usize)> for MatGen<V>
 
 //
 
-impl<V: View> fmt::LowerExp for MatGen<V>
+impl<V: MatView> fmt::LowerExp for MatGen<V>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
     {
@@ -808,7 +808,7 @@ impl<V: View> fmt::LowerExp for MatGen<V>
     }
 }
 
-impl<V: View> fmt::Display for MatGen<V>
+impl<V: MatView> fmt::Display for MatGen<V>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
     {
@@ -818,7 +818,7 @@ impl<V: View> fmt::Display for MatGen<V>
 
 //
 
-impl<V: View, V2: View> PartialEq<MatGen<V2>> for MatGen<V>
+impl<V: MatView, V2: MatView> PartialEq<MatGen<V2>> for MatGen<V>
 {
     fn eq(&self, other: &MatGen<V2>) -> bool
     {
@@ -849,7 +849,7 @@ pub trait MatAcc
     fn acc_get(&self, row: usize, col: usize) -> FP;
 }
 
-impl<V: View> MatAcc for MatGen<V>
+impl<V: MatView> MatAcc for MatGen<V>
 {
     fn acc_size(&self) -> (usize, usize)
     {
@@ -862,7 +862,7 @@ impl<V: View> MatAcc for MatGen<V>
     }
 }
 
-impl<V: View> MatAcc for &MatGen<V>
+impl<V: MatView> MatAcc for &MatGen<V>
 {
     fn acc_size(&self) -> (usize, usize)
     {
@@ -876,7 +876,7 @@ impl<V: View> MatAcc for &MatGen<V>
 }
 
 //
-impl<V: View> Neg for MatGen<V>
+impl<V: MatView> Neg for MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -888,7 +888,7 @@ impl<V: View> Neg for MatGen<V>
     }
 }
 
-impl<V: View> Neg for &MatGen<V>
+impl<V: MatView> Neg for &MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -901,7 +901,7 @@ impl<V: View> Neg for &MatGen<V>
 }
 
 //
-impl<V: View, T: MatAcc> AddAssign<T> for MatGen<V>
+impl<V: MatView, T: MatAcc> AddAssign<T> for MatGen<V>
 {
     fn add_assign(&mut self, rhs: T)
     {
@@ -917,7 +917,7 @@ impl<V: View, T: MatAcc> AddAssign<T> for MatGen<V>
     }
 }
 
-impl<V: View> AddAssign<FP> for MatGen<V>
+impl<V: MatView> AddAssign<FP> for MatGen<V>
 {
     fn add_assign(&mut self, rhs: FP)
     {
@@ -931,7 +931,7 @@ impl<V: View> AddAssign<FP> for MatGen<V>
     }
 }
 
-impl<V: View, T: MatAcc> Add<T> for MatGen<V>
+impl<V: MatView, T: MatAcc> Add<T> for MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -943,7 +943,7 @@ impl<V: View, T: MatAcc> Add<T> for MatGen<V>
     }
 }
 
-impl<V: View, T: MatAcc> Add<T> for &MatGen<V>
+impl<V: MatView, T: MatAcc> Add<T> for &MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -955,7 +955,7 @@ impl<V: View, T: MatAcc> Add<T> for &MatGen<V>
     }
 }
 
-impl<V: View> Add<FP> for MatGen<V>
+impl<V: MatView> Add<FP> for MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -967,7 +967,7 @@ impl<V: View> Add<FP> for MatGen<V>
     }
 }
 
-impl<V: View> Add<FP> for &MatGen<V>
+impl<V: MatView> Add<FP> for &MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -979,7 +979,7 @@ impl<V: View> Add<FP> for &MatGen<V>
     }
 }
 
-impl<V: View> Add<MatGen<V>> for FP
+impl<V: MatView> Add<MatGen<V>> for FP
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -989,7 +989,7 @@ impl<V: View> Add<MatGen<V>> for FP
     }
 }
 
-impl<V: View> Add<&MatGen<V>> for FP
+impl<V: MatView> Add<&MatGen<V>> for FP
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1001,7 +1001,7 @@ impl<V: View> Add<&MatGen<V>> for FP
 
 //
 
-impl<V: View, T: MatAcc> SubAssign<T> for MatGen<V>
+impl<V: MatView, T: MatAcc> SubAssign<T> for MatGen<V>
 {
     fn sub_assign(&mut self, rhs: T)
     {
@@ -1017,7 +1017,7 @@ impl<V: View, T: MatAcc> SubAssign<T> for MatGen<V>
     }
 }
 
-impl<V: View> SubAssign<FP> for MatGen<V>
+impl<V: MatView> SubAssign<FP> for MatGen<V>
 {
     fn sub_assign(&mut self, rhs: FP)
     {
@@ -1031,7 +1031,7 @@ impl<V: View> SubAssign<FP> for MatGen<V>
     }
 }
 
-impl<V: View, T: MatAcc> Sub<T> for MatGen<V>
+impl<V: MatView, T: MatAcc> Sub<T> for MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1043,7 +1043,7 @@ impl<V: View, T: MatAcc> Sub<T> for MatGen<V>
     }
 }
 
-impl<V: View, T: MatAcc> Sub<T> for &MatGen<V>
+impl<V: MatView, T: MatAcc> Sub<T> for &MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1055,7 +1055,7 @@ impl<V: View, T: MatAcc> Sub<T> for &MatGen<V>
     }
 }
 
-impl<V: View> Sub<FP> for MatGen<V>
+impl<V: MatView> Sub<FP> for MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1067,7 +1067,7 @@ impl<V: View> Sub<FP> for MatGen<V>
     }
 }
 
-impl<V: View> Sub<FP> for &MatGen<V>
+impl<V: MatView> Sub<FP> for &MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1079,7 +1079,7 @@ impl<V: View> Sub<FP> for &MatGen<V>
     }
 }
 
-impl<V: View> Sub<MatGen<V>> for FP
+impl<V: MatView> Sub<MatGen<V>> for FP
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1091,7 +1091,7 @@ impl<V: View> Sub<MatGen<V>> for FP
     }
 }
 
-impl<V: View> Sub<&MatGen<V>> for FP
+impl<V: MatView> Sub<&MatGen<V>> for FP
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1105,7 +1105,7 @@ impl<V: View> Sub<&MatGen<V>> for FP
 
 //
 
-impl<V: View> MulAssign<FP> for MatGen<V>
+impl<V: MatView> MulAssign<FP> for MatGen<V>
 {
     fn mul_assign(&mut self, rhs: FP)
     {
@@ -1119,7 +1119,7 @@ impl<V: View> MulAssign<FP> for MatGen<V>
     }
 }
 
-impl<V: View, T: MatAcc> Mul<T> for MatGen<V>
+impl<V: MatView, T: MatAcc> Mul<T> for MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1129,7 +1129,7 @@ impl<V: View, T: MatAcc> Mul<T> for MatGen<V>
     }
 }
 
-impl<V: View, T: MatAcc> Mul<T> for &MatGen<V>
+impl<V: MatView, T: MatAcc> Mul<T> for &MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1156,7 +1156,7 @@ impl<V: View, T: MatAcc> Mul<T> for &MatGen<V>
     }
 }
 
-impl<V: View> Mul<FP> for MatGen<V>
+impl<V: MatView> Mul<FP> for MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1168,7 +1168,7 @@ impl<V: View> Mul<FP> for MatGen<V>
     }
 }
 
-impl<V: View> Mul<FP> for &MatGen<V>
+impl<V: MatView> Mul<FP> for &MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1180,7 +1180,7 @@ impl<V: View> Mul<FP> for &MatGen<V>
     }
 }
 
-impl<V: View> Mul<MatGen<V>> for FP
+impl<V: MatView> Mul<MatGen<V>> for FP
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1190,7 +1190,7 @@ impl<V: View> Mul<MatGen<V>> for FP
     }
 }
 
-impl<V: View> Mul<&MatGen<V>> for FP
+impl<V: MatView> Mul<&MatGen<V>> for FP
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1202,7 +1202,7 @@ impl<V: View> Mul<&MatGen<V>> for FP
 
 //
 
-impl<V: View> DivAssign<FP> for MatGen<V>
+impl<V: MatView> DivAssign<FP> for MatGen<V>
 {
     fn div_assign(&mut self, rhs: FP)
     {
@@ -1216,7 +1216,7 @@ impl<V: View> DivAssign<FP> for MatGen<V>
     }
 }
 
-impl<V: View> Div<FP> for MatGen<V>
+impl<V: MatView> Div<FP> for MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 
@@ -1228,7 +1228,7 @@ impl<V: View> Div<FP> for MatGen<V>
     }
 }
 
-impl<V: View> Div<FP> for &MatGen<V>
+impl<V: MatView> Div<FP> for &MatGen<V>
 {
     type Output = MatGen<V::OwnColl>;
 

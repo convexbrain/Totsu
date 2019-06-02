@@ -1,4 +1,4 @@
-use super::mat::{MatGen, FP, FP_MINPOS, View};
+use super::mat::{MatGen, FP, FP_MINPOS, MatView};
 
 use std::collections::BTreeMap;
 
@@ -9,7 +9,7 @@ pub type SpMatSlice<'a> = MatGen<&'a BTreeMap<usize, FP>>;
 /// Matrix slice mutable
 pub type SpMatSliMu<'a> = MatGen<&'a BTreeMap<usize, FP>>;
 
-impl View for BTreeMap<usize, FP>
+impl MatView for BTreeMap<usize, FP>
 {
     type OwnColl = BTreeMap<usize, FP>;
 
@@ -63,7 +63,7 @@ impl View for BTreeMap<usize, FP>
     }
 }
 
-impl View for &BTreeMap<usize, FP>
+impl MatView for &BTreeMap<usize, FP>
 {
     type OwnColl = BTreeMap<usize, FP>;
 
@@ -112,7 +112,7 @@ impl View for &BTreeMap<usize, FP>
     }
 }
 
-impl View for &mut BTreeMap<usize, FP>
+impl MatView for &mut BTreeMap<usize, FP>
 {
     type OwnColl = BTreeMap<usize, FP>;
 
