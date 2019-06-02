@@ -1,5 +1,5 @@
 use std::cmp::PartialEq;
-use std::ops::{Range, RangeBounds, Bound};
+use std::ops::{RangeBounds, Bound};
 use std::ops::{Neg, Add, Mul, Sub, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 use std::ops::{Index, IndexMut};
 use std::fmt;
@@ -31,9 +31,8 @@ pub trait MatView {
     fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a>;
 }
 
-/// Generic struct of matrix
-#[derive(Debug)]
-pub struct MatGen<V: MatView>
+#[derive(Debug, Clone)]
+struct MatProp
 {
     nrows: usize,
     ncols: usize,
@@ -41,15 +40,23 @@ pub struct MatGen<V: MatView>
     offset: usize,
     stride: usize,
     //
-    transposed: bool,
-    //
-    view: V
+    transposed: bool
 }
 
-impl<V: MatView> MatGen<V>
+impl MatProp
 {
-    // private helper methods
-    fn h_index(&self, index: (usize, usize)) -> usize
+    fn new(nrows: usize, ncols: usize) -> MatProp
+    {
+        MatProp {
+            nrows,
+            ncols,
+            offset: 0,
+            stride: nrows,
+            transposed: false
+        }
+    }
+    //
+    fn index1(&self, index: (usize, usize)) -> usize
     {
         if !self.transposed {
             self.offset + self.stride * index.1 + index.0
@@ -59,7 +66,30 @@ impl<V: MatView> MatGen<V>
         }
     }
     //
-    fn h_bound<RR, CR>(&self, rows: RR, cols: CR) -> (Range<usize>, Range<usize>)
+    fn in_index(&self, i: usize) -> Option<(usize, usize)>
+    {
+        if i >= self.offset {
+            let i = i - self.offset;
+
+            let i0 = i % self.stride;
+            let i1 = i / self.stride;
+
+            if !self.transposed {
+                if i0 < self.nrows && i1 < self.ncols {
+                    return Some((i0, i1));
+                }
+            }
+            else {
+                if i1 < self.nrows && i0 < self.ncols {
+                    return Some((i1, i0));
+                }
+            }
+        }
+
+        None
+    }
+    //
+    fn bound<RR, CR>(&self, rows: RR, cols: CR) -> MatProp
     where RR: RangeBounds<usize>, CR: RangeBounds<usize>
     {
         let row_b = match rows.start_bound() {
@@ -86,40 +116,57 @@ impl<V: MatView> MatGen<V>
             Bound::Excluded(&i) => i
         };
 
-        if !self.transposed {
-            (Range{start: row_b, end: row_e}, Range{start: col_b, end: col_e})
+        let (row_b, row_e, col_b, col_e) = if !self.transposed {
+            (row_b, row_e, col_b, col_e)
         }
         else {
-            (Range{start: col_b, end: col_e}, Range{start: row_b, end: row_e})
+            (col_b, col_e, row_b, row_e)
+        };
+
+        MatProp {
+            nrows: row_e - row_b,
+            ncols: col_e - col_b,
+            offset: self.offset + self.stride * col_b + row_b,
+            stride: self.stride,
+            transposed: self.transposed
         }
     }
     //
-    fn h_own(self) -> MatGen<V::OwnColl>
+    fn t(&self) -> MatProp
     {
-        if self.view.is_own() {
-            MatGen {
-                nrows: self.nrows,
-                ncols: self.ncols,
-                offset: self.offset,
-                stride: self.stride,
-                transposed: self.transposed,
-                view: self.view.get_own()
-            }
-        }
-        else {
-            self.clone_sz()
+        MatProp {
+            transposed: !self.transposed,
+            .. *self
         }
     }
     //
+    fn size(&self) -> (usize, usize)
+    {
+        if !self.transposed {
+            (self.nrows, self.ncols)
+        }
+        else {
+            (self.ncols, self.nrows)
+        }
+    }
+}
+
+/// Generic struct of matrix
+#[derive(Debug)]
+pub struct MatGen<V: MatView>
+{
+    p: MatProp,
+    //
+    view: V
+}
+
+impl<V: MatView> MatGen<V>
+{
     /// *new* - Makes a matrix.
     pub fn new(nrows: usize, ncols: usize) -> MatGen<V::OwnColl>
     {
         MatGen {
-            nrows,
-            ncols,
-            offset: 0,
-            stride: nrows,
-            transposed: false,
+            p: MatProp::new(nrows, ncols),
             view: V::new_own(nrows * ncols)
         }
     }
@@ -140,14 +187,8 @@ impl<V: MatView> MatGen<V>
     pub fn slice<'a, RR, CR>(&'a self, rows: RR, cols: CR) -> MatGen<&V::OwnColl>
     where RR: RangeBounds<usize>,  CR: RangeBounds<usize>, &'a V::OwnColl: MatView
     {
-        let (row_range, col_range) = self.h_bound(rows, cols);
-
         MatGen {
-            nrows: row_range.end - row_range.start,
-            ncols: col_range.end - col_range.start,
-            offset: self.offset + self.stride * col_range.start + row_range.start,
-            stride: self.stride,
-            transposed: self.transposed,
+            p: self.p.bound(rows, cols),
             view: self.view.get_ref()
         }
     }
@@ -155,14 +196,8 @@ impl<V: MatView> MatGen<V>
     pub fn slice_mut<'a, RR, CR>(&'a mut self, rows: RR, cols: CR) -> MatGen<&mut V::OwnColl>
     where RR: RangeBounds<usize>,  CR: RangeBounds<usize>, &'a mut V::OwnColl: MatView
     {
-        let (row_range, col_range) = self.h_bound(rows, cols);
-
         MatGen {
-            nrows: row_range.end - row_range.start,
-            ncols: col_range.end - col_range.start,
-            offset: self.offset + self.stride * col_range.start + row_range.start,
-            stride: self.stride,
-            transposed: self.transposed,
+            p: self.p.bound(rows, cols),
             view: self.view.get_mut()
         }
     }
@@ -231,11 +266,7 @@ impl<V: MatView> MatGen<V>
     where &'a V::OwnColl: MatView
     {
         MatGen {
-            nrows: self.nrows,
-            ncols: self.ncols,
-            offset: self.offset,
-            stride: self.stride,
-            transposed: !self.transposed,
+            p: self.p.t(),
             view: self.view.get_ref()
         }
     }
@@ -244,11 +275,7 @@ impl<V: MatView> MatGen<V>
     where &'a mut V::OwnColl: MatView
     {
         MatGen {
-            nrows: self.nrows,
-            ncols: self.ncols,
-            offset: self.offset,
-            stride: self.stride,
-            transposed: !self.transposed,
+            p: self.p.t(),
             view: self.view.get_mut()
         }
     }
@@ -281,7 +308,7 @@ impl<V: MatView> MatGen<V>
     /// *set* - Set transposed.
     pub fn set_t(mut self) -> MatGen<V>
     {
-        self.transposed = !self.transposed;
+        self.p = self.p.t();
         self
     }
     //
@@ -293,11 +320,7 @@ impl<V: MatView> MatGen<V>
 
         if sz == l_nrows * l_ncols {
             MatGen {
-                nrows: self.nrows,
-                ncols: self.ncols,
-                offset: self.offset,
-                stride: self.stride,
-                transposed: self.transposed,
+                p: self.p.clone(),
                 view: self.view.clone_own()
             }
         }
@@ -325,7 +348,7 @@ impl<V: MatView> MatGen<V>
     /// *assign* - Assign by index
     pub fn a(&mut self, index: (usize, usize), val: FP)
     {
-        let i = self.h_index(index);
+        let i = self.p.index1(index);
 
         self.view.put(i, val);
     }
@@ -482,12 +505,7 @@ impl<V: MatView> MatGen<V>
     /// Returns number of rows and columns.
     pub fn size(&self) -> (usize, usize)
     {
-        if !self.transposed {
-            (self.nrows, self.ncols)
-        }
-        else {
-            (self.ncols, self.nrows)
-        }
+        self.p.size()
     }
     //
     /// Made into diagonal matrix and multiplied.
@@ -511,6 +529,19 @@ impl<V: MatView> MatGen<V>
         mat
     }
     //
+    fn ops_own(self) -> MatGen<V::OwnColl>
+    {
+        if self.view.is_own() {
+            MatGen {
+                p: self.p,
+                view: self.view.get_own()
+            }
+        }
+        else {
+            self.clone_sz()
+        }
+    }
+    //
     fn ops_neg(&mut self)
     {
         if self.view.is_less(self.size()) {
@@ -532,13 +563,7 @@ impl<V: MatView> MatGen<V>
     fn iter_mut(&mut self) -> MatIterMut
     {
         MatIterMut {
-            p: MatProp {
-                nrows: self.nrows,
-                ncols: self.ncols,
-                offset: self.offset,
-                stride: self.stride,
-                transposed: self.transposed
-            },
+            p: self.p.clone(),
             iter: self.view.get_iter_mut()
         }
     }
@@ -546,49 +571,11 @@ impl<V: MatView> MatGen<V>
 
 // TODO
 
-#[derive(Clone)]
-struct MatProp
-{
-    nrows: usize,
-    ncols: usize,
-    //
-    offset: usize,
-    stride: usize,
-    //
-    transposed: bool
-}
-
 struct MatIterMut<'a>
 {
     p: MatProp,
     //
     iter: Box<dyn Iterator<Item=(usize, &'a mut FP)> + 'a>
-}
-
-impl MatProp
-{
-    fn in_index(&self, i: usize) -> Option<(usize, usize)>
-    {
-        if i >= self.offset {
-            let i = i - self.offset;
-
-            let i0 = i % self.stride;
-            let i1 = i / self.stride;
-
-            if !self.transposed {
-                if i0 < self.nrows && i1 < self.ncols {
-                    return Some((i0, i1));
-                }
-            }
-            else {
-                if i1 < self.nrows && i0 < self.ncols {
-                    return Some((i1, i0));
-                }
-            }
-        }
-
-        None
-    }
 }
 
 impl<'a> Iterator for MatIterMut<'a>
@@ -614,7 +601,7 @@ impl<V: MatView> Index<(usize, usize)> for MatGen<V>
     type Output = FP;
     fn index(&self, index: (usize, usize)) -> &FP
     {
-        let i = self.h_index(index);
+        let i = self.p.index1(index);
 
         self.view.get_index(i)
     }
@@ -624,7 +611,7 @@ impl<V: MatView> IndexMut<(usize, usize)> for MatGen<V>
 {
     fn index_mut(&mut self, index: (usize, usize)) -> &mut FP
     {
-        let i = self.h_index(index);
+        let i = self.p.index1(index);
 
         self.view.get_index_mut(i)
     }
@@ -723,7 +710,7 @@ impl<V: MatView> Neg for MatGen<V>
 
     fn neg(self) -> MatGen<V::OwnColl>
     {
-        let mut mat = self.h_own();
+        let mut mat = self.ops_own();
         mat.ops_neg();
         mat
     }
@@ -778,7 +765,7 @@ impl<V: MatView, T: MatAcc> Add<T> for MatGen<V>
 
     fn add(self, rhs: T) -> MatGen<V::OwnColl>
     {
-        let mut mat = self.h_own();
+        let mut mat = self.ops_own();
         mat.add_assign(rhs);
         mat
     }
@@ -802,7 +789,7 @@ impl<V: MatView> Add<FP> for MatGen<V>
 
     fn add(self, rhs: FP) -> MatGen<V::OwnColl>
     {
-        let mut mat = self.h_own();
+        let mut mat = self.ops_own();
         mat.add_assign(rhs);
         mat
     }
@@ -878,7 +865,7 @@ impl<V: MatView, T: MatAcc> Sub<T> for MatGen<V>
 
     fn sub(self, rhs: T) -> MatGen<V::OwnColl>
     {
-        let mut mat = self.h_own();
+        let mut mat = self.ops_own();
         mat.sub_assign(rhs);
         mat
     }
@@ -902,7 +889,7 @@ impl<V: MatView> Sub<FP> for MatGen<V>
 
     fn sub(self, rhs: FP) -> MatGen<V::OwnColl>
     {
-        let mut mat = self.h_own();
+        let mut mat = self.ops_own();
         mat.sub_assign(rhs);
         mat
     }
@@ -1003,7 +990,7 @@ impl<V: MatView> Mul<FP> for MatGen<V>
 
     fn mul(self, rhs: FP) -> MatGen<V::OwnColl>
     {
-        let mut mat = self.h_own();
+        let mut mat = self.ops_own();
         mat.mul_assign(rhs);
         mat
     }
@@ -1063,7 +1050,7 @@ impl<V: MatView> Div<FP> for MatGen<V>
 
     fn div(self, rhs: FP) -> MatGen<V::OwnColl>
     {
-        let mut mat = self.h_own();
+        let mut mat = self.ops_own();
         mat.div_assign(rhs);
         mat
     }
