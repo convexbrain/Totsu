@@ -1,4 +1,4 @@
-use super::mat::{MatGen, FP, FP_MINPOS, MatView};
+use super::matgen::{MatGen, FP, FP_MINPOS, MatView};
 
 use std::collections::BTreeMap;
 

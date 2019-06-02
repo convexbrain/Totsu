@@ -90,13 +90,16 @@ You can find other test examples of pre-defined solvers in [`lib.rs`](../src/tot
 More practical examples are available [here](https://github.com/convexbrain/Totsu/tree/master/examples).
 */
 
+pub mod matgen;
 pub mod mat;
 pub mod spmat;
+
+pub mod operator;
 pub mod matlinalg;
 pub mod matsvd;
 pub mod matsvdsolve;
+
 pub mod pdipm;
-pub mod operator;
 
 /// Prelude
 pub mod prelude {
