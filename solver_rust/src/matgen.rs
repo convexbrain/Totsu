@@ -28,6 +28,7 @@ pub trait MatView {
     fn is_less(&self, _sz: (usize, usize)) -> bool {
         true // TODO
     }
+    fn get_iter<'a>(&'a self) -> Box<dyn Iterator<Item=(usize, &FP)> + 'a>;
     fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a>;
 }
 
@@ -74,13 +75,11 @@ impl MatProp
             let i0 = i % self.stride;
             let i1 = i / self.stride;
 
-            if !self.transposed {
-                if i0 < self.nrows && i1 < self.ncols {
+            if i0 < self.nrows && i1 < self.ncols {
+                if !self.transposed {
                     return Some((i0, i1));
                 }
-            }
-            else {
-                if i1 < self.nrows && i0 < self.ncols {
+                else {
                     return Some((i1, i0));
                 }
             }
@@ -415,9 +414,16 @@ impl<V: MatView> MatGen<V>
 
         let mut sum = 0.;
 
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                sum += self[(r, c)] * self[(r, c)];
+        if self.view.is_less(self.size()) {
+            for (_, _, val) in self.iter() {
+                sum += (*val).powi(2);
+            }
+        }
+        else {
+            for c in 0 .. l_ncols {
+                for r in 0 .. l_nrows {
+                    sum += self[(r, c)].powi(2);
+                }
             }
         }
 
@@ -452,9 +458,16 @@ impl<V: MatView> MatGen<V>
 
         let mut sum = 0.;
 
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                sum += self[(r, c)] * rhs[(r, c)];
+        if self.view.is_less(self.size()) {
+            for (r, c, val) in self.iter() {
+                sum += *val * rhs[(r, c)];
+            }
+        }
+        else {
+            for c in 0 .. l_ncols {
+                for r in 0 .. l_nrows {
+                    sum += self[(r, c)] * rhs[(r, c)];
+                }
             }
         }
 
@@ -529,6 +542,38 @@ impl<V: MatView> MatGen<V>
         mat
     }
     //
+    pub fn transform<'a, V2: MatView>(&self, rhs: &'a MatGen<V2>) -> MatGen<V2::OwnColl>
+    {
+        let (l_nrows, l_ncols) = self.size();
+        let (r_nrows, r_ncols) = rhs.size();
+
+        assert_eq!(l_ncols, r_nrows);
+
+        let mut mat = MatGen::<V2>::new(l_nrows, r_ncols);
+
+        if self.view.is_less(self.size()) {
+            for (r, c, val) in self.iter() {
+                for k in 0 .. r_ncols {
+                    let v = mat[(r, k)] + *val * rhs[(c, k)];
+                    mat.a((r, k), v);
+                }
+            }
+        }
+        else {
+            for c in 0 .. r_ncols {
+                for r in 0 .. l_nrows {
+                    let mut v: FP = 0.0;
+                    for k in 0 .. l_ncols {
+                        v += self[(r, k)] * rhs[(k, c)];
+                    }
+                    mat.a((r, c), v);
+                }
+            }
+        }
+
+        mat
+    }
+    //
     fn ops_own(self) -> MatGen<V::OwnColl>
     {
         if self.view.is_own() {
@@ -560,6 +605,14 @@ impl<V: MatView> MatGen<V>
         }
     }
     //
+    fn iter(&self) -> MatIter
+    {
+        MatIter {
+            p: self.p.clone(),
+            iter: self.view.get_iter()
+        }
+    }
+    //
     fn iter_mut(&mut self) -> MatIterMut
     {
         MatIterMut {
@@ -569,7 +622,30 @@ impl<V: MatView> MatGen<V>
     }
 }
 
-// TODO
+//
+
+struct MatIter<'a>
+{
+    p: MatProp,
+    //
+    iter: Box<dyn Iterator<Item=(usize, &'a FP)> + 'a>
+}
+
+impl<'a> Iterator for MatIter<'a>
+{
+    type Item = (usize, usize, &'a FP);
+
+    fn next(&mut self) -> Option<Self::Item>
+    {
+        while let Some((idx, val)) = self.iter.next() {
+            if let Some((r, c)) = self.p.in_index(idx) {
+                return Some((r, c, val));
+            }
+        }
+
+        None
+    }
+}
 
 struct MatIterMut<'a>
 {
@@ -939,9 +1015,16 @@ impl<V: MatView> MulAssign<FP> for MatGen<V>
     {
         let (l_nrows, l_ncols) = self.size();
 
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                self.a((r, c), self[(r, c)] * rhs);
+        if self.view.is_less(self.size()) {
+            for (_, _, val) in self.iter_mut() {
+                *val *= rhs;
+            }
+        }
+        else {
+            for c in 0 .. l_ncols {
+                for r in 0 .. l_nrows {
+                    self.a((r, c), self[(r, c)] * rhs);
+                }
             }
         }
     }
@@ -970,13 +1053,23 @@ impl<V: MatView, T: MatAcc> Mul<T> for &MatGen<V>
 
         let mut mat = MatGen::<V>::new(l_nrows, r_ncols);
 
-        for c in 0 .. r_ncols {
-            for r in 0 .. l_nrows {
-                let mut v: FP = 0.0;
-                for k in 0 .. l_ncols {
-                    v += self[(r, k)] * rhs.acc_get(k, c);
+        if self.view.is_less(self.size()) {
+            for (r, c, val) in self.iter() {
+                for k in 0 .. r_ncols {
+                    let v = mat[(r, k)] + *val * rhs.acc_get(c, k);
+                    mat.a((r, k), v);
                 }
-                mat.a((r, c), v);
+            }
+        }
+        else {
+            for c in 0 .. r_ncols {
+                for r in 0 .. l_nrows {
+                    let mut v: FP = 0.0;
+                    for k in 0 .. l_ncols {
+                        v += self[(r, k)] * rhs.acc_get(k, c);
+                    }
+                    mat.a((r, c), v);
+                }
             }
         }
 
@@ -1036,9 +1129,16 @@ impl<V: MatView> DivAssign<FP> for MatGen<V>
     {
         let (l_nrows, l_ncols) = self.size();
 
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                self.a((r, c), self[(r, c)] / rhs);
+        if self.view.is_less(self.size()) {
+            for (_, _, val) in self.iter_mut() {
+                *val /= rhs;
+            }
+        }
+        else {
+            for c in 0 .. l_ncols {
+                for r in 0 .. l_nrows {
+                    self.a((r, c), self[(r, c)] / rhs);
+                }
             }
         }
     }

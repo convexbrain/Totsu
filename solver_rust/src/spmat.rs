@@ -58,7 +58,12 @@ impl MatView for BTreeMap<usize, FP>
             *self.get_index_mut(i) = val;
         }
     }
-    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a> {
+    fn get_iter<'a>(&'a self) -> Box<dyn Iterator<Item=(usize, &FP)> + 'a>
+    {
+        Box::new(self.iter().map(|(ref_idx, val)| (*ref_idx, val)))
+    }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a>
+    {
         Box::new(self.iter_mut().map(|(ref_idx, val)| (*ref_idx, val)))
     }
 }
@@ -107,7 +112,12 @@ impl MatView for &BTreeMap<usize, FP>
     {
         panic!("cannot borrow immutable as mutable");
     }
-    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a> {
+    fn get_iter<'a>(&'a self) -> Box<dyn Iterator<Item=(usize, &FP)> + 'a>
+    {
+        Box::new(self.iter().map(|(ref_idx, val)| (*ref_idx, val)))
+    }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a>
+    {
         panic!("cannot borrow immutable as mutable");
     }
 }
@@ -161,7 +171,12 @@ impl MatView for &mut BTreeMap<usize, FP>
             *self.get_index_mut(i) = val;
         }
     }
-    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a> {
+    fn get_iter<'a>(&'a self) -> Box<dyn Iterator<Item=(usize, &FP)> + 'a>
+    {
+        Box::new(self.iter().map(|(ref_idx, val)| (*ref_idx, val)))
+    }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a>
+    {
         Box::new(self.iter_mut().map(|(ref_idx, val)| (*ref_idx, val)))
     }
 }

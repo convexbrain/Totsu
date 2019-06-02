@@ -55,7 +55,12 @@ impl MatView for Vec<FP>
     {
         &mut self[i]
     }
-    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a> {
+    fn get_iter<'a>(&'a self) -> Box<dyn Iterator<Item=(usize, &FP)> + 'a>
+    {
+        Box::new(self.iter().enumerate())
+    }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a>
+    {
         Box::new(self.iter_mut().enumerate())
     }
 }
@@ -100,7 +105,12 @@ impl MatView for &Vec<FP>
     {
         panic!("cannot borrow immutable as mutable");
     }
-    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a> {
+    fn get_iter<'a>(&'a self) -> Box<dyn Iterator<Item=(usize, &FP)> + 'a>
+    {
+        Box::new(self.iter().enumerate())
+    }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a>
+    {
         panic!("cannot borrow immutable as mutable");
     }
 }
@@ -145,7 +155,12 @@ impl MatView for &mut Vec<FP>
     {
         &mut self[i]
     }
-    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a> {
+    fn get_iter<'a>(&'a self) -> Box<dyn Iterator<Item=(usize, &FP)> + 'a>
+    {
+        Box::new(self.iter().enumerate())
+    }
+    fn get_iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item=(usize, &mut FP)> + 'a>
+    {
         Box::new(self.iter_mut().enumerate())
     }
 }
