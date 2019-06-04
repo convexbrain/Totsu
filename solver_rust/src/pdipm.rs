@@ -6,7 +6,6 @@ use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
 use super::spmat::SpMat;
 use super::matsvdsolve;
 use super::matlinalg;
-use super::operator::LinOp;
 
 const TOL_STEP: FP = FP_EPSILON;
 const TOL_DIV0: FP = FP_MINPOS;
@@ -16,44 +15,6 @@ macro_rules! writeln_or {
     ( $( $arg: expr ),* ) => {
         writeln!( $( $arg ),* ).or(Err(PDIPMErr::LogFailure))
     };
-}
-
-struct KKTOp
-{
-    kkt: SpMat,
-}
-
-impl KKTOp
-{
-    fn new(n: usize, m: usize, p: usize) -> KKTOp
-    {
-        KKTOp {
-            kkt: SpMat::new(n + m + p, n + m + p)
-        }
-    }
-}
-
-impl LinOp for KKTOp
-{
-    fn size(&self) -> (usize, usize)
-    {
-        self.kkt.size()
-    }
-
-    fn mat(&self) -> Mat
-    {
-        let mut mat = Mat::new_like(&self.kkt);
-        mat.assign(&self.kkt);
-        mat
-    }
-
-    fn apply(&self, vec: &Mat) -> Mat {
-        self.kkt.transform(&vec)
-    }
-
-    fn t_apply(&self, vec: &Mat) -> Mat {
-        self.kkt.t().transform(&vec)
-    }
 }
 
 /**
@@ -88,7 +49,7 @@ pub struct PDIPM
     b: Mat,
     // loop variable
     y: Mat,
-    kkt_op: KKTOp,
+    kkt: SpMat,
     // temporal in loop
     df_o: Mat,
     f_i: Mat,
@@ -117,6 +78,8 @@ pub struct PDIPMParam
     /// Max iteration number of outer-loop for the Newton step.
     /// Max iteration number of inner-loop for the backtracking line search.
     pub n_loop: usize,
+    /// Use iterative linear solver to calculate Newton step.
+    pub use_iter: bool,
     /// Enables to log vector status.
     pub log_vecs: bool,
     /// Enables to log kkt matrix.
@@ -135,6 +98,7 @@ impl Default for PDIPMParam
             s_coef: 0.99,
             margin: 1.,
             n_loop: 256,
+            use_iter: true,
             log_vecs: false,
             log_kkt: false
         }
@@ -174,7 +138,7 @@ impl PDIPM
             a: Mat::new(0, 0),
             b: Mat::new_vec(0),
             y: Mat::new_vec(0),
-            kkt_op: KKTOp::new(0, 0, 0),
+            kkt: SpMat::new(0, 0),
             df_o: Mat::new_vec(0),
             f_i: Mat::new_vec(0),
             r_t: Mat::new_vec(0),
@@ -190,7 +154,7 @@ impl PDIPM
             self.a = Mat::new(p, n);
             self.b = Mat::new_vec(p);
             self.y = Mat::new_vec(n + m + p);
-            self.kkt_op = KKTOp::new(n, m, p);
+            self.kkt = SpMat::new(n + m + p, n + m + p);
             self.df_o = Mat::new_vec(n);
             self.f_i = Mat::new_vec(m);
             self.r_t = Mat::new_vec(n + m + p);
@@ -337,7 +301,7 @@ impl PDIPM
 
             /***** calc kkt matrix *****/
             
-            let mut kkt_x_dual = self.kkt_op.kkt.slice_mut(0 .. n, 0 .. n);
+            let mut kkt_x_dual = self.kkt.slice_mut(0 .. n, 0 .. n);
             dd_objective(&x, &mut self.ddf);
             kkt_x_dual.assign(&self.ddf);
             for i in 0 .. m {
@@ -346,32 +310,37 @@ impl PDIPM
             }
 
             if m > 0 {
-                let mut kkt_lmd_dual = self.kkt_op.kkt.slice_mut(0 .. n, n .. n + m);
+                let mut kkt_lmd_dual = self.kkt.slice_mut(0 .. n, n .. n + m);
                 kkt_lmd_dual.assign(&self.df_i.t());
 
-                let mut kkt_x_cent = self.kkt_op.kkt.slice_mut(n .. n + m, 0 .. n);
+                let mut kkt_x_cent = self.kkt.slice_mut(n .. n + m, 0 .. n);
                 kkt_x_cent.assign_s(&lmd.diag_mul(&self.df_i), -1.);
 
-                let mut kkt_lmd_cent = self.kkt_op.kkt.slice_mut(n .. n + m, n .. n + m);
+                let mut kkt_lmd_cent = self.kkt.slice_mut(n .. n + m, n .. n + m);
                 kkt_lmd_cent.assign_s(&self.f_i.clone_diag(), -1.);
             }
 
             if p > 0 {
-                let mut kkt_nu_dual = self.kkt_op.kkt.slice_mut(0 .. n, n + m .. n + m + p);
+                let mut kkt_nu_dual = self.kkt.slice_mut(0 .. n, n + m .. n + m + p);
                 kkt_nu_dual.assign(&self.a.t());
 
-                let mut kkt_x_pri = self.kkt_op.kkt.slice_mut(n + m .. n + m + p, 0 .. n);
+                let mut kkt_x_pri = self.kkt.slice_mut(n + m .. n + m + p, 0 .. n);
                 kkt_x_pri.assign(&self.a);
             }
 
             /***** calc search direction *****/
 
             if param.log_kkt {
-                writeln_or!(log, "kkt : {}", self.kkt_op.kkt)?;
+                writeln_or!(log, "kkt : {}", self.kkt)?;
             }
 
-            //let neg_dy = matsvdsolve::lin_solve(&self.kkt_op, &self.r_t); // negative dy
-            let neg_dy = matlinalg::lin_solve(&self.kkt_op, &self.r_t); // negative dy
+            // negative dy
+            let neg_dy = if param.use_iter {
+                matlinalg::lin_solve(&self.kkt, &self.r_t)
+            }
+            else {
+                matsvdsolve::lin_solve(&self.kkt, &self.r_t)
+            };
 
             if param.log_vecs {
                 writeln_or!(log, "y : {}", self.y.t())?;

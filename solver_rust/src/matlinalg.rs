@@ -1,7 +1,7 @@
 //! Matrix linear algebra
 
 use super::mat::{Mat, MatSlice, FP, FP_EPSILON, FP_MINPOS};
-use super::operator::LinOp;
+use super::spmat::SpMat;
 
 fn normalize(vec: MatSlice) -> (FP, Mat)
 {
@@ -17,6 +17,7 @@ fn normalize(vec: MatSlice) -> (FP, Mat)
     }
 }
 
+/*
 fn _solve_lsmr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
 {
     const ATOL: FP = FP_EPSILON;
@@ -163,15 +164,16 @@ fn _solve_lsmr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
         sqnorm_b_1 = sqnorm_b_2;
     }
 }
+*/
 
-fn solve_lsqr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
+fn solve_lsqr(mat_a: &SpMat, vec_b: MatSlice) -> Mat
 {
     const ATOL: FP = FP_EPSILON;
     const BTOL: FP = FP_EPSILON;
     const CONLIM: FP = 1. / FP_EPSILON;
     const INVTOL: FP = FP_MINPOS;
     
-    let (m, n) = lop_a.size();
+    let (m, n) = mat_a.size();
     const ZERO: FP = 0.;
 
     assert_eq!(vec_b.size(), (m, 1));
@@ -180,7 +182,7 @@ fn solve_lsqr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
     let ki = Mat::new_vec(n).set_by(|r, _| {
         let mut e = Mat::new_vec(n);
         e[(r, 0)] = 1.;
-        let e = lop_a.apply(&e);
+        let e = mat_a.transform(&e);
         let k = e.norm_p2();
         if k > INVTOL {
             k.recip()
@@ -192,7 +194,7 @@ fn solve_lsqr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
 
     // 1. Initialize
     let (beta_1, mut u_1) = normalize(vec_b);
-    let (mut alpha_1, mut v_1) = normalize(ki.diag_mul(&lop_a.t_apply(&u_1)).as_slice());
+    let (mut alpha_1, mut v_1) = normalize(ki.diag_mul(&mat_a.t().transform(&u_1)).as_slice());
     let mut w_1 = v_1.clone_sz();
     let mut x_0 = Mat::new_vec(n);
     let mut phi_b1 = beta_1;
@@ -212,8 +214,8 @@ fn solve_lsqr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
         // (indexing is shown as if i = 1)
 
         // 3. Continue the bidiagonalization
-        let (beta_2, u_2) = normalize((lop_a.apply(&ki.diag_mul(&v_1)) - alpha_1 * u_1).as_slice());
-        let (alpha_2, v_2) = normalize((ki.diag_mul(&lop_a.t_apply(&u_2)) - beta_2 * v_1).as_slice());
+        let (beta_2, u_2) = normalize((mat_a.transform(&ki.diag_mul(&v_1)) - alpha_1 * u_1).as_slice());
+        let (alpha_2, v_2) = normalize((ki.diag_mul(&mat_a.t().transform(&u_2)) - beta_2 * v_1).as_slice());
 
         // 4. Construct and apply next orthogonal transformation
         let rho_1 = rho_b1.hypot(beta_2);
@@ -275,6 +277,7 @@ fn solve_lsqr<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
     }
 }
 
+/*
 fn _solve_bicgstab<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
 {
     let (m, n) = lop_a.size();
@@ -335,6 +338,7 @@ fn _solve_bicgstab<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
 
     x_0
 }
+*/
 
 /// Linear equation solver by LSQR
 /// 
@@ -342,16 +346,16 @@ fn _solve_bicgstab<L: LinOp>(lop_a: &L, vec_b: MatSlice) -> Mat
 /// * [http://web.stanford.edu/group/SOL/software/lsqr/](http://web.stanford.edu/group/SOL/software/lsqr/)
 /// * C. C. Paige and M. A. Saunders, "LSQR: An algorithm for sparse linear equations and sparse least squares,"
 ///   TOMS 8(1), 43-71 (1982).
-pub fn lin_solve<L: LinOp>(lop_a: &L, mat_b: &Mat) -> Mat
+pub fn lin_solve(mat_a: &SpMat, mat_b: &Mat) -> Mat
 {
-    let (_, xr) = lop_a.size();
+    let (_, xr) = mat_a.size();
     let (_, xc) = mat_b.size();
     let mut mat_x = Mat::new(xr, xc);
 
     for c in 0 .. xc {
         let vec_b = mat_b.col(c);
         let mut vec_x = mat_x.col_mut(c);
-        vec_x.assign(&solve_lsqr(lop_a, vec_b));
+        vec_x.assign(&solve_lsqr(mat_a, vec_b));
     }
 
     mat_x
@@ -390,33 +394,19 @@ fn test_lsmr1()
 {
     const TOL_RMSE: FP = 1.0 / (1u64 << 32) as FP;
 
-    struct LOP {
-        mat: Mat
-    }
-    impl LinOp for LOP {
-        fn size(&self) -> (usize, usize) {
-            self.mat.size()
-        }
-        fn mat(&self) -> Mat {
-            self.mat.clone_sz()
-        }
-    }
-
-    let lop = LOP {
-        mat: Mat::new(2, 2).set_iter(&[
-            1., 2.,
-            3., 4.
-        ])
-    };
+    let mat = SpMat::new(2, 2).set_iter(&[
+        1., 2.,
+        3., 4.
+    ]);
 
     let vec = Mat::new_vec(2).set_iter(&[
         5., 6.
     ]);
 
-    let x = lin_solve(&lop, &vec);
+    let x = lin_solve(&mat, &vec);
     println!("x = {}", x);
 
-    let h = lop.apply(&x);
+    let h = mat.transform(&x);
     println!("vec reconstructed = {}", h);
 
     let h_size = h.size();
@@ -429,26 +419,12 @@ fn test_lsmr2()
 {
     const TOL_RMSE: FP = 1.0 / (1u64 << 32) as FP;
 
-    struct LOP {
-        mat: Mat
-    }
-    impl LinOp for LOP {
-        fn size(&self) -> (usize, usize) {
-            self.mat.size()
-        }
-        fn mat(&self) -> Mat {
-            self.mat.clone_sz()
-        }
-    }
-
-    let lop = LOP {
-        mat: Mat::new(4, 4).set_iter(&[
-            4.296e5,  0.000e0,  4.296e5,  0.000e0,
-            0.000e0,  4.296e5,  4.296e5,  0.000e0,
-            4.296e5,  4.296e5,  8.591e5,  1.000e0,
-            0.000e0,  0.000e0,  1.000e0,  0.000e0
-        ])
-    };
+    let mat = SpMat::new(4, 4).set_iter(&[
+        4.296e5,  0.000e0,  4.296e5,  0.000e0,
+        0.000e0,  4.296e5,  4.296e5,  0.000e0,
+        4.296e5,  4.296e5,  8.591e5,  1.000e0,
+        0.000e0,  0.000e0,  1.000e0,  0.000e0
+    ]);
 
     let vec = Mat::new_vec(4).set_iter(&[
         -9.460e1,
@@ -457,10 +433,10 @@ fn test_lsmr2()
         3.859e-3
     ]);
 
-    let x = lin_solve(&lop, &vec);
+    let x = lin_solve(&mat, &vec);
     println!("x = {}", x);
 
-    let h = lop.apply(&x);
+    let h = mat.transform(&x);
     println!("vec reconstructed = {}", h);
 
     let h_size = h.size();

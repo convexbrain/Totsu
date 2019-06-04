@@ -94,7 +94,6 @@ pub mod matgen;
 pub mod mat;
 pub mod spmat;
 
-pub mod operator;
 pub mod matlinalg;
 pub mod matsvd;
 pub mod matsvdsolve;
