@@ -533,9 +533,16 @@ impl<V: MatView> MatGen<V>
 
         let mut mat = MatGen::<V>::new_like(rhs);
 
-        for c in 0 .. r_ncols {
-            for r in 0 .. r_nrows {
-                mat.a((r, c), self[(r, 0)] * rhs[(r, c)]);
+        if rhs.acc_is_less(rhs.acc_size()) {
+            for (r, c, val) in rhs.acc_iter() {
+                mat.a((r, c), self[(r, 0)] * *val);
+            }
+        }
+        else {
+            for c in 0 .. r_ncols {
+                for r in 0 .. r_nrows {
+                    mat.a((r, c), self[(r, 0)] * rhs[(r, c)]);
+                }
             }
         }
 
@@ -624,7 +631,7 @@ impl<V: MatView> MatGen<V>
 
 //
 
-struct MatIter<'a>
+pub struct MatIter<'a>
 {
     p: MatProp,
     //
@@ -647,7 +654,7 @@ impl<'a> Iterator for MatIter<'a>
     }
 }
 
-struct MatIterMut<'a>
+pub struct MatIterMut<'a>
 {
     p: MatProp,
     //
@@ -751,6 +758,8 @@ pub trait MatAcc
 {
     fn acc_size(&self) -> (usize, usize);
     fn acc_get(&self, row: usize, col: usize) -> FP;
+    fn acc_is_less(&self, sz: (usize, usize)) -> bool;
+    fn acc_iter(&self) -> MatIter;
 }
 
 impl<V: MatView> MatAcc for MatGen<V>
@@ -764,6 +773,16 @@ impl<V: MatView> MatAcc for MatGen<V>
     {
         self[(row, col)]
     }
+    //
+    fn acc_is_less(&self, sz: (usize, usize)) -> bool
+    {
+        self.view.is_less(sz)
+    }
+    //
+    fn acc_iter(&self) -> MatIter
+    {
+        self.iter()
+    }
 }
 
 impl<V: MatView> MatAcc for &MatGen<V>
@@ -776,6 +795,16 @@ impl<V: MatView> MatAcc for &MatGen<V>
     fn acc_get(&self, row: usize, col: usize) -> FP
     {
         (*self).acc_get(row, col)
+    }
+    //
+    fn acc_is_less(&self, sz: (usize, usize)) -> bool
+    {
+        self.view.is_less(sz)
+    }
+    //
+    fn acc_iter(&self) -> MatIter
+    {
+        (*self).acc_iter()
     }
 }
 
@@ -813,9 +842,16 @@ impl<V: MatView, T: MatAcc> AddAssign<T> for MatGen<V>
 
         assert_eq!((l_nrows, l_ncols), rhs.acc_size());
 
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                self.a((r, c), self[(r, c)] + rhs.acc_get(r, c));
+        if rhs.acc_is_less(rhs.acc_size()) {
+            for (r, c, val) in rhs.acc_iter() {
+                self.a((r, c), self[(r, c)] + *val);
+            }
+        }
+        else {
+            for c in 0 .. l_ncols {
+                for r in 0 .. l_nrows {
+                    self.a((r, c), self[(r, c)] + rhs.acc_get(r, c));
+                }
             }
         }
     }
@@ -913,9 +949,16 @@ impl<V: MatView, T: MatAcc> SubAssign<T> for MatGen<V>
 
         assert_eq!((l_nrows, l_ncols), rhs.acc_size());
 
-        for c in 0 .. l_ncols {
-            for r in 0 .. l_nrows {
-                self.a((r, c), self[(r, c)] - rhs.acc_get(r, c));
+        if rhs.acc_is_less(rhs.acc_size()) {
+            for (r, c, val) in rhs.acc_iter() {
+                self.a((r, c), self[(r, c)] - *val);
+            }
+        }
+        else {
+            for c in 0 .. l_ncols {
+                for r in 0 .. l_nrows {
+                    self.a((r, c), self[(r, c)] - rhs.acc_get(r, c));
+                }
             }
         }
     }
