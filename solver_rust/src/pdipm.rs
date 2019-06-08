@@ -4,7 +4,7 @@ Primal-dual interior point method
 
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
 use super::spmat::SpMat;
-use super::matsvdsolve::SVDLS;
+use super::matsvdsolve::SVDS;
 use super::matlinalg::{LSQR, SpLinSolver};
 
 const TOL_STEP: FP = FP_EPSILON;
@@ -339,7 +339,7 @@ impl PDIPM
                 LSQR::new(self.kkt.size()).spsolve(&self.kkt, &self.r_t)
             }
             else {
-                SVDLS::new(self.kkt.size()).spsolve(&self.kkt, &self.r_t)
+                SVDS::new(self.kkt.size()).spsolve(&self.kkt, &self.r_t)
             };
 
             if param.log_vecs {

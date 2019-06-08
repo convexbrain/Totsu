@@ -11,17 +11,17 @@ const TOL_SINV_SQ: FP = FP_EPSILON * FP_EPSILON;
 
 /// Matrix singular value decomposition
 #[derive(Debug)]
-pub struct SVDLS
+pub struct SVDS
 {
     u: Mat,
     vt_h: Mat
 }
 
-impl SpLinSolver for SVDLS
+impl SpLinSolver for SVDS
 {
     fn new(sz: (usize, usize)) -> Self
     {
-        SVDLS {
+        SVDS {
             u: Mat::new(sz.1, sz.0),
             vt_h: Mat::new_vec(0)
         }
@@ -41,7 +41,7 @@ impl SpLinSolver for SVDLS
 }
 
 // TODO: refactor along with matsvd
-impl SVDLS
+impl SVDS
 {
     fn apply_jacobi_rot(&mut self, c1: usize, c2: usize) -> bool
     {
@@ -118,7 +118,7 @@ impl SVDLS
 // TODO: rename
 pub fn solve(g: &Mat, h: &Mat) -> Mat
 {
-    let mut s = SVDLS::new(g.size());
+    let mut s = SVDS::new(g.size());
 
     assert_eq!(g.size().0, h.size().0);
 
