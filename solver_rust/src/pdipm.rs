@@ -98,7 +98,7 @@ impl Default for PDIPMParam
             s_coef: 0.99,
             margin: 1.,
             n_loop: 256,
-            use_iter: true,
+            use_iter: false,
             log_vecs: false,
             log_kkt: false
         }
