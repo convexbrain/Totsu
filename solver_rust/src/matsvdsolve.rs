@@ -2,6 +2,8 @@
 
 use super::mat::{Mat, FP, FP_EPSILON};
 use super::spmat::SpMat;
+use super::matlinalg::SpLinSolver;
+
 
 const TOL_CNV1_SQ: FP = FP_EPSILON * FP_EPSILON * 4.;
 const TOL_CNV2_SQ: FP = FP_EPSILON * FP_EPSILON;
@@ -9,28 +11,38 @@ const TOL_SINV_SQ: FP = FP_EPSILON * FP_EPSILON;
 
 /// Matrix singular value decomposition
 #[derive(Debug)]
-struct SVD
+pub struct SVDLS
 {
     u: Mat,
     vt_h: Mat
 }
 
-// TODO: refactor along with matsvd
-impl SVD
+impl SpLinSolver for SVDLS
 {
-    /// Makes a SVD workplace for factorizing a specified size matrix.
-    fn new(g: Mat, h: Mat) -> SVD
+    fn new(sz: (usize, usize)) -> Self
     {
-        assert_eq!(g.size().0, h.size().0);
-
-        let svd = SVD {
-            u: g.set_t(),
-            vt_h: h
-        };
-
-        svd
+        SVDLS {
+            u: Mat::new(sz.1, sz.0),
+            vt_h: Mat::new_vec(0)
+        }
     }
-    //
+
+    fn spsolve(&mut self, mat_a: &SpMat, mat_b: &Mat) -> Mat
+    {
+        assert_eq!(mat_a.size().0, mat_b.size().0);
+
+        self.u.assign(&mat_a.t());
+        self.vt_h = mat_b.clone_sz();
+
+        self.decomp();
+
+        self.solve()
+    }
+}
+
+// TODO: refactor along with matsvd
+impl SVDLS
+{
     fn apply_jacobi_rot(&mut self, c1: usize, c2: usize) -> bool
     {
         let a = self.u.col(c1).norm_p2sq();
@@ -65,7 +77,7 @@ impl SVD
         }
     }
     //
-    fn decomp(mut self) -> SVD
+    fn decomp(&mut self)
     {
         let (_, n) = self.u.size();
 
@@ -79,11 +91,9 @@ impl SVD
                 }
             }
         }
-
-        self
     }
     //
-    fn solve(mut self) -> Mat
+    fn solve(&mut self) -> Mat
     {
         let (_, n) = self.u.size();
 
@@ -101,20 +111,21 @@ impl SVD
             }
         }
 
-        self.u * self.vt_h
+        &self.u * &self.vt_h
     }
 }
 
 // TODO: rename
 pub fn solve(g: &Mat, h: &Mat) -> Mat
 {
-    SVD::new(g.clone_sz(), h.clone_sz()).decomp().solve()
-}
+    let mut s = SVDLS::new(g.size());
 
-// TODO: rename
-pub fn lin_solve(g: &SpMat, h: &Mat) -> Mat
-{
-    let mut g_dn = Mat::new_like(g);
-    g_dn.assign(&g);
-    SVD::new(g_dn, h.clone_sz()).decomp().solve()
+    assert_eq!(g.size().0, h.size().0);
+
+    s.u.assign(&g.t());
+    s.vt_h = h.clone_sz();
+
+    s.decomp();
+
+    s.solve()
 }

@@ -4,8 +4,8 @@ Primal-dual interior point method
 
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
 use super::spmat::SpMat;
-use super::matsvdsolve;
-use super::matlinalg::{LSQR, LinearSolver};
+use super::matsvdsolve::SVDLS;
+use super::matlinalg::{LSQR, SpLinSolver};
 
 const TOL_STEP: FP = FP_EPSILON;
 const TOL_DIV0: FP = FP_MINPOS;
@@ -336,10 +336,10 @@ impl PDIPM
 
             // negative dy
             let neg_dy = if param.use_iter {
-                LSQR::new(self.kkt.size()).solve(&self.kkt, &self.r_t)
+                LSQR::new(self.kkt.size()).spsolve(&self.kkt, &self.r_t)
             }
             else {
-                matsvdsolve::lin_solve(&self.kkt, &self.r_t)
+                SVDLS::new(self.kkt.size()).spsolve(&self.kkt, &self.r_t)
             };
 
             if param.log_vecs {
