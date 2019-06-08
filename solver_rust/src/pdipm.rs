@@ -17,6 +17,41 @@ macro_rules! writeln_or {
     };
 }
 
+enum Solver
+{
+    None,
+    LSQR(LSQR),
+    SVDS(SVDS)
+}
+
+impl Solver
+{
+    fn lsqr(n_m_p: usize) -> Solver
+    {
+        Solver::LSQR(LSQR::new((n_m_p, n_m_p)))
+    }
+    fn svds(n_m_p: usize) -> Solver
+    {
+        Solver::SVDS(SVDS::new((n_m_p, n_m_p)))
+    }
+    fn is_iter(&self) -> bool
+    {
+        match self {
+            Solver::None => panic!(),
+            Solver::LSQR(_) => true,
+            Solver::SVDS(_) => false
+        }
+    }
+    fn solve(&mut self, mat_a: &SpMat, mat_b: &Mat) -> Mat
+    {
+        match self {
+            Solver::None => panic!(),
+            Solver::LSQR(s) => s.spsolve(mat_a, mat_b),
+            Solver::SVDS(s) => s.spsolve(mat_a, mat_b)
+        }
+    }
+}
+
 /**
 A basic Primal-Dual Interior-Point Method solver struct.
 
@@ -50,6 +85,7 @@ pub struct PDIPM
     // loop variable
     y: Mat,
     kkt: SpMat,
+    solver: Solver,
     // temporal in loop
     df_o: Mat,
     f_i: Mat,
@@ -139,6 +175,7 @@ impl PDIPM
             b: Mat::new_vec(0),
             y: Mat::new_vec(0),
             kkt: SpMat::new(0, 0),
+            solver: Solver::None,
             df_o: Mat::new_vec(0),
             f_i: Mat::new_vec(0),
             r_t: Mat::new_vec(0),
@@ -147,7 +184,7 @@ impl PDIPM
         }
     }
 
-    fn allocate(&mut self, n: usize, m: usize, p: usize)
+    fn allocate(&mut self, n: usize, m: usize, p: usize, use_iter: bool)
     {
         if self.n_m_p != (n, m, p) {
             self.n_m_p = (n, m, p);
@@ -155,11 +192,23 @@ impl PDIPM
             self.b = Mat::new_vec(p);
             self.y = Mat::new_vec(n + m + p);
             self.kkt = SpMat::new(n + m + p, n + m + p);
+            self.solver = if use_iter {
+                Solver::lsqr(n + m + p)
+            }
+            else {
+                Solver::svds(n + m + p)
+            };
             self.df_o = Mat::new_vec(n);
             self.f_i = Mat::new_vec(m);
             self.r_t = Mat::new_vec(n + m + p);
             self.df_i = Mat::new(m, n);
             self.ddf = Mat::new(n, n);
+        }
+        else if use_iter && !self.solver.is_iter() {
+            self.solver = Solver::lsqr(n + m + p);
+        }
+        else if !use_iter && self.solver.is_iter() {
+            self.solver = Solver::svds(n + m + p);
         }
     }
 
@@ -219,7 +268,7 @@ impl PDIPM
         let b_loop = param.n_loop;
 
         // allocate matrix
-        self.allocate(n, m, p);
+        self.allocate(n, m, p, param.use_iter);
 
         // initialize
         let x = self.y.rows_mut(0 .. n);
@@ -335,12 +384,7 @@ impl PDIPM
             }
 
             // negative dy
-            let neg_dy = if param.use_iter {
-                LSQR::new(self.kkt.size()).spsolve(&self.kkt, &self.r_t)
-            }
-            else {
-                SVDS::new(self.kkt.size()).spsolve(&self.kkt, &self.r_t)
-            };
+            let neg_dy = self.solver.solve(&self.kkt, &self.r_t);
 
             if param.log_vecs {
                 writeln_or!(log, "y : {}", self.y.t())?;
