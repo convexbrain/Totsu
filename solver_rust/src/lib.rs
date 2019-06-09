@@ -36,7 +36,7 @@ You can use a pre-defined implementations (see [`predef`](predef/index.html)),
 as well as construct a user-defined tailored version for the reason of functionality and efficiency.
 
 This crate has no dependencies on other crates at all.
-Necessary matrix operations are implemented in [`mat`](mat/index.html) and [`matsvd`](matsvd/index.html).
+Necessary matrix operations are implemented in [`mat`](mat/index.html), [`matsvd`](matsvd/index.html) and others.
 
 # Examples
 ## QP
@@ -90,20 +90,26 @@ You can find other test examples of pre-defined solvers in [`lib.rs`](../src/tot
 More practical examples are available [here](https://github.com/convexbrain/Totsu/tree/master/examples).
 */
 
+pub mod matgen;
 pub mod mat;
+pub mod spmat;
+
+pub mod matlinalg;
 pub mod matsvd;
+
 pub mod pdipm;
-pub mod lp;
-pub mod qp;
-pub mod qcqp;
-pub mod socp;
-pub mod sdp;
 
 /// Prelude
 pub mod prelude {
     pub use crate::mat::{Mat, MatSlice, MatSliMu, FP};
     pub use crate::pdipm::{PDIPM, PDIPMParam, PDIPMErr};
 }
+
+pub mod lp;
+pub mod qp;
+pub mod qcqp;
+pub mod socp;
+pub mod sdp;
 
 /// Pre-defined solvers
 pub mod predef {
@@ -256,7 +262,10 @@ mod tests {
         let mat_a = Mat::new(p, n);
         let vec_b = Mat::new_vec(p);
 
-        let param = PDIPMParam::default();
+        let param = PDIPMParam {
+            eps: 1e-4, // solve_sdp() is not so accurate
+            .. PDIPMParam::default()
+        };
         let rslt = PDIPM::new().solve_sdp(&param, &mut std::io::sink(),
                                           &vec_c, &mat_f,
                                           &mat_a, &vec_b).unwrap();
@@ -264,8 +273,7 @@ mod tests {
         let exp = Mat::new_vec(n).set_iter(&[
             3., 4.
         ]);
-        let eps = 1e-6; // solve_sdp() is not so accurate
         println!("rslt = {}", rslt);
-        assert!((&rslt - exp).norm_p2() < eps);
+        assert!((&rslt - exp).norm_p2() < param.eps);
     }
 }

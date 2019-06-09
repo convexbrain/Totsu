@@ -1,4 +1,4 @@
-//! Linear program
+//! Pre-defined LP solver
 
 use super::prelude::*;
 

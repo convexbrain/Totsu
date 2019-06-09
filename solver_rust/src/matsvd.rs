@@ -1,53 +1,39 @@
-//! Matrix singular value decomposition
+/*!
+Matrix singular value decomposition
+
+References
+* [LAPACK Working Notes](https://www.netlib.org/lapack/lawns/index.html) lawn15
+* J. Demmel and K. Veselic, "Jacobi’s Method is More Accurate than QR,"
+  UT-CS-89-88, October 1989.
+*/
 
 use super::mat::{Mat, FP, FP_EPSILON, FP_MINPOS};
+use super::spmat::SpMat;
 
-const TOL_CNV2: FP = FP_EPSILON * FP_EPSILON * 4.;
-const TOL_DIV0: FP = FP_MINPOS;
+
+const TOL_CNV1_SQ: FP = FP_EPSILON * FP_EPSILON * 4.;
+const TOL_CNV2_SQ: FP = FP_EPSILON * FP_EPSILON;
 const TOL_SINV: FP = FP_EPSILON;
+const TOL_SINV_SQ: FP = TOL_SINV * TOL_SINV;
+const TOL_DIV0: FP = FP_MINPOS;
 
-/// Matrix singular value decomposition
+
 #[derive(Debug)]
-pub struct MatSVD
+struct OneSidedJacobi
 {
-    transposed: bool,
-    //
     u: Mat,
-    s: Mat,
     v: Mat
 }
 
-impl MatSVD
+impl OneSidedJacobi
 {
-    /// Makes a SVD workplace for factorizing a specified size matrix.
-    pub fn new((nrows, ncols): (usize, usize)) -> MatSVD
-    {
-        let transposed = nrows < ncols;
-
-        let (u_nrows, u_ncols) = if !transposed {
-            (nrows, ncols)
-        }
-        else {
-            (ncols, nrows)
-        };
-
-        let svd = MatSVD {
-            transposed,
-            u: Mat::new(u_nrows, u_ncols),
-            s: Mat::new_vec(u_ncols),
-            v: Mat::new(u_ncols, u_ncols).set_eye(1.)
-        };
-
-        svd
-    }
-    //
     fn apply_jacobi_rot(&mut self, c1: usize, c2: usize) -> bool
     {
         let a = self.u.col(c1).norm_p2sq();
         let b = self.u.col(c2).norm_p2sq();
         let d = self.u.col(c1).prod(&self.u.col(c2));
 
-        if d * d <= TOL_CNV2 * a * b {
+        if (d * d <= TOL_CNV1_SQ * a * b) || (d * d <= TOL_CNV2_SQ) {
             true
         }
         else {
@@ -75,26 +61,11 @@ impl MatSVD
         }
     }
     //
-    fn norm_singular(&mut self)
+    fn decomp(&mut self)
     {
         let (_, n) = self.u.size();
 
-        for i in 0 .. n {
-            let mut col = self.u.col_mut(i);
-            let s = col.norm_p2();
-            self.s[(i, 0)] = s;
-
-            if s.abs() < TOL_DIV0 {
-                continue;
-            }
-
-            col /= s;
-        }
-    }
-    //
-    fn do_decomp(&mut self)
-    {
-        let (_, n) = self.u.size();
+        assert_eq!(n, self.v.size().1);
 
         let mut converged_all = false;
         while !converged_all {
@@ -106,60 +77,181 @@ impl MatSVD
                 }
             }
         }
+    }
+}
 
-        self.norm_singular();
+
+/// Linear equation solver by SVD
+#[derive(Debug)]
+pub struct SVDS
+{
+    j: OneSidedJacobi
+}
+
+impl SVDS
+{
+    /// Makes a SVD workplace for factorizing a specified size matrix.
+    pub fn new(sz: (usize, usize)) -> SVDS
+    {
+        SVDS {
+            j: OneSidedJacobi {
+                u: Mat::new(sz.1, sz.0),
+                v: Mat::new_vec(0)
+            }
+        }
+    }
+    //
+    /// Solves sparse matrix linear equations.
+    pub fn spsolve(&mut self, g: &SpMat, h: &Mat) -> Mat
+    {
+        assert_eq!(g.size().0, h.size().0);
+
+        self.j.u.assign(&g.t());
+        self.j.v = h.t().clone_sz();
+
+        self.do_solve()
+    }
+    //
+    /// Solves linear equations.
+    pub fn solve(&mut self, g: &Mat, h: &Mat) -> Mat
+    {
+        assert_eq!(g.size().0, h.size().0);
+
+        self.j.u.assign(&g.t());
+        self.j.v = h.t().clone_sz();
+
+        self.do_solve()
+    }
+
+    fn do_solve(&mut self) -> Mat
+    {
+        self.j.decomp();
+
+        let (_, n) = self.j.u.size();
+
+        for i in 0 .. n {
+            let u_col = self.j.u.col(i);
+            let mut v_col = self.j.v.col_mut(i);
+
+            let sigma_sq = u_col.norm_p2sq();
+
+            if sigma_sq < TOL_SINV_SQ {
+                v_col.assign_all(0.);
+            }
+            else {
+                v_col /= sigma_sq;
+            }
+        }
+
+        &self.j.u * &self.j.v.t()
+    }
+}
+
+
+/// Matrix singular value decomposition
+#[derive(Debug)]
+pub struct MatSVD
+{
+    transposed: bool,
+    //
+    j: OneSidedJacobi,
+    s: Mat
+}
+
+impl MatSVD
+{
+    /// Makes a SVD workplace for factorizing a specified size matrix.
+    pub fn new((nrows, ncols): (usize, usize)) -> MatSVD
+    {
+        let transposed = nrows < ncols;
+
+        let (u_nrows, u_ncols) = if !transposed {
+            (nrows, ncols)
+        }
+        else {
+            (ncols, nrows)
+        };
+
+        let svd = MatSVD {
+            transposed,
+            j: OneSidedJacobi {
+                u: Mat::new(u_nrows, u_ncols),
+                v: Mat::new(u_ncols, u_ncols).set_eye(1.)
+            },
+            s: Mat::new_vec(u_ncols),
+        };
+
+        svd
+    }
+    //
+    fn norm_singular(&mut self)
+    {
+        let (_, n) = self.j.u.size();
+
+        for i in 0 .. n {
+            let mut col = self.j.u.col_mut(i);
+            let s = col.norm_p2();
+            self.s[(i, 0)] = s;
+
+            if s.abs() < TOL_DIV0 {
+                continue;
+            }
+
+            col /= s;
+        }
     }
     //
     /// Runs SVD of a specified matrix.
     pub fn decomp(&mut self, g: &Mat)
     {
         if !self.transposed {
-            self.u.assign(g);
+            self.j.u.assign(g);
         }
         else {
-            self.u.assign(&g.t());
+            self.j.u.assign(&g.t());
         }
 
-        self.v.assign_eye(1.);
+        self.j.v.assign_eye(1.);
 
-        self.do_decomp();
+        self.j.decomp();
+
+        self.norm_singular();
     }
     //
     /// Runs SVD of a specified matrix with a warm-start from the last SVD result.
     pub fn decomp_warm(&mut self, g: &Mat)
     {
         if !self.transposed {
-            self.u.assign(&(g * &self.v));
+            self.j.u.assign(&(g * &self.j.v));
         }
         else {
-            self.u.assign(&(g.t() * &self.v));
+            self.j.u.assign(&(g.t() * &self.j.v));
         }
 
-        self.do_decomp();
+        self.j.decomp();
+
+        self.norm_singular();
     }
     //
     /// Solves linear equations using the last SVD result.
     pub fn solve(&self, h: &Mat) -> Mat
     {
-        let mut sinv = self.s.clone_diag();
-        let (nrows, _) = self.s.size();
+        let sinv = Mat::new_like(&self.s).set_by(|r, _| {
+            let s = self.s[(r, 0)];
 
-        for r in 0 .. nrows {
-            let s = sinv[(r, r)];
-
-            sinv[(r, r)] = if s.abs() < TOL_SINV {
+            if s.abs() < TOL_SINV {
                 0.
             }
             else {
                 1. / s
             }
-        }
+        });
 
         if !self.transposed {
-            &self.v * (sinv * (self.u.t() * h))
+            &self.j.v * sinv.diag_mul(&(self.j.u.t() * h))
         }
         else {
-            &self.u * (sinv * (self.v.t() * h))
+            &self.j.u * sinv.diag_mul(&(self.j.v.t() * h))
         }
     }
     //
@@ -189,10 +281,10 @@ fn test_decomp()
     //
 
     let g = if !svd.transposed {
-        &svd.u * svd.s.clone_diag() * svd.v.t()
+        &svd.j.u * svd.s.diag_mul(&svd.j.v.t())
     }
     else {
-        &svd.v * svd.s.clone_diag() * svd.u.t()
+        &svd.j.v * svd.s.diag_mul(&svd.j.u.t())
     };
     println!("mat reconstructed = {}", g);
 
@@ -203,7 +295,7 @@ fn test_decomp()
 
     //
 
-    let mut utu = svd.u.t() * &svd.u;
+    let mut utu = svd.j.u.t() * &svd.j.u;
     println!("u' * u = {}", utu);
 
     let utu_size = utu.size();
@@ -214,7 +306,7 @@ fn test_decomp()
 
     //
 
-    let mut vvt = &svd.v * svd.v.t();
+    let mut vvt = &svd.j.v * svd.j.v.t();
     println!("v * v' = {}", vvt);
 
     let vvt_size = vvt.size();

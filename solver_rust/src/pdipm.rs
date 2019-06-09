@@ -3,13 +3,46 @@ Primal-dual interior point method
 */
 
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
-use super::matsvd::MatSVD;
+use super::spmat::SpMat;
+use super::matsvd::SVDS;
+use super::matlinalg;
+
+const TOL_STEP: FP = FP_EPSILON;
+const TOL_DIV0: FP = FP_MINPOS;
 
 use std::io::Write;
 macro_rules! writeln_or {
     ( $( $arg: expr ),* ) => {
         writeln!( $( $arg ),* ).or(Err(PDIPMErr::LogFailure))
     };
+}
+
+enum Solver
+{
+    LSQR,
+    SVDS(SVDS)
+}
+
+impl Solver
+{
+    fn svds(n_m_p: usize) -> Solver
+    {
+        Solver::SVDS(SVDS::new((n_m_p, n_m_p)))
+    }
+    fn is_iter(&self) -> bool
+    {
+        match self {
+            Solver::LSQR => true,
+            Solver::SVDS(_) => false
+        }
+    }
+    fn solve(&mut self, mat_a: &SpMat, mat_b: &Mat) -> Mat
+    {
+        match self {
+            Solver::LSQR => matlinalg::spsolve_lsqr(mat_a, mat_b),
+            Solver::SVDS(s) => s.spsolve(mat_a, mat_b)
+        }
+    }
 }
 
 /**
@@ -44,16 +77,14 @@ pub struct PDIPM
     b: Mat,
     // loop variable
     y: Mat,
-    kkt: Mat,
+    kkt: SpMat,
+    solver: Solver,
     // temporal in loop
     df_o: Mat,
     f_i: Mat,
     r_t: Mat,
     df_i: Mat,
     ddf: Mat,
-
-    /***** KKT matrix decomposition solver *****/
-    svd: MatSVD
 }
 
 /// Primal-Dual Interior-Point Method solver parameters.
@@ -76,8 +107,10 @@ pub struct PDIPMParam
     /// Max iteration number of outer-loop for the Newton step.
     /// Max iteration number of inner-loop for the backtracking line search.
     pub n_loop: usize,
-    /// Enables to warm-start svd.
-    pub svd_warm: bool,
+    /// Use iterative linear solver to calculate Newton step.
+    pub use_iter: bool,
+    /// Enables to log vector status.
+    pub log_vecs: bool,
     /// Enables to log kkt matrix.
     pub log_kkt: bool
 }
@@ -94,7 +127,8 @@ impl Default for PDIPMParam
             s_coef: 0.99,
             margin: 1.,
             n_loop: 256,
-            svd_warm: true,
+            use_iter: false,
+            log_vecs: false,
             log_kkt: false
         }
     }
@@ -103,10 +137,8 @@ impl Default for PDIPMParam
 /// Primal-Dual Interior-Point Method solver errors.
 pub enum PDIPMErr<'a>
 {
-    /// Ended in an inaccurate result because of a too small step.
-    Inaccurate(&'a Mat),
-    /// Did not converged.
-    NotConverged,
+    /// Did not converged, and ended in an inaccurate result.
+    NotConverged(&'a Mat),
     /// Did not meet inequality feasibility.
     Infeasible,
     /// Failed to log due to I/O error.
@@ -118,8 +150,7 @@ impl<'a> From<PDIPMErr<'a>> for String
     fn from(err: PDIPMErr) -> String
     {
         match err {
-            PDIPMErr::Inaccurate(_) => "PDIPM Inaccurate".into(),
-            PDIPMErr::NotConverged => "PDIPM Not Converged".into(),
+            PDIPMErr::NotConverged(_) => "PDIPM Not Converged".into(),
             PDIPMErr::Infeasible => "PDIPM Infeasible".into(),
             PDIPMErr::LogFailure => "PDIPM Log Failure".into(),
         }
@@ -136,30 +167,41 @@ impl PDIPM
             a: Mat::new(0, 0),
             b: Mat::new_vec(0),
             y: Mat::new_vec(0),
-            kkt: Mat::new(0, 0),
+            kkt: SpMat::new(0, 0),
+            solver: Solver::LSQR,
             df_o: Mat::new_vec(0),
             f_i: Mat::new_vec(0),
             r_t: Mat::new_vec(0),
             df_i: Mat::new(0, 0),
-            ddf: Mat::new(0, 0),
-            svd: MatSVD::new((0, 0))
+            ddf: Mat::new(0, 0)
         }
     }
 
-    fn allocate(&mut self, n: usize, m: usize, p: usize)
+    fn allocate(&mut self, n: usize, m: usize, p: usize, use_iter: bool)
     {
         if self.n_m_p != (n, m, p) {
             self.n_m_p = (n, m, p);
             self.a = Mat::new(p, n);
             self.b = Mat::new_vec(p);
             self.y = Mat::new_vec(n + m + p);
-            self.kkt = Mat::new(n + m + p, n + m + p);
+            self.kkt = SpMat::new(n + m + p, n + m + p);
+            self.solver = if use_iter {
+                Solver::LSQR
+            }
+            else {
+                Solver::svds(n + m + p)
+            };
             self.df_o = Mat::new_vec(n);
             self.f_i = Mat::new_vec(m);
             self.r_t = Mat::new_vec(n + m + p);
             self.df_i = Mat::new(m, n);
             self.ddf = Mat::new(n, n);
-            self.svd = MatSVD::new((n + m + p, n + m + p));
+        }
+        else if use_iter && !self.solver.is_iter() {
+            self.solver = Solver::LSQR;
+        }
+        else if !use_iter && self.solver.is_iter() {
+            self.solver = Solver::svds(n + m + p);
         }
     }
 
@@ -215,16 +257,19 @@ impl PDIPM
           Fs: FnOnce(MatSliMu)
     {
         let eps_feas = param.eps;
+        let eps_eta = param.eps;
         let b_loop = param.n_loop;
 
         // allocate matrix
-        self.allocate(n, m, p);
+        self.allocate(n, m, p, param.use_iter);
 
         // initialize
         let x = self.y.rows_mut(0 .. n);
         start_point(x);
         let mut lmd = self.y.rows_mut(n .. n + m);
         lmd.assign_all(param.margin);
+        let mut nu = self.y.rows_mut(n + m .. n + m + p);
+        nu.assign_all(0.);
         equality(&mut self.a, &mut self.b);
 
         // initial df_o, f_i, df_i
@@ -265,12 +310,7 @@ impl PDIPM
 
             /***** calc t *****/
 
-            let eta = if m > 0 {
-                -self.f_i.prod(&lmd)
-            }
-            else {
-                param.eps
-            };
+            let eta = if m > 0 {-self.f_i.prod(&lmd)} else {eps_eta};
 
             // inequality feasibility check
             if eta < 0. {return Err(PDIPMErr::Infeasible);} // never happen
@@ -281,7 +321,7 @@ impl PDIPM
 
             if m > 0 {
                 let mut r_cent = self.r_t.rows_mut(n .. n + m);
-                r_cent.assign(&(-lmd.clone_diag() * &self.f_i - inv_t.unwrap()));
+                r_cent.assign_s(&(lmd.diag_mul(&self.f_i) + inv_t.unwrap()), -1.);
             }
 
             /***** termination criteria *****/
@@ -296,7 +336,7 @@ impl PDIPM
             writeln_or!(log, "|| r_pri  || : {:.3e}", r_pri_norm)?;
             writeln_or!(log, "   eta       : {:.3e}", eta)?;
 
-            if (r_dual_norm <= eps_feas) && (r_pri_norm <= eps_feas) && (eta <= param.eps) {
+            if (r_dual_norm <= eps_feas) && (r_pri_norm <= eps_feas) && (eta <= eps_eta) {
                 writeln_or!(log, "termination criteria satisfied")?;
                 break;
             }
@@ -316,10 +356,10 @@ impl PDIPM
                 kkt_lmd_dual.assign(&self.df_i.t());
 
                 let mut kkt_x_cent = self.kkt.slice_mut(n .. n + m, 0 .. n);
-                kkt_x_cent.assign(&(-lmd.clone_diag() * &self.df_i));
+                kkt_x_cent.assign_s(&lmd.diag_mul(&self.df_i), -1.);
 
                 let mut kkt_lmd_cent = self.kkt.slice_mut(n .. n + m, n .. n + m);
-                kkt_lmd_cent.assign(&(-self.f_i.clone_diag()));
+                kkt_lmd_cent.assign_s(&self.f_i.clone_diag(), -1.);
             }
 
             if p > 0 {
@@ -336,34 +376,30 @@ impl PDIPM
                 writeln_or!(log, "kkt : {}", self.kkt)?;
             }
 
-            if param.svd_warm {
-                self.svd.decomp_warm(&self.kkt);
-            }
-            else {
-                self.svd.decomp(&self.kkt);
-            }
-            
-            let dy = self.svd.solve(&(-&self.r_t));
+            // negative dy
+            let neg_dy = self.solver.solve(&self.kkt, &self.r_t);
 
-            writeln_or!(log, "y : {}", self.y.t())?;
-            writeln_or!(log, "r_t : {}", self.r_t.t())?;
-            writeln_or!(log, "dy : {}", dy.t())?;
+            if param.log_vecs {
+                writeln_or!(log, "y : {}", self.y.t())?;
+                writeln_or!(log, "r_t : {}", self.r_t.t())?;
+                writeln_or!(log, "neg_dy : {}", neg_dy.t())?;
+            }
 
             /***** back tracking line search - from here *****/
 
             let mut s_max: FP = 1.;
             {
-                let dlmd = dy.rows(n .. n + m);
+                let neg_dlmd = neg_dy.rows(n .. n + m);
 
                 for i in 0 .. m {
-                    if dlmd[(i, 0)] < -FP_MINPOS { // to avoid zero-division by Dlmd
-                        s_max = s_max.min(-lmd[(i, 0)] / dlmd[(i, 0)]);
+                    if neg_dlmd[(i, 0)] > TOL_DIV0 { // to avoid zero-division by Dlmd
+                        s_max = s_max.min(lmd[(i, 0)] / neg_dlmd[(i, 0)]);
                     }
                 }
             }
             let mut s = param.s_coef * s_max;
 
-            let mut y_p = &self.y + s * &dy;
+            let mut y_p = &self.y - s * &neg_dy;
 
             let mut bcnt = 0;
             while bcnt < b_loop {
@@ -375,7 +411,7 @@ impl PDIPM
 
                 if (self.f_i.max().unwrap_or(-1.) < 0.) && (lmd_p.min().unwrap_or(1.) > 0.) {break;}
                 s *= param.beta;
-                y_p = &self.y + s * &dy;
+                y_p = &self.y - s * &neg_dy;
 
                 bcnt += 1;
             }
@@ -387,7 +423,7 @@ impl PDIPM
             }
             else {
                 writeln_or!(log, "infeasible in this direction")?;
-                return Err(PDIPMErr::NotConverged);
+                return Err(PDIPMErr::NotConverged(&self.y));
             }
 
             let org_r_t_norm = self.r_t.norm_p2();
@@ -413,7 +449,7 @@ impl PDIPM
                 }
                 if m > 0 {
                     let mut r_cent = self.r_t.rows_mut(n .. n + m);
-                    r_cent.assign(&(-lmd_p.clone_diag() * &self.f_i - inv_t.unwrap()));
+                    r_cent.assign_s(&(lmd_p.diag_mul(&self.f_i) + inv_t.unwrap()), -1.);
                 }
                 if p > 0 {
                     let mut r_pri = self.r_t.rows_mut(n + m .. n + m + p);
@@ -422,7 +458,7 @@ impl PDIPM
 
                 if self.r_t.norm_p2() <= (1. - param.alpha * s) * org_r_t_norm {break;}
                 s *= param.beta;
-                y_p = &self.y + s * &dy;
+                y_p = &self.y - s * &neg_dy;
 
                 bcnt += 1;
             }
@@ -430,19 +466,19 @@ impl PDIPM
             writeln_or!(log, "s : {:.3e}", s)?;
 
             if bcnt < b_loop {
-                if (&y_p - &self.y).norm_p2() >= FP_EPSILON {
+                if (&y_p - &self.y).norm_p2() >= TOL_STEP {
                     writeln_or!(log, "update")?;
                     // update y
                     self.y.assign(&y_p);
                 }
                 else {
                     writeln_or!(log, "too small step")?;
-                    return Err(PDIPMErr::Inaccurate(&self.y));
+                    return Err(PDIPMErr::NotConverged(&self.y));
                 }
             }
             else {
                 writeln_or!(log, "B-iteration limit")?;
-                return Err(PDIPMErr::NotConverged);
+                return Err(PDIPMErr::NotConverged(&self.y));
             }
 
             /***** back tracking line search - to here *****/
@@ -452,7 +488,7 @@ impl PDIPM
 
         if !(cnt < param.n_loop) {
             writeln_or!(log, "N-iteration limit")?;
-            return Err(PDIPMErr::NotConverged);
+            return Err(PDIPMErr::NotConverged(&self.y));
         }
 
         writeln_or!(log)?;

@@ -1,0 +1,11 @@
+[[package]]
+name = "totsu"
+version = "0.5.0"
+
+[[package]]
+name = "trajplan_toyprob"
+version = "0.1.0"
+dependencies = [
+ "totsu 0.5.0",
+]
+

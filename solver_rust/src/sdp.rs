@@ -1,7 +1,8 @@
-//! Semidefinite program
+//! Pre-defined SDP solver
 
 use super::prelude::*;
-use super::matsvd::MatSVD;
+use super::matsvd::{MatSVD, SVDS};
+use super::matlinalg;
 
 use std::io::Write;
 macro_rules! writeln_or {
@@ -101,10 +102,7 @@ impl SDP for PDIPM
 
         // ----- initial value of a slack variable
 
-        let mut svd_kk = MatSVD::new((k, k));
-        svd_kk.decomp(&mat_f[n]);
-
-        let s = svd_kk.s().max().unwrap();
+        let s = matlinalg::dom_eig(&mat_f[n]);
         let mut margin = param.margin;
         let mut s_initial = s + margin;
         while s_initial <= s {
@@ -118,19 +116,15 @@ impl SDP for PDIPM
 
         let mut vec_q = Mat::new_vec(n);
         let fx0 = &mat_f[n] - s_initial * &eye;
-        svd_kk.decomp(&fx0); // re-use because of the same size
         for i in 0 .. n {
-            vec_q[(i, 0)] = svd_kk.solve(&mat_f[i]).tr();
+            vec_q[(i, 0)] = SVDS::new(fx0.size()).solve(&fx0, &mat_f[i]).tr();
         }
 
         let mut mat_p = Mat::new(n, p + 1);
         mat_p.cols_mut(0 .. p).assign(&mat_a.t());
         mat_p.col_mut(p).assign(&vec_c);
 
-        let mut svd_np1 = MatSVD::new(mat_p.size());
-        svd_np1.decomp(&mat_p);
-
-        let mut t = svd_np1.solve(&vec_q)[(p, 0)];
+        let mut t = SVDS::new(mat_p.size()).solve(&mat_p, &vec_q)[(p, 0)];
         t = t.max(param.eps);
 
         // ----- start to solve
@@ -138,12 +132,12 @@ impl SDP for PDIPM
         let mut vec_xs = Mat::new_vec(n + 1);
         vec_xs[(n, 0)] = s_initial;
 
-        let svd_cell = RefCell::new(svd_kk);
+        let svd_cell = RefCell::new(MatSVD::new((k, k)));
 
-        while k as FP / t >= param.eps {
+        loop {
             writeln_or!(log)?;
             writeln_or!(log, "===== ===== ===== ===== barrier loop")?;
-            writeln_or!(log, "t = {}", t)?;
+            writeln_or!(log, "t = {:.3e}", t)?;
 
             let rslt = self.solve(param, log,
                 n + 1, m, p + 1, // '+ 1' is for a slack variable
@@ -210,13 +204,14 @@ impl SDP for PDIPM
 
             match rslt {
                 Ok(y) => vec_xs.assign(&y.rows(0 .. n + 1)),
-                Err(PDIPMErr::Inaccurate(y)) => vec_xs.assign(&y.rows(0 .. n + 1)),
                 Err(other) => return Err(other.into())
             };
 
+            if k as FP / t < param.eps {
+                return Ok(vec_xs.rows(0 .. n).clone_sz());
+            }
+
             t *= param.mu;
         }
-
-        Ok(vec_xs.rows(0 .. n).clone_sz())
     }
 }
