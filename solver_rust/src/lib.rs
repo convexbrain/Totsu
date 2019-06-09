@@ -96,7 +96,6 @@ pub mod spmat;
 
 pub mod matlinalg;
 pub mod matsvd;
-pub mod matsvdsolve;
 
 pub mod pdipm;
 

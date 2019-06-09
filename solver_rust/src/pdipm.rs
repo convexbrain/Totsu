@@ -4,7 +4,7 @@ Primal-dual interior point method
 
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
 use super::spmat::SpMat;
-use super::matsvdsolve::SVDS;
+use super::matsvd::SVDS;
 use super::matlinalg;
 
 const TOL_STEP: FP = FP_EPSILON;

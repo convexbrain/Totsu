@@ -1,8 +1,7 @@
 //! Semidefinite program
 
 use super::prelude::*;
-use super::matsvd::MatSVD;
-use super::matsvdsolve::SVDS;
+use super::matsvd::{MatSVD, SVDS};
 use super::matlinalg;
 
 use std::io::Write;
