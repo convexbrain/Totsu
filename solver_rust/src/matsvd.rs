@@ -1,4 +1,11 @@
-//! Matrix singular value decomposition
+/*!
+Matrix singular value decomposition
+
+References
+* [LAPACK Working Notes](https://www.netlib.org/lapack/lawns/index.html) lawn15
+* J. Demmel and K. Veselic, "Jacobi’s Method is More Accurate than QR,"
+  UT-CS-89-88, October 1989.
+*/
 
 use super::mat::{Mat, FP, FP_EPSILON, FP_MINPOS};
 use super::spmat::SpMat;
@@ -74,16 +81,16 @@ impl OneSidedJacobi
 }
 
 
-/// Matrix singular value decomposition
+/// Linear equation solver by SVD
 #[derive(Debug)]
 pub struct SVDS
 {
     j: OneSidedJacobi
 }
 
-// TODO: refactor along with matsvd
 impl SVDS
 {
+    /// Makes a SVD workplace for factorizing a specified size matrix.
     pub fn new(sz: (usize, usize)) -> SVDS
     {
         SVDS {
@@ -93,7 +100,8 @@ impl SVDS
             }
         }
     }
-
+    //
+    /// Solves sparse matrix linear equations.
     pub fn spsolve(&mut self, g: &SpMat, h: &Mat) -> Mat
     {
         assert_eq!(g.size().0, h.size().0);
@@ -103,7 +111,8 @@ impl SVDS
 
         self.do_solve()
     }
-
+    //
+    /// Solves linear equations.
     pub fn solve(&mut self, g: &Mat, h: &Mat) -> Mat
     {
         assert_eq!(g.size().0, h.size().0);

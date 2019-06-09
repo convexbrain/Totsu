@@ -1,4 +1,4 @@
-//! Second-order cone program
+//! Pre-defined SOCP solver
 
 use super::prelude::*;
 

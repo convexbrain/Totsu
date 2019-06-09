@@ -1,4 +1,4 @@
-//! Quadratic program
+//! Pre-defined QP solver
 
 use super::prelude::*;
 

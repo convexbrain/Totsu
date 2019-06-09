@@ -9,6 +9,12 @@ const BTOL: FP = FP_EPSILON;
 const CONLIM: FP = 1. / FP_EPSILON;
 const INVTOL: FP = FP_MINPOS;
 
+/// Solves sparse matrix linear equations by LSQR
+/// 
+/// References
+/// * [http://web.stanford.edu/group/SOL/software/lsqr/](http://web.stanford.edu/group/SOL/software/lsqr/)
+/// * C. C. Paige and M. A. Saunders, "LSQR: An algorithm for sparse linear equations and sparse least squares,"
+///   TOMS 8(1), 43-71 (1982).
 pub fn spsolve_lsqr(mat_a: &SpMat, mat_b: &Mat) -> Mat
 {
     let (ar, xr) = mat_a.size();

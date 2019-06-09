@@ -1,4 +1,4 @@
-//! Semidefinite program
+//! Pre-defined SDP solver
 
 use super::prelude::*;
 use super::matsvd::{MatSVD, SVDS};

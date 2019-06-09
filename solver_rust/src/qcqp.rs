@@ -1,4 +1,4 @@
-//! Quadratically constrained quadratic program
+//! Pre-defined QCQP solver
 
 use super::prelude::*;
 

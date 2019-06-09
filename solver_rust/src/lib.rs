@@ -36,7 +36,7 @@ You can use a pre-defined implementations (see [`predef`](predef/index.html)),
 as well as construct a user-defined tailored version for the reason of functionality and efficiency.
 
 This crate has no dependencies on other crates at all.
-Necessary matrix operations are implemented in [`mat`](mat/index.html) and [`matsvd`](matsvd/index.html).
+Necessary matrix operations are implemented in [`mat`](mat/index.html), [`matsvd`](matsvd/index.html) and others.
 
 # Examples
 ## QP

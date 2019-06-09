@@ -1,3 +1,5 @@
+//! Matrix generics
+
 use std::cmp::PartialEq;
 use std::ops::{RangeBounds, Bound};
 use std::ops::{Neg, Add, Mul, Sub, Div, AddAssign, SubAssign, MulAssign, DivAssign};
@@ -549,6 +551,7 @@ impl<V: MatView> MatGen<V>
         mat
     }
     //
+    /// Linear transform by matrix multiplication.
     pub fn transform<'a, V2: MatView>(&self, rhs: &'a MatGen<V2>) -> MatGen<V2::OwnColl>
     {
         let (l_nrows, l_ncols) = self.size();
@@ -631,6 +634,7 @@ impl<V: MatView> MatGen<V>
 
 //
 
+/// Iterator of matrix elements
 pub struct MatIter<'a>
 {
     p: MatProp,
@@ -654,6 +658,7 @@ impl<'a> Iterator for MatIter<'a>
     }
 }
 
+/// Mutable iterator of matrix elements
 pub struct MatIterMut<'a>
 {
     p: MatProp,
