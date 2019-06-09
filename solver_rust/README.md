@@ -22,7 +22,7 @@ You can use a pre-defined implementations (see `predef`),
 as well as construct a user-defined tailored version for the reason of functionality and efficiency.
 
 This crate has no dependencies on other crates at all.
-Necessary matrix operations are implemented in `mat` and `matsvd`.
+Necessary matrix operations are implemented in `mat`, `matsvd` and others.
 
 ## Examples
 ### QP
