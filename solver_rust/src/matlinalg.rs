@@ -3,47 +3,32 @@
 use super::mat::{Mat, MatSlice, FP, FP_EPSILON, FP_MINPOS};
 use super::spmat::SpMat;
 
-pub trait SpLinSolver {
-    fn new(sz: (usize, usize)) -> Self;
-    fn spsolve(&mut self, mat_a: &SpMat, mat_b: &Mat) -> Mat;
-}
 
+const ATOL: FP = FP_EPSILON;
+const BTOL: FP = FP_EPSILON;
+const CONLIM: FP = 1. / FP_EPSILON;
 const INVTOL: FP = FP_MINPOS;
 
-pub struct LSQR;
-
-impl SpLinSolver for LSQR
+pub fn spsolve_lsqr(mat_a: &SpMat, mat_b: &Mat) -> Mat
 {
-    fn new(_: (usize, usize)) -> Self
-    {
-        LSQR
+    let (ar, xr) = mat_a.size();
+    let (br, xc) = mat_b.size();
+
+    assert_eq!(ar, br);
+
+    let mut mat_x = Mat::new(xr, xc);
+
+    for c in 0 .. xc {
+        let vec_b = mat_b.col(c);
+        let mut vec_x = mat_x.col_mut(c);
+        vec_x.assign(&lsqr_vec(mat_a, vec_b));
     }
 
-    fn spsolve(&mut self, mat_a: &SpMat, mat_b: &Mat) -> Mat
-    {
-        let (ar, xr) = mat_a.size();
-        let (br, xc) = mat_b.size();
-
-        assert_eq!(ar, br);
-
-        let mut mat_x = Mat::new(xr, xc);
-
-        for c in 0 .. xc {
-            let vec_b = mat_b.col(c);
-            let mut vec_x = mat_x.col_mut(c);
-            vec_x.assign(&solve_lsqr(mat_a, vec_b));
-        }
-
-        mat_x
-    }
+    mat_x
 }
 
-fn solve_lsqr(mat_a: &SpMat, vec_b: MatSlice) -> Mat
+fn lsqr_vec(mat_a: &SpMat, vec_b: MatSlice) -> Mat
 {
-    const ATOL: FP = FP_EPSILON;
-    const BTOL: FP = FP_EPSILON;
-    const CONLIM: FP = 1. / FP_EPSILON;
-    
     let (m, n) = mat_a.size();
     const ZERO: FP = 0.;
 
@@ -152,7 +137,7 @@ fn normalize(vec: MatSlice) -> (FP, Mat)
 
     if n > INVTOL {
         (n, vec / n)
-}
+    }
     else {
         (0., vec.clone_sz())
     }
@@ -200,7 +185,7 @@ fn test_lsqr1()
         5., 6.
     ]);
 
-    let x = LSQR::new(mat.size()).spsolve(&mat, &vec);
+    let x = spsolve_lsqr(&mat, &vec);
     println!("x = {}", x);
 
     let h = mat.transform(&x);
@@ -230,7 +215,7 @@ fn test_lsqr2()
         3.859e-3
     ]);
 
-    let x = LSQR::new(mat.size()).spsolve(&mat, &vec);
+    let x = spsolve_lsqr(&mat, &vec);
     println!("x = {}", x);
 
     let h = mat.transform(&x);

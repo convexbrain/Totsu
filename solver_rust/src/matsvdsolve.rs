@@ -2,7 +2,6 @@
 
 use super::mat::{Mat, FP, FP_EPSILON};
 use super::spmat::SpMat;
-use super::matlinalg::SpLinSolver;
 
 
 const TOL_CNV1_SQ: FP = FP_EPSILON * FP_EPSILON * 4.;
@@ -17,9 +16,10 @@ pub struct SVDS
     vt_h: Mat
 }
 
-impl SpLinSolver for SVDS
+// TODO: refactor along with matsvd
+impl SVDS
 {
-    fn new(sz: (usize, usize)) -> Self
+    pub fn new(sz: (usize, usize)) -> SVDS
     {
         SVDS {
             u: Mat::new(sz.1, sz.0),
@@ -27,7 +27,7 @@ impl SpLinSolver for SVDS
         }
     }
 
-    fn spsolve(&mut self, mat_a: &SpMat, mat_b: &Mat) -> Mat
+    pub fn spsolve(&mut self, mat_a: &SpMat, mat_b: &Mat) -> Mat
     {
         assert_eq!(mat_a.size().0, mat_b.size().0);
 
@@ -38,11 +38,7 @@ impl SpLinSolver for SVDS
 
         self.solve()
     }
-}
 
-// TODO: refactor along with matsvd
-impl SVDS
-{
     fn apply_jacobi_rot(&mut self, c1: usize, c2: usize) -> bool
     {
         let a = self.u.col(c1).norm_p2sq();

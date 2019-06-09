@@ -5,7 +5,7 @@ Primal-dual interior point method
 use super::mat::{Mat, MatSlice, MatSliMu, FP, FP_MINPOS, FP_EPSILON};
 use super::spmat::SpMat;
 use super::matsvdsolve::SVDS;
-use super::matlinalg::{LSQR, SpLinSolver};
+use super::matlinalg;
 
 const TOL_STEP: FP = FP_EPSILON;
 const TOL_DIV0: FP = FP_MINPOS;
@@ -19,17 +19,12 @@ macro_rules! writeln_or {
 
 enum Solver
 {
-    None,
-    LSQR(LSQR),
+    LSQR,
     SVDS(SVDS)
 }
 
 impl Solver
 {
-    fn lsqr(n_m_p: usize) -> Solver
-    {
-        Solver::LSQR(LSQR::new((n_m_p, n_m_p)))
-    }
     fn svds(n_m_p: usize) -> Solver
     {
         Solver::SVDS(SVDS::new((n_m_p, n_m_p)))
@@ -37,16 +32,14 @@ impl Solver
     fn is_iter(&self) -> bool
     {
         match self {
-            Solver::None => panic!(),
-            Solver::LSQR(_) => true,
+            Solver::LSQR => true,
             Solver::SVDS(_) => false
         }
     }
     fn solve(&mut self, mat_a: &SpMat, mat_b: &Mat) -> Mat
     {
         match self {
-            Solver::None => panic!(),
-            Solver::LSQR(s) => s.spsolve(mat_a, mat_b),
+            Solver::LSQR => matlinalg::spsolve_lsqr(mat_a, mat_b),
             Solver::SVDS(s) => s.spsolve(mat_a, mat_b)
         }
     }
@@ -175,7 +168,7 @@ impl PDIPM
             b: Mat::new_vec(0),
             y: Mat::new_vec(0),
             kkt: SpMat::new(0, 0),
-            solver: Solver::None,
+            solver: Solver::LSQR,
             df_o: Mat::new_vec(0),
             f_i: Mat::new_vec(0),
             r_t: Mat::new_vec(0),
@@ -193,7 +186,7 @@ impl PDIPM
             self.y = Mat::new_vec(n + m + p);
             self.kkt = SpMat::new(n + m + p, n + m + p);
             self.solver = if use_iter {
-                Solver::lsqr(n + m + p)
+                Solver::LSQR
             }
             else {
                 Solver::svds(n + m + p)
@@ -205,7 +198,7 @@ impl PDIPM
             self.ddf = Mat::new(n, n);
         }
         else if use_iter && !self.solver.is_iter() {
-            self.solver = Solver::lsqr(n + m + p);
+            self.solver = Solver::LSQR;
         }
         else if !use_iter && self.solver.is_iter() {
             self.solver = Solver::svds(n + m + p);
