@@ -8,37 +8,15 @@ const TOL_CNV1_SQ: FP = FP_EPSILON * FP_EPSILON * 4.;
 const TOL_CNV2_SQ: FP = FP_EPSILON * FP_EPSILON;
 const TOL_SINV_SQ: FP = FP_EPSILON * FP_EPSILON;
 
-/// Matrix singular value decomposition
-#[derive(Debug)]
-pub struct SVDS
+
+struct OneSidedJacobi
 {
     u: Mat,
-    vt_h: Mat
+    v: Mat
 }
 
-// TODO: refactor along with matsvd
-impl SVDS
+impl OneSidedJacobi
 {
-    pub fn new(sz: (usize, usize)) -> SVDS
-    {
-        SVDS {
-            u: Mat::new(sz.1, sz.0),
-            vt_h: Mat::new_vec(0)
-        }
-    }
-
-    pub fn spsolve(&mut self, mat_a: &SpMat, mat_b: &Mat) -> Mat
-    {
-        assert_eq!(mat_a.size().0, mat_b.size().0);
-
-        self.u.assign(&mat_a.t());
-        self.vt_h = mat_b.clone_sz();
-
-        self.decomp();
-
-        self.solve()
-    }
-
     fn apply_jacobi_rot(&mut self, c1: usize, c2: usize) -> bool
     {
         let a = self.u.col(c1).norm_p2sq();
@@ -64,10 +42,10 @@ impl SVDS
             self.u.col_mut(c1).assign(&tmp1);
             self.u.col_mut(c2).assign(&tmp2);
 
-            let tmp1 = self.vt_h.row(c1) * c - self.vt_h.row(c2) * s;
-            let tmp2 = self.vt_h.row(c1) * s + self.vt_h.row(c2) * c;
-            self.vt_h.row_mut(c1).assign(&tmp1);
-            self.vt_h.row_mut(c2).assign(&tmp2);
+            let tmp1 = self.v.col(c1) * c - self.v.col(c2) * s;
+            let tmp2 = self.v.col(c1) * s + self.v.col(c2) * c;
+            self.v.col_mut(c1).assign(&tmp1);
+            self.v.col_mut(c2).assign(&tmp2);
 
             false
         }
@@ -76,6 +54,8 @@ impl SVDS
     fn decomp(&mut self)
     {
         let (_, n) = self.u.size();
+
+        assert_eq!(n, self.v.size().1);
 
         let mut converged_all = false;
         while !converged_all {
@@ -88,40 +68,68 @@ impl SVDS
             }
         }
     }
-    //
-    fn solve(&mut self) -> Mat
+}
+
+
+/// Matrix singular value decomposition
+pub struct SVDS
+{
+    j: OneSidedJacobi
+}
+
+// TODO: refactor along with matsvd
+impl SVDS
+{
+    pub fn new(sz: (usize, usize)) -> SVDS
     {
-        let (_, n) = self.u.size();
+        SVDS {
+            j: OneSidedJacobi {
+                u: Mat::new(sz.1, sz.0),
+                v: Mat::new_vec(0)
+            }
+        }
+    }
+
+    pub fn spsolve(&mut self, g: &SpMat, h: &Mat) -> Mat
+    {
+        assert_eq!(g.size().0, h.size().0);
+
+        self.j.u.assign(&g.t());
+        self.j.v = h.t().clone_sz();
+
+        self.do_solve()
+    }
+
+    pub fn solve(&mut self, g: &Mat, h: &Mat) -> Mat
+    {
+        assert_eq!(g.size().0, h.size().0);
+
+        self.j.u.assign(&g.t());
+        self.j.v = h.t().clone_sz();
+
+        self.do_solve()
+    }
+
+    fn do_solve(&mut self) -> Mat
+    {
+        self.j.decomp();
+
+        let (_, n) = self.j.u.size();
 
         for i in 0 .. n {
-            let ut_col = self.u.col(i);
-            let mut vt_h_row = self.vt_h.row_mut(i);
+            let u_col = self.j.u.col(i);
+            let mut v_col = self.j.v.col_mut(i);
 
-            let sigma_sq = ut_col.norm_p2sq();
+            let sigma_sq = u_col.norm_p2sq();
 
             if sigma_sq < TOL_SINV_SQ {
-                vt_h_row.assign_all(0.);
+                v_col.assign_all(0.);
             }
             else {
-                vt_h_row /= sigma_sq;
+                v_col /= sigma_sq;
             }
         }
 
-        &self.u * &self.vt_h
+        &self.j.u * &self.j.v.t()
     }
-}
-
-// TODO: rename
-pub fn solve(g: &Mat, h: &Mat) -> Mat
-{
-    let mut s = SVDS::new(g.size());
-
-    assert_eq!(g.size().0, h.size().0);
-
-    s.u.assign(&g.t());
-    s.vt_h = h.clone_sz();
-
-    s.decomp();
-
-    s.solve()
 }

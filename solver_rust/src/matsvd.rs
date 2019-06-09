@@ -106,8 +106,6 @@ impl MatSVD
                 }
             }
         }
-
-        self.norm_singular();
     }
     //
     /// Runs SVD of a specified matrix.
@@ -123,6 +121,8 @@ impl MatSVD
         self.v.assign_eye(1.);
 
         self.do_decomp();
+
+        self.norm_singular();
     }
     //
     /// Runs SVD of a specified matrix with a warm-start from the last SVD result.
@@ -136,6 +136,8 @@ impl MatSVD
         }
 
         self.do_decomp();
+
+        self.norm_singular();
     }
     //
     /// Solves linear equations using the last SVD result.

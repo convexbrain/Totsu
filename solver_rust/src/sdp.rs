@@ -2,7 +2,7 @@
 
 use super::prelude::*;
 use super::matsvd::MatSVD;
-use super::matsvdsolve;
+use super::matsvdsolve::SVDS;
 use super::matlinalg;
 
 use std::io::Write;
@@ -118,14 +118,14 @@ impl SDP for PDIPM
         let mut vec_q = Mat::new_vec(n);
         let fx0 = &mat_f[n] - s_initial * &eye;
         for i in 0 .. n {
-            vec_q[(i, 0)] = matsvdsolve::solve(&fx0, &mat_f[i]).tr();
+            vec_q[(i, 0)] = SVDS::new(fx0.size()).solve(&fx0, &mat_f[i]).tr();
         }
 
         let mut mat_p = Mat::new(n, p + 1);
         mat_p.cols_mut(0 .. p).assign(&mat_a.t());
         mat_p.col_mut(p).assign(&vec_c);
 
-        let mut t = matsvdsolve::solve(&mat_p, &vec_q)[(p, 0)];
+        let mut t = SVDS::new(mat_p.size()).solve(&mat_p, &vec_q)[(p, 0)];
         t = t.max(param.eps);
 
         // ----- start to solve
