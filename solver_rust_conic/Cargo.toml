@@ -1,0 +1,28 @@
+[package]
+name = "totsu"
+version = "0.6.0"
+authors = ["convexbrain <convexbrain@gmail.com>"]
+edition = "2018"
+
+description = "A first-order conic solver for continuous scalar convex optimization problems."
+
+#documentation = "..."
+homepage = "https://github.com/convexbrain/Totsu/tree/master/solver_rust_cone"
+repository = "https://github.com/convexbrain/Totsu"
+
+readme = "README.md"
+
+keywords = ["convex", "optimization", "conic", "solver"]
+
+categories = ["science"]
+
+license = "Unlicense"
+
+[dependencies]
+lapacke = "0.2.0"
+cblas = "0.2.0"
+
+[dev-dependencies.intel-mkl-src]
+version = "0.6.0+mkl2020.1"
+default-features = false
+features = ["mkl-static-lp64-seq"]
