@@ -1,9 +1,23 @@
 
+trait Operator
+{
+    fn size(&self) -> (usize, usize);
+    // y = alpha * Op * x + beta * y
+    fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64]);
+    // y = alpha * Op^T * x + beta * y
+    fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64]);
+}
+
+fn norm(x: &[f64]) -> f64
+{
+    unsafe { cblas::dnrm2(x.len() as i32, x, 1) }
+}
+
 fn normalize(x: &mut[f64])
 {
-    let norm = unsafe { cblas::dnrm2(x.len() as i32, x, 1)};
-    if norm > f64::MIN_POSITIVE {
-        scale(norm.recip(), x);
+    let n = norm(x);
+    if n > f64::MIN_POSITIVE {
+        scale(n.recip(), x);
     }
 }
 
@@ -33,36 +47,46 @@ fn add(alpha: f64, x: &[f64], y: &mut[f64])
     unsafe { cblas::daxpy(x.len() as i32, alpha, x, 1, y, 1) }
 }
 
-trait Operator
+// spectral norm
+fn sp_norm<O: Operator>(op: &O) -> f64
 {
-    fn size(&self) -> (usize, usize);
-    // y = alpha * Op * x + beta * y
-    fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64]);
-    // y = alpha * Op^T * x + beta * y
-    fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64]);
+    let mut v = vec![1.; op.size().1];
+    let mut t = vec![0.; op.size().0];
+    let mut w = vec![0.; op.size().1];
+    let mut lambda = 0.;
 
-    fn sp_norm(&self) -> f64
-    {
-        let mut v = vec![1.; self.size().1];
-        let mut t = vec![0.; self.size().0];
-        let mut w = vec![0.; self.size().1];
-        let mut lambda = 0.;
+    loop {
+        normalize(&mut v);
+        op.op(1., &v, 0., &mut t);
+        op.trans_op(1., &t, 0., &mut w);
 
-        loop {
-            normalize(&mut v);
-            self.op(1., &v, 0., &mut t);
-            self.trans_op(1., &t, 0., &mut w);
+        let lambda_n = inner_prod(&v, &w);
 
-            let lambda_n = inner_prod(&v, &w);
-    
-            if (lambda_n - lambda).abs() <= f64::EPSILON {
-                return lambda_n.sqrt();
-            }
-    
-            copy(&w, &mut v);
-            lambda = lambda_n;
+        if (lambda_n - lambda).abs() <= f64::EPSILON {
+            return lambda_n.sqrt();
         }
+
+        copy(&w, &mut v);
+        lambda = lambda_n;
     }
+}
+
+// Frobenius norm
+fn fr_norm<O: Operator>(op: &O) -> f64
+{
+    let mut v = vec![0.; op.size().1];
+    let mut t = vec![0.; op.size().0];
+    let mut sq_norm = 0.;
+
+    for row in 0.. v.len() {
+        v[row] = 1.;
+        op.op(1., &v, 0., &mut t);
+        let n = norm(&t);
+        sq_norm += n * n;
+        v[row] = 0.;
+    }
+
+    sq_norm.sqrt()
 }
 
 struct Matrix<'a>
@@ -120,18 +144,19 @@ impl<'a> Operator for Matrix<'a>
     }
 }
 
-struct SelfDualEmbed<O: Operator>
+struct SelfDualEmbed<OC: Operator, OA: Operator, OB: Operator>
 {
     n: usize,
     m: usize,
-    c: O,
-    a: O,
-    b: O,
+    c: OC,
+    a: OA,
+    b: OB,
 }
 
-impl<O: Operator> SelfDualEmbed<O>
+impl<OC, OA, OB> SelfDualEmbed<OC, OA, OB>
+where OC: Operator, OA: Operator, OB: Operator
 {
-    fn new(c: O, a: O, b: O) -> Self
+    fn new(c: OC, a: OA, b: OB) -> Self
     {
         let (m, n) = a.size();
          
@@ -142,9 +167,20 @@ impl<O: Operator> SelfDualEmbed<O>
             n, m, c, a, b
         }
     }
+
+    fn b_norm(&self) -> f64
+    {
+        fr_norm(&self.b)
+    }
+
+    fn c_norm(&self) -> f64
+    {
+        fr_norm(&self.c)
+    }
 }
 
-impl<O: Operator> Operator for SelfDualEmbed<O>
+impl<OC, OA, OB> Operator for SelfDualEmbed<OC, OA, OB>
+where OC: Operator, OA: Operator, OB: Operator
 {
     fn size(&self) -> (usize, usize)
     {
@@ -239,7 +275,7 @@ impl Solver
 
     pub fn solve(&self)
     {
-        let max_iter = Some(5000);
+        let max_iter = Some(3);
 
         let n = 1;
         let m = 2;
@@ -257,6 +293,35 @@ impl Solver
         ]);
 
         let op_l = SelfDualEmbed::new(mat_c, mat_a, mat_b);
-        assert_eq!(op_l.sp_norm(), -1.);
+        let op_l_norm = sp_norm(&op_l);
+        assert!(op_l_norm >= f64::MIN_POSITIVE);
+
+        let tau = op_l_norm.recip();
+        let sigma = op_l_norm.recip();
+
+        let eps_zero = 1e-12;
+        let eps_pri = 1e-6;
+        let eps_dual = 1e-6;
+        let eps_gap = 1e-6;
+        let eps_unbdd = 1e-6;
+        let eps_infeas = 1e-6;
+
+        let b_norm = op_l.b_norm();
+        let c_norm = op_l.c_norm();
+
+        let mut i = 0;
+        loop {
+            println!("----- {}", i);
+
+            // TODO
+
+            i += 1;
+            if let Some(max_i) = max_iter {
+                if i >= max_i {
+                    break;
+                }
+            }
+        }
+        assert!(false);
     }
 }
