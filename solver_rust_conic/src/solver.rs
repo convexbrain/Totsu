@@ -288,26 +288,127 @@ fn proj_pos(x: &mut[f64])
     }
 }
 
-fn proj_zero(x: &mut[f64])
+fn proj_o(x: &mut[f64])
 {
     for e in x {
         *e = 0.;
     }
 }
 
+fn proj_r(x: &mut[f64])
+{
+    //
+}
+
+fn mat_to_vec(m: &[f64], v: &mut[f64])
+{
+    let l = v.len();
+    let n = (m.len() as f64).sqrt() as usize;
+    assert_eq!(m.len(), n * n);
+    assert_eq!(n * (n + 1) / 2, l);
+
+    let mut ref_m = m;
+    let mut ref_v = v;
+
+    for c in 0.. n {
+        // upper triangular elements of symmetric matrix vectorized in row-wise
+        let (r, spl_m) = ref_m.split_at(n);
+        ref_m = spl_m;
+        let (_, rc) = r.split_at(c);
+
+        let (vc, spl_v) = ref_v.split_at_mut(n - c);
+        ref_v = spl_v;
+        copy(rc, vc);
+
+        let (_, vct) = vc.split_at_mut(1);
+        scale(2_f64.sqrt(), vct);
+    }
+
+    assert!(ref_m.is_empty());
+    assert!(ref_v.is_empty());
+}
+
+fn vec_to_mat(v: &[f64], m: &mut[f64])
+{
+    let l = v.len();
+    let n = (m.len() as f64).sqrt() as usize;
+    assert_eq!(m.len(), n * n);
+    assert_eq!(n * (n + 1) / 2, l);
+
+    let mut ref_m = m;
+    let mut ref_v = v;
+
+    for c in 0.. n {
+        // upper triangular elements of symmetric matrix vectorized in row-wise
+        let (r, spl_m) = ref_m.split_at_mut(n);
+        ref_m = spl_m;
+        let (_, rc) = r.split_at_mut(c);
+
+        let (vc, spl_v) = ref_v.split_at(n - c);
+        ref_v = spl_v;
+        copy(vc, rc);
+
+        let (_, rct) = rc.split_at_mut(1);
+        scale(0.5_f64.sqrt(), rct);
+    }
+
+    assert!(ref_m.is_empty());
+    assert!(ref_v.is_empty());
+}
+
 fn proj_psd(x: &mut[f64])
 {
-    panic!("not implemented");
+    let l = x.len();
+    let n = (((8 * l + 1) as f64).sqrt() as usize - 1) / 2;
+
+    let mut a = vec![0.; n * n];
+
+    vec_to_mat(x, &mut a);
+
+    let mut m = 0;
+    let mut w = vec![0.; n];
+    let mut z = vec![0.; n * n];
+    let mut null: Vec<i32> = vec![];
+
+    let n = n as i32;
+    unsafe {
+        lapacke::dsyevr(
+            lapacke::Layout::RowMajor, b'V', b'V',
+            b'U', n, &mut a, n,
+            0., f64::INFINITY, 0, 0, 0.,
+            &mut m, &mut w,
+            &mut z, n, &mut null);
+    }
+
+    for e in &mut a {
+        *e = 0.;
+    }
+    for i in 0.. m as usize {
+        let e = w[i];
+        let (_, ref_z) = z.split_at(i);
+        unsafe {
+            cblas::dsyr(
+                cblas::Layout::RowMajor, cblas::Part::Upper,
+                n, e,
+                ref_z, n,
+                &mut a, n);
+        }
+
+    }
+
+    mat_to_vec(&a, x);
 }
 
 fn proj_cone(x: &mut[f64])
 {
-    proj_pos(x);
+    //proj_pos(x);
+    proj_psd(x);
 }
 
 fn proj_cone_conj(x: &mut[f64])
 {
-    proj_pos(x);
+    //proj_pos(x);
+    proj_psd(x);
 }
 
 pub struct Solver;
@@ -324,18 +425,20 @@ impl Solver
         let max_iter = Some(5000);
 
         let n = 1;
-        let m = 2;
+        let m = 3;
 
         let mat_c = Matrix::new((n, 1), &[
             1.,
         ]);
         let mat_a = Matrix::new((m, n), &[
-            -1.,
-            1.,
+            0.,
+            -1. * 1.41421356,
+            -3.,
         ]);
         let mat_b = Matrix::new((m, 1), &[
-            2.,
-            5.,
+            1.,
+            0. * 1.41421356,
+            10.,
         ]);
 
         let op_l = SelfDualEmbed::new(mat_c, mat_a, mat_b);
@@ -363,7 +466,7 @@ impl Solver
 
         let mut p = vec![0.; m];
         let mut d = vec![0.; n];
-        let mut one = vec![1.; 1];
+        let mut one = vec![1.];
 
         let mut i = 0;
         loop {
