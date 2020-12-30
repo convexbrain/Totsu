@@ -1,5 +1,9 @@
+// TODO: num-float
+// TODO: no-std
+// TODO: no blas/lapack
+// TODO: doc
 
-trait Operator
+pub trait Operator
 {
     fn size(&self) -> (usize, usize);
     // y = alpha * Op * x + beta * y
@@ -42,9 +46,14 @@ fn add(alpha: f64, x: &[f64], y: &mut[f64])
 // spectral norm
 fn sp_norm<O: Operator>(op: &O) -> f64
 {
+    // TODO: param
+    let eps_zero = 1e-12;
+
+    // TODO: memory
     let mut v = vec![1.; op.size().1];
     let mut t = vec![0.; op.size().0];
     let mut w = vec![0.; op.size().1];
+
     let mut lambda = 0.;
 
     loop {
@@ -58,7 +67,7 @@ fn sp_norm<O: Operator>(op: &O) -> f64
 
         let lambda_n = inner_prod(&v, &w);
 
-        if (lambda_n - lambda).abs() <= f64::EPSILON {
+        if (lambda_n - lambda).abs() <= eps_zero {
             return lambda_n.sqrt();
         }
 
@@ -70,8 +79,10 @@ fn sp_norm<O: Operator>(op: &O) -> f64
 // Frobenius norm
 fn fr_norm<O: Operator>(op: &O) -> f64
 {
+    // TODO: memory
     let mut v = vec![0.; op.size().1];
     let mut t = vec![0.; op.size().0];
+
     let mut sq_norm = 0.;
 
     for row in 0.. v.len() {
@@ -83,61 +94,6 @@ fn fr_norm<O: Operator>(op: &O) -> f64
     }
 
     sq_norm.sqrt()
-}
-
-struct Matrix<'a>
-{
-    n_row: usize,
-    n_col: usize,
-    array: &'a[f64],
-}
-
-impl<'a> Matrix<'a>
-{
-    fn new((n_row, n_col): (usize, usize), array: &'a[f64]) -> Self
-    {
-        assert_eq!(n_row * n_col, array.len());
-
-        Matrix {
-            n_row, n_col, array
-        }
-    }
-}
-
-impl<'a> Operator for Matrix<'a>
-{
-    fn size(&self) -> (usize, usize)
-    {
-        (self.n_row, self.n_col)
-    }
-
-    fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
-    {
-        assert_eq!(x.len(), self.n_col);
-        assert_eq!(y.len(), self.n_row);
-        
-        unsafe { cblas::dgemv(
-            cblas::Layout::RowMajor, cblas::Transpose::None,
-            self.n_row as i32, self.n_col as i32,
-            alpha, self.array, self.n_col as i32,
-            x, 1,
-            beta, y, 1
-        ) }
-    }
-
-    fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
-    {
-        assert_eq!(x.len(), self.n_row);
-        assert_eq!(y.len(), self.n_col);
-        
-        unsafe { cblas::dgemv(
-            cblas::Layout::RowMajor, cblas::Transpose::Ordinary,
-            self.n_row as i32, self.n_col as i32,
-            alpha, self.array, self.n_col as i32,
-            x, 1,
-            beta, y, 1
-        ) }
-    }
 }
 
 struct SelfDualEmbed<OC: Operator, OA: Operator, OB: Operator>
@@ -155,7 +111,8 @@ where OC: Operator, OA: Operator, OB: Operator
     fn new(c: OC, a: OA, b: OB) -> Self
     {
         let (m, n) = a.size();
-         
+
+        // TODO: error
         assert_eq!(c.size(), (n, 1));
         assert_eq!(b.size(), (m, 1));
 
@@ -295,7 +252,7 @@ fn proj_o(x: &mut[f64])
     }
 }
 
-fn proj_r(x: &mut[f64])
+fn proj_r(_x: &mut[f64])
 {
     //
 }
@@ -304,6 +261,7 @@ fn mat_to_vec(m: &[f64], v: &mut[f64])
 {
     let l = v.len();
     let n = (m.len() as f64).sqrt() as usize;
+    // TODO: error when pub-ed
     assert_eq!(m.len(), n * n);
     assert_eq!(n * (n + 1) / 2, l);
 
@@ -332,6 +290,7 @@ fn vec_to_mat(v: &[f64], m: &mut[f64])
 {
     let l = v.len();
     let n = (m.len() as f64).sqrt() as usize;
+    // TODO: error when pub-ed
     assert_eq!(m.len(), n * n);
     assert_eq!(n * (n + 1) / 2, l);
 
@@ -358,26 +317,28 @@ fn vec_to_mat(v: &[f64], m: &mut[f64])
 
 fn proj_psd(x: &mut[f64])
 {
+    let eps_zero = 1e-12;
     let l = x.len();
     let n = (((8 * l + 1) as f64).sqrt() as usize - 1) / 2;
 
+    // TODO: memory
     let mut a = vec![0.; n * n];
 
     vec_to_mat(x, &mut a);
 
     let mut m = 0;
+    // TODO: memory
     let mut w = vec![0.; n];
     let mut z = vec![0.; n * n];
-    let mut null: Vec<i32> = vec![];
 
     let n = n as i32;
     unsafe {
         lapacke::dsyevr(
             lapacke::Layout::RowMajor, b'V', b'V',
             b'U', n, &mut a, n,
-            0., f64::INFINITY, 0, 0, 0.,
+            0., f64::INFINITY, 0, 0, eps_zero,
             &mut m, &mut w,
-            &mut z, n, &mut null);
+            &mut z, n, &mut []);
     }
 
     for e in &mut a {
@@ -411,6 +372,27 @@ fn proj_cone_conj(x: &mut[f64])
     proj_psd(x);
 }
 
+pub struct SolverParam
+{
+    max_iter: Option<usize>,
+    eps_acc: f64,
+    eps_inf: f64,
+    eps_zero: f64,
+}
+
+impl Default for SolverParam
+{
+    fn default() -> Self
+    {
+        SolverParam {
+            max_iter: Some(10_000),
+            eps_acc: 1e-6,
+            eps_inf: 1e-6,
+            eps_zero: 1e-12,
+        }
+    }
+}
+
 pub struct Solver;
 
 impl Solver
@@ -420,81 +402,62 @@ impl Solver
         Solver
     }
 
-    pub fn solve(&self)
+    pub fn solve<OC, OA, OB>(&self, par: SolverParam, op_c: OC, op_a: OA, op_b: OB)
+    where OC: Operator, OA: Operator, OB: Operator
     {
-        let max_iter = Some(5000);
+        let (m, n) = op_a.size();
 
-        let n = 1;
-        let m = 3;
-
-        let mat_c = Matrix::new((n, 1), &[
-            1.,
-        ]);
-        let mat_a = Matrix::new((m, n), &[
-            0.,
-            -1. * 1.41421356,
-            -3.,
-        ]);
-        let mat_b = Matrix::new((m, 1), &[
-            1.,
-            0. * 1.41421356,
-            10.,
-        ]);
-
-        let op_l = SelfDualEmbed::new(mat_c, mat_a, mat_b);
+        let op_l = SelfDualEmbed::new(op_c, op_a, op_b);
         let op_l_norm = sp_norm(&op_l);
+        // TODO: error
         assert!(op_l_norm >= f64::MIN_POSITIVE);
 
         let tau = op_l_norm.recip();
         let sigma = op_l_norm.recip();
 
-        let eps_zero = 1e-12;
-        let eps_pri = 1e-6;
-        let eps_dual = 1e-6;
-        let eps_gap = 1e-6;
-        let eps_unbdd = 1e-6;
-        let eps_infeas = 1e-6;
-
         let b_norm = fr_norm(op_l.b());
         let c_norm = fr_norm(op_l.c());
 
+        // TODO: memory
         let mut x = vec![0.; n + (m + 1) * 2];
         x[n + m] = 1.; // u_tau
         x[n + m + 1 + m] = 1.; // v_kappa
         let mut xx = x.clone();
         let mut y = vec![0.; n + m + 1];
 
+        // TODO: memory
         let mut p = vec![0.; m];
         let mut d = vec![0.; n];
         let mut one = vec![1.];
 
         let mut i = 0;
         loop {
+            // TODO: log
             println!("----- {}", i);
 
-            op_l.trans_op(-tau, &y, 1.0, &mut x);
+            { // Iteration
+                op_l.trans_op(-tau, &y, 1.0, &mut x);
 
-            {
-                let (_, u) = x.split_at_mut(n);
-                let (u_y, u) = u.split_at_mut(m);
-                let (u_tau, v) = u.split_at_mut(1);
-                let (v_s, v) = v.split_at_mut(m);
-                let (v_kappa, _) = v.split_at_mut(1);
-
-                proj_cone_conj(u_y);
-                proj_pos(u_tau);
-                proj_cone(v_s);
-                proj_pos(v_kappa);
+                {
+                    let (_, u) = x.split_at_mut(n);
+                    let (u_y, u) = u.split_at_mut(m);
+                    let (u_tau, v) = u.split_at_mut(1);
+                    let (v_s, v) = v.split_at_mut(m);
+                    let (v_kappa, _) = v.split_at_mut(1);
+    
+                    // TODO: proj
+                    proj_cone_conj(u_y);
+                    proj_pos(u_tau);
+                    proj_cone(v_s);
+                    proj_pos(v_kappa);
+                }
+    
+                add(-2., &x, &mut xx);
+                op_l.op(-sigma, &xx, 1., &mut y);
+                copy(&x, &mut xx);
             }
 
-            add(-2., &x, &mut xx);
-            op_l.op(-sigma, &xx, 1., &mut y);
-            copy(&x, &mut xx);
-
-            //println!("{:?}", x);
-            //println!("{:?}", y);
-
-            {
+            { // Termination criteria
                 let (u_x, u) = x.split_at(n);
                 let (u_y, u) = u.split_at(m);
                 let (u_tau, v) = u.split_at(1);
@@ -502,7 +465,9 @@ impl Solver
 
                 let u_tau = u_tau[0];
 
-                if u_tau > eps_zero {
+                if u_tau > par.eps_zero {
+                    // Check convergence
+
                     one[0] = 1.;
 
                     copy(v_s, &mut p);
@@ -520,18 +485,25 @@ impl Solver
     
                     let g = g_x + g_y;
 
-                    let term_pri = norm(&p) <= eps_pri * (1. + b_norm);
-                    let term_dual = norm(&d) <= eps_dual * (1. + c_norm);
-                    let term_gap = g.abs() <= eps_gap * (1. + g_x.abs() + g_y.abs());
+                    let term_pri = norm(&p) <= par.eps_acc * (1. + b_norm);
+                    let term_dual = norm(&d) <= par.eps_acc * (1. + c_norm);
+                    let term_gap = g.abs() <= par.eps_acc * (1. + g_x.abs() + g_y.abs());
     
+                    // TODO: log
                     println!("{} {} {}", term_pri, term_dual, term_gap);
 
                     if term_pri && term_dual && term_gap {
+                        // TODO: log
                         println!("converged");
-                        break;
+                        scale(u_tau.recip(), &mut x);
+                        println!("{:?}", x);
+                        // TODO: result
+                        return;
                     }
                 }
                 else {
+                    // Check undoundness and infeasibility
+                    
                     copy(v_s, &mut p);
                     op_l.a().op(1., u_x, 1., &mut p);
 
@@ -543,41 +515,42 @@ impl Solver
                     op_l.b().trans_op(-1., u_y, 0., &mut one);
                     let m_by = one[0];
         
-                    let term_unbdd = (m_cx > eps_zero) && (
-                        norm(&p) * c_norm <= eps_unbdd * m_cx
+                    let term_unbdd = (m_cx > par.eps_zero) && (
+                        norm(&p) * c_norm <= par.eps_inf * m_cx
                     );
         
-                    let term_infeas = (m_by > eps_zero) && (
-                        norm(&d) * b_norm <= eps_infeas * m_by
+                    let term_infeas = (m_by > par.eps_zero) && (
+                        norm(&d) * b_norm <= par.eps_inf * m_by
                     );
         
+                    // TODO: log
                     println!("{} {}", term_unbdd, term_infeas);
         
                     if term_unbdd {
+                        // TODO: log
                         println!("unbounded");
-                        break;
+                        // TODO: result
+                        return;
                     }
         
                     if term_infeas {
+                        // TODO: log
                         println!("infeasible");
-                        break;
+                        // TODO: result
+                        return;
                     }
                 }
             }
 
             i += 1;
-            if let Some(max_i) = max_iter {
-                if i >= max_i {
+            if let Some(max_iter) = par.max_iter {
+                if i >= max_iter {
+                    // TODO: log
                     println!("timeover");
-                    break;
+                    // TODO: result
+                    return;
                 }
             }
-        }
-
-        let u_tau = x[n + m];
-        if u_tau > eps_zero {
-            scale(u_tau.recip(), &mut x);
-            println!("{:?}", x);
-        }
+        } // end of loop
     }
 }
