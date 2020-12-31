@@ -12,12 +12,12 @@ pub trait Operator
     fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64]);
 }
 
-pub trait Projection
+pub trait Cone
 {
-    fn cone(&mut self, x: &mut[f64]);
-    fn cone_conj(&mut self, x: &mut[f64])
+    fn proj(&mut self, x: &mut[f64]);
+    fn conj_proj(&mut self, x: &mut[f64])
     {
-        self.cone(x); // Self-dual cone
+        self.proj(x); // Self-dual cone
     }
 }
 
@@ -251,11 +251,11 @@ impl Solver
         len_norms.max(len_iteration)
     }
 
-    pub fn solve<OC, OA, OB, PJ>(
+    pub fn solve<OC, OA, OB, C>(
         par: SolverParam,
-        op_c: OC, op_a: OA, op_b: OB, mut proj: PJ
+        op_c: OC, op_a: OA, op_b: OB, mut cone: C
     )
-    where OC: Operator, OA: Operator, OB: Operator, PJ: Projection
+    where OC: Operator, OA: Operator, OB: Operator, C: Cone
     {
         let (m, n) = op_a.size();
 
@@ -297,9 +297,9 @@ impl Solver
                     let (v_s, v) = v.split_at_mut(m);
                     let (v_kappa, _) = v.split_at_mut(1);
     
-                    proj.cone_conj(u_y);
+                    cone.conj_proj(u_y);
                     u_tau[0] = u_tau[0].max(0.);
-                    proj.cone(v_s);
+                    cone.proj(v_s);
                     v_kappa[0] = v_kappa[0].max(0.);
                 }
     

@@ -3,11 +3,11 @@ mod tests;
 
 mod solver;
 mod matop;
-mod proj;
+mod cone;
 mod linalg;
 
-pub use crate::solver::{Solver, SolverParam, Operator, Projection};
+pub use crate::solver::{Solver, SolverParam, Operator, Cone};
 
 // TODO: LP/QP/QCQP/SOCP/SDP
 pub use crate::matop::{MatOp};
-pub use crate::proj::{ProjPSD};
+pub use crate::cone::{ConePSD};

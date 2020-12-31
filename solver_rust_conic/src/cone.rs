@@ -1,14 +1,14 @@
 // TODO: no blas/lapack
 
-use crate::solver::Projection;
+use crate::solver::Cone;
 use crate::linalg::{scale, copy};
 
-pub struct ProjPSD<'a>
+pub struct ConePSD<'a>
 {
     work: &'a mut[f64],
 }
 
-impl<'a> ProjPSD<'a>
+impl<'a> ConePSD<'a>
 {
     fn nvars_to_nrows(nvars: usize) -> usize
     {
@@ -28,15 +28,15 @@ impl<'a> ProjPSD<'a>
 
     pub fn new(work: &'a mut[f64]) -> Self
     {
-        ProjPSD {
+        ConePSD {
             work
         }
     }
 }
 
-impl<'a> Projection for ProjPSD<'a>
+impl<'a> Cone for ConePSD<'a>
 {
-    fn cone(&mut self, x: &mut[f64])
+    fn proj(&mut self, x: &mut[f64])
     {
         // TODO: param
         let eps_zero = 1e-12;
