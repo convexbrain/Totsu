@@ -18,8 +18,11 @@ fn test_smoke() {
     ];
     let op_b = MatOp::new_sym((3, 1), array_b);
 
-    let mut cone_w = vec![0.; ConePSD::query_worklen(op_a.size().0)];
-    let cone = ConePSD::new(&mut cone_w);
+    let par = SolverParam::default();
 
-    Solver::solve(SolverParam::default(), op_c, op_a, op_b, cone);
+    let mut cone_w = vec![0.; ConePSD::query_worklen(op_a.size().0)];
+    let cone = ConePSD::new(&mut cone_w, par.eps_zero);
+
+    let mut solver_w = vec![0.; Solver::query_worklen(op_a.size())];
+    Solver::solve(par, op_c, op_a, op_b, cone, &mut solver_w);
 }

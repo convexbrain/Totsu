@@ -6,6 +6,7 @@ use crate::linalg::{scale, copy};
 pub struct ConePSD<'a>
 {
     work: &'a mut[f64],
+    eps_zero: f64,
 }
 
 impl<'a> ConePSD<'a>
@@ -26,10 +27,10 @@ impl<'a> ConePSD<'a>
         len_a + len_w + len_z
     }
 
-    pub fn new(work: &'a mut[f64]) -> Self
+    pub fn new(work: &'a mut[f64], eps_zero: f64) -> Self
     {
         ConePSD {
-            work
+            work, eps_zero
         }
     }
 }
@@ -38,9 +39,6 @@ impl<'a> Cone for ConePSD<'a>
 {
     fn proj(&mut self, x: &mut[f64])
     {
-        // TODO: param
-        let eps_zero = 1e-12;
-
         let nvars = x.len();
         let nrows = Self::nvars_to_nrows(nvars);
     
@@ -60,7 +58,7 @@ impl<'a> Cone for ConePSD<'a>
             lapacke::dsyevr(
                 lapacke::Layout::RowMajor, b'V', b'V',
                 b'U', n, a, n,
-                0., f64::INFINITY, 0, 0, eps_zero,
+                0., f64::INFINITY, 0, 0, self.eps_zero,
                 &mut m, &mut w,
                 &mut z, n, &mut []);
         }

@@ -22,53 +22,58 @@ pub trait Cone
 }
 
 // spectral norm
-fn sp_norm<O: Operator>(op: &O) -> f64
+fn sp_norm<O: Operator>(
+    op: &O, eps_zero: f64,
+    work_v: &mut[f64], work_t: &mut[f64], work_w: &mut[f64]) -> f64
 {
-    // TODO: param
-    let eps_zero = 1e-12;
+    assert_eq!(work_v.len(), op.size().1);
+    assert_eq!(work_t.len(), op.size().0);
+    assert_eq!(work_w.len(), op.size().1);
 
-    // TODO: memory
-    let mut v = vec![1.; op.size().1];
-    let mut t = vec![0.; op.size().0];
-    let mut w = vec![0.; op.size().1];
-
+    for e in work_v.iter_mut() {
+        *e = 1.;
+    }
     let mut lambda = 0.;
 
     loop {
-        let n = norm(&v);
+        let n = norm(work_v);
         if n > f64::MIN_POSITIVE {
-            scale(n.recip(), &mut v);
+            scale(n.recip(), work_v);
         }
 
-        op.op(1., &v, 0., &mut t);
-        op.trans_op(1., &t, 0., &mut w);
+        op.op(1., work_v, 0., work_t);
+        op.trans_op(1., work_t, 0., work_w);
 
-        let lambda_n = inner_prod(&v, &w);
+        let lambda_n = inner_prod(work_v, work_w);
 
         if (lambda_n - lambda).abs() <= eps_zero {
             return lambda_n.sqrt();
         }
 
-        copy(&w, &mut v);
+        copy(work_w, work_v);
         lambda = lambda_n;
     }
 }
 
 // Frobenius norm
-fn fr_norm<O: Operator>(op: &O) -> f64
+fn fr_norm<O: Operator>(
+    op: &O,
+    work_v: &mut[f64], work_t: &mut[f64]) -> f64
 {
-    // TODO: memory
-    let mut v = vec![0.; op.size().1];
-    let mut t = vec![0.; op.size().0];
+    assert_eq!(work_v.len(), op.size().1);
+    assert_eq!(work_t.len(), op.size().0);
 
+    for e in work_v.iter_mut() {
+        *e = 0.;
+    }
     let mut sq_norm = 0.;
 
-    for row in 0.. v.len() {
-        v[row] = 1.;
-        op.op(1., &v, 0., &mut t);
-        let n = norm(&t);
+    for row in 0.. op.size().1 {
+        work_v[row] = 1.;
+        op.op(1., work_v, 0., work_t);
+        let n = norm(work_t);
         sq_norm += n * n;
-        v[row] = 0.;
+        work_v[row] = 0.;
     }
 
     sq_norm.sqrt()
@@ -218,10 +223,10 @@ where OC: Operator, OA: Operator, OB: Operator
 
 pub struct SolverParam
 {
-    max_iter: Option<usize>,
-    eps_acc: f64,
-    eps_inf: f64,
-    eps_zero: f64,
+    pub max_iter: Option<usize>,
+    pub eps_acc: f64,
+    pub eps_inf: f64,
+    pub eps_zero: f64,
 }
 
 impl Default for SolverParam
@@ -253,34 +258,63 @@ impl Solver
 
     pub fn solve<OC, OA, OB, C>(
         par: SolverParam,
-        op_c: OC, op_a: OA, op_b: OB, mut cone: C
+        op_c: OC, op_a: OA, op_b: OB, mut cone: C,
+        work: &mut[f64]
     )
     where OC: Operator, OA: Operator, OB: Operator, C: Cone
     {
         let (m, n) = op_a.size();
+        let work_one = &mut [0.];
 
         let op_l = SelfDualEmbed::new(op_c, op_a, op_b);
-        let op_l_norm = sp_norm(&op_l);
+
+        let op_l_norm = {
+            // TODO: error
+            let (v, spl_work) = work.split_at_mut(op_l.size().1);
+            let (t, spl_work) = spl_work.split_at_mut(op_l.size().0);
+            let (w, _) = spl_work.split_at_mut(op_l.size().1);
+
+            sp_norm(&op_l, par.eps_zero, v, t, w)
+        };
         // TODO: error
         assert!(op_l_norm >= f64::MIN_POSITIVE);
 
         let tau = op_l_norm.recip();
         let sigma = op_l_norm.recip();
 
-        let b_norm = fr_norm(op_l.b());
-        let c_norm = fr_norm(op_l.c());
+        let b_norm = {
+            let (t, _) = work.split_at_mut(op_l.b().size().0);
 
-        // TODO: memory
-        let mut x = vec![0.; n + (m + 1) * 2];
+            fr_norm(op_l.b(), work_one, t)
+        };
+
+        let c_norm = {
+            let (t, _) = work.split_at_mut(op_l.c().size().0);
+
+            fr_norm(op_l.c(), work_one, t)
+        };
+
+        //
+
+        // TODO: error
+        let (x, spl_work) = work.split_at_mut(n + (m + 1) * 2);
+        let (xx, spl_work) = spl_work.split_at_mut(n + (m + 1) * 2);
+        let (y, spl_work) = spl_work.split_at_mut(n + m + 1);
+        let (p, spl_work) = spl_work.split_at_mut(m);
+        let (d, _) = spl_work.split_at_mut(n);
+        for e in x.iter_mut() {
+            *e = 0.;
+        }
+        for e in xx.iter_mut() {
+            *e = 0.;
+        }
+        for e in y.iter_mut() {
+            *e = 0.;
+        }
         x[n + m] = 1.; // u_tau
         x[n + m + 1 + m] = 1.; // v_kappa
-        let mut xx = x.clone();
-        let mut y = vec![0.; n + m + 1];
-
-        // TODO: memory
-        let mut p = vec![0.; m];
-        let mut d = vec![0.; n];
-        let one = &mut [1.];
+        xx[n + m] = 1.; // u_tau
+        xx[n + m + 1 + m] = 1.; // v_kappa
 
         let mut i = 0;
         loop {
@@ -288,7 +322,7 @@ impl Solver
             //println!("----- {}", i);
 
             { // Update iteration
-                op_l.trans_op(-tau, &y, 1.0, &mut x);
+                op_l.trans_op(-tau, y, 1.0, x);
 
                 { // Projection
                     let (_, u) = x.split_at_mut(n);
@@ -303,9 +337,9 @@ impl Solver
                     v_kappa[0] = v_kappa[0].max(0.);
                 }
     
-                add(-2., &x, &mut xx);
-                op_l.op(-sigma, &xx, 1., &mut y);
-                copy(&x, &mut xx);
+                add(-2., x, xx);
+                op_l.op(-sigma, xx, 1., y);
+                copy(x, xx);
             }
 
             { // Termination criteria
@@ -319,25 +353,25 @@ impl Solver
                 if u_tau > par.eps_zero {
                     // Check convergence
 
-                    one[0] = 1.;
+                    work_one[0] = 1.;
 
-                    copy(v_s, &mut p);
-                    op_l.b().op(-1., one, u_tau.recip(), &mut p);
-                    op_l.a().op(u_tau.recip(), u_x, 1., &mut p);
+                    copy(v_s, p);
+                    op_l.b().op(-1., work_one, u_tau.recip(), p);
+                    op_l.a().op(u_tau.recip(), u_x, 1., p);
     
-                    op_l.c().op(1., one, 0., &mut d);
-                    op_l.a().trans_op(u_tau.recip(), u_y, 1., &mut d);
+                    op_l.c().op(1., work_one, 0., d);
+                    op_l.a().trans_op(u_tau.recip(), u_y, 1., d);
     
-                    op_l.c().trans_op(u_tau.recip(), u_x, 0., one);
-                    let g_x = one[0];
+                    op_l.c().trans_op(u_tau.recip(), u_x, 0., work_one);
+                    let g_x = work_one[0];
     
-                    op_l.b().trans_op(u_tau.recip(), u_y, 0., one);
-                    let g_y = one[0];
+                    op_l.b().trans_op(u_tau.recip(), u_y, 0., work_one);
+                    let g_y = work_one[0];
     
                     let g = g_x + g_y;
 
-                    let term_pri = norm(&p) <= par.eps_acc * (1. + b_norm);
-                    let term_dual = norm(&d) <= par.eps_acc * (1. + c_norm);
+                    let term_pri = norm(p) <= par.eps_acc * (1. + b_norm);
+                    let term_dual = norm(d) <= par.eps_acc * (1. + c_norm);
                     let term_gap = g.abs() <= par.eps_acc * (1. + g_x.abs() + g_y.abs());
     
                     // TODO: log
@@ -346,7 +380,7 @@ impl Solver
                     if term_pri && term_dual && term_gap {
                         // TODO: log
                         println!("converged");
-                        scale(u_tau.recip(), &mut x);
+                        scale(u_tau.recip(), x);
                         println!("{:?}", x);
                         // TODO: result
                         return;
@@ -355,23 +389,23 @@ impl Solver
                 else {
                     // Check undoundness and infeasibility
                     
-                    copy(v_s, &mut p);
-                    op_l.a().op(1., u_x, 1., &mut p);
+                    copy(v_s, p);
+                    op_l.a().op(1., u_x, 1., p);
 
-                    op_l.a().trans_op(1., u_y, 0., &mut d);
+                    op_l.a().trans_op(1., u_y, 0., d);
 
-                    op_l.c().trans_op(-1., u_x, 0., one);
-                    let m_cx = one[0];
+                    op_l.c().trans_op(-1., u_x, 0., work_one);
+                    let m_cx = work_one[0];
 
-                    op_l.b().trans_op(-1., u_y, 0., one);
-                    let m_by = one[0];
+                    op_l.b().trans_op(-1., u_y, 0., work_one);
+                    let m_by = work_one[0];
         
                     let term_unbdd = (m_cx > par.eps_zero) && (
-                        norm(&p) * c_norm <= par.eps_inf * m_cx
+                        norm(p) * c_norm <= par.eps_inf * m_cx
                     );
         
                     let term_infeas = (m_by > par.eps_zero) && (
-                        norm(&d) * b_norm <= par.eps_inf * m_by
+                        norm(d) * b_norm <= par.eps_inf * m_by
                     );
         
                     // TODO: log
