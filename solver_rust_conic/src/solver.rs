@@ -241,12 +241,17 @@ pub struct Solver;
 
 impl Solver
 {
-    pub fn new() -> Self
+    pub fn query_worklen(op_a_size: (usize, usize)) -> usize
     {
-        Solver
+        let (m, n) = op_a_size;
+
+        let len_norms = (n + m + 1) * 5;
+        let len_iteration = (n + (m + 1) * 2) * 2 + (n + m + 1) + n + m;
+
+        len_norms.max(len_iteration)
     }
 
-    pub fn solve<OC, OA, OB, PJ>(&self,
+    pub fn solve<OC, OA, OB, PJ>(
         par: SolverParam,
         op_c: OC, op_a: OA, op_b: OB, mut proj: PJ
     )
@@ -275,7 +280,7 @@ impl Solver
         // TODO: memory
         let mut p = vec![0.; m];
         let mut d = vec![0.; n];
-        let mut one = vec![1.];
+        let one = &mut [1.];
 
         let mut i = 0;
         loop {
@@ -317,16 +322,16 @@ impl Solver
                     one[0] = 1.;
 
                     copy(v_s, &mut p);
-                    op_l.b().op(-1., &one, u_tau.recip(), &mut p);
+                    op_l.b().op(-1., one, u_tau.recip(), &mut p);
                     op_l.a().op(u_tau.recip(), u_x, 1., &mut p);
     
-                    op_l.c().op(1., &one, 0., &mut d);
+                    op_l.c().op(1., one, 0., &mut d);
                     op_l.a().trans_op(u_tau.recip(), u_y, 1., &mut d);
     
-                    op_l.c().trans_op(u_tau.recip(), u_x, 0., &mut one);
+                    op_l.c().trans_op(u_tau.recip(), u_x, 0., one);
                     let g_x = one[0];
     
-                    op_l.b().trans_op(u_tau.recip(), u_y, 0., &mut one);
+                    op_l.b().trans_op(u_tau.recip(), u_y, 0., one);
                     let g_y = one[0];
     
                     let g = g_x + g_y;
@@ -355,10 +360,10 @@ impl Solver
 
                     op_l.a().trans_op(1., u_y, 0., &mut d);
 
-                    op_l.c().trans_op(-1., u_x, 0., &mut one);
+                    op_l.c().trans_op(-1., u_x, 0., one);
                     let m_cx = one[0];
 
-                    op_l.b().trans_op(-1., u_y, 0., &mut one);
+                    op_l.b().trans_op(-1., u_y, 0., one);
                     let m_by = one[0];
         
                     let term_unbdd = (m_cx > par.eps_zero) && (

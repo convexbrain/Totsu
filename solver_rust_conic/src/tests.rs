@@ -1,7 +1,6 @@
 extern crate intel_mkl_src;
 
-use crate::prelude::*;
-use crate::predef::*;
+use crate::*;
 
 #[test]
 fn test_smoke() {
@@ -22,6 +21,5 @@ fn test_smoke() {
     let mut proj_w = vec![0.; ProjPSD::query_worklen(op_a.size().0)];
     let proj = ProjPSD::new(&mut proj_w);
 
-    let s = Solver::new();
-    s.solve(SolverParam::default(), op_c, op_a, op_b, proj);
+    Solver::solve(SolverParam::default(), op_c, op_a, op_b, proj);
 }

@@ -85,21 +85,21 @@ impl<'a> Projection for ProjPSD<'a>
     }
 }
 
-fn proj_pos(x: &mut[f64])
+fn _proj_pos(x: &mut[f64])
 {
     for e in x {
         *e = e.max(0.);
     }
 }
 
-fn proj_o(x: &mut[f64])
+fn _proj_o(x: &mut[f64])
 {
     for e in x {
         *e = 0.;
     }
 }
 
-fn proj_r(_x: &mut[f64])
+fn _proj_r(_x: &mut[f64])
 {
     //
 }
