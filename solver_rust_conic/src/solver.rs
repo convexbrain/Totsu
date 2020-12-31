@@ -221,6 +221,7 @@ where OC: Operator, OA: Operator, OB: Operator
     }
 }
 
+#[derive(Debug)]
 pub struct SolverParam
 {
     pub max_iter: Option<usize>,
@@ -242,6 +243,15 @@ impl Default for SolverParam
     }
 }
 
+#[derive(Debug)]
+pub enum SolverError
+{
+    Unbounded,
+    Infeasible,
+    OverIter,
+    OverIterInf,
+}
+
 pub struct Solver;
 
 impl Solver
@@ -260,7 +270,7 @@ impl Solver
         par: SolverParam,
         op_c: OC, op_a: OA, op_b: OB, mut cone: C,
         work: &mut[f64]
-    )
+    ) -> Result<(&[f64], &[f64]), SolverError>
     where OC: Operator, OA: Operator, OB: Operator, C: Cone
     {
         let (m, n) = op_a.size();
@@ -298,17 +308,17 @@ impl Solver
 
         // TODO: error
         let (x, spl_work) = work.split_at_mut(n + (m + 1) * 2);
-        let (xx, spl_work) = spl_work.split_at_mut(n + (m + 1) * 2);
         let (y, spl_work) = spl_work.split_at_mut(n + m + 1);
+        let (xx, spl_work) = spl_work.split_at_mut(n + (m + 1) * 2);
         let (p, spl_work) = spl_work.split_at_mut(m);
         let (d, _) = spl_work.split_at_mut(n);
         for e in x.iter_mut() {
             *e = 0.;
         }
-        for e in xx.iter_mut() {
+        for e in y.iter_mut() {
             *e = 0.;
         }
-        for e in y.iter_mut() {
+        for e in xx.iter_mut() {
             *e = 0.;
         }
         x[n + m] = 1.; // u_tau
@@ -341,6 +351,13 @@ impl Solver
                 op_l.op(-sigma, xx, 1., y);
                 copy(x, xx);
             }
+
+            i += 1;
+            let over_iter = if let Some(max_iter) = par.max_iter {
+                i >= max_iter
+            } else {
+                false
+            };
 
             { // Termination criteria
                 let (u_x, u) = x.split_at(n);
@@ -377,13 +394,26 @@ impl Solver
                     // TODO: log
                     //println!("{} {} {}", term_pri, term_dual, term_gap);
 
-                    if term_pri && term_dual && term_gap {
-                        // TODO: log
-                        println!("converged");
-                        scale(u_tau.recip(), x);
-                        println!("{:?}", x);
-                        // TODO: result
-                        return;
+                    if over_iter || (term_pri && term_dual && term_gap) {
+                        let (u_x_ast, u) = x.split_at_mut(n);
+                        let (u_y_ast, _) = u.split_at_mut(m);
+                        scale(u_tau.recip(), u_x_ast);
+                        scale(u_tau.recip(), u_y_ast);
+
+                        if term_pri && term_dual && term_gap {
+                            // TODO: log
+                            //println!("converged");
+                            //println!("{:?}", x_ast);
+                            //println!("{:?}", y_ast);
+
+                            return Ok((u_x_ast, u_y_ast));
+                        }
+                        else {
+                            // TODO: log
+                            //println!("overiter");
+
+                            return Err(SolverError::OverIter);
+                        }
                     }
                 }
                 else {
@@ -410,32 +440,40 @@ impl Solver
         
                     // TODO: log
                     //println!("{} {}", term_unbdd, term_infeas);
+
+                    if over_iter || term_unbdd || term_infeas {
+                        let (u_x_cert, u) = x.split_at_mut(n);
+                        let (u_y_cert, _) = u.split_at_mut(m);
+                        if term_unbdd {
+                            scale(m_cx.recip(), u_x_cert);
+                        }
+                        if term_infeas {
+                            scale(m_by.recip(), u_y_cert);
+                        }
         
-                    if term_unbdd {
-                        // TODO: log
-                        println!("unbounded");
-                        // TODO: result
-                        return;
-                    }
-        
-                    if term_infeas {
-                        // TODO: log
-                        println!("infeasible");
-                        // TODO: result
-                        return;
+                        if term_unbdd {
+                            // TODO: log
+                            //println!("unbounded");
+
+                            return Err(SolverError::Unbounded);
+                        }
+                        else if term_infeas {
+                            // TODO: log
+                            //println!("infeasible");
+
+                            return Err(SolverError::Infeasible);
+                        }
+                        else {
+                            // TODO: log
+                            //println!("overiterinf");
+
+                            return Err(SolverError::OverIterInf);
+                        }
                     }
                 }
             }
 
-            i += 1;
-            if let Some(max_iter) = par.max_iter {
-                if i >= max_iter {
-                    // TODO: log
-                    println!("timeover");
-                    // TODO: result
-                    return;
-                }
-            }
+            assert!(!over_iter);
         } // end of loop
     }
 }

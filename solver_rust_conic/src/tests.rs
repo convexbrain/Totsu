@@ -24,5 +24,6 @@ fn test_smoke() {
     let cone = ConePSD::new(&mut cone_w, par.eps_zero);
 
     let mut solver_w = vec![0.; Solver::query_worklen(op_a.size())];
-    Solver::solve(par, op_c, op_a, op_b, cone, &mut solver_w);
+    let rslt = Solver::solve(par, op_c, op_a, op_b, cone, &mut solver_w);
+    println!("{:?}", rslt);
 }
