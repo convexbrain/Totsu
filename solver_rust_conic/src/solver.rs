@@ -1,7 +1,8 @@
 // TODO: num-float
 // TODO: no-std
-// TODO: no blas/lapack
 // TODO: doc
+
+use crate::linalg::{norm, scale, inner_prod, copy, add};
 
 pub trait Operator
 {
@@ -12,35 +13,13 @@ pub trait Operator
     fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64]);
 }
 
-fn norm(x: &[f64]) -> f64
+pub trait Projection
 {
-    unsafe { cblas::dnrm2(x.len() as i32, x, 1) }
-}
-
-fn inner_prod(x: &[f64], y: &[f64]) -> f64
-{
-    assert_eq!(x.len(), y.len());
-
-    unsafe { cblas::ddot(x.len() as i32, x, 1, y, 1) }
-}
-
-fn copy(x: &[f64], y: &mut[f64])
-{
-    assert_eq!(x.len(), y.len());
-
-    unsafe { cblas::dcopy(x.len() as i32, x, 1, y, 1) }
-}
-
-fn scale(alpha: f64, x: &mut[f64])
-{
-    unsafe { cblas::dscal(x.len() as i32, alpha, x, 1) }
-}
-
-fn add(alpha: f64, x: &[f64], y: &mut[f64])
-{
-    assert_eq!(x.len(), y.len());
-
-    unsafe { cblas::daxpy(x.len() as i32, alpha, x, 1, y, 1) }
+    fn cone(&mut self, x: &mut[f64]);
+    fn cone_conj(&mut self, x: &mut[f64])
+    {
+        self.cone(x); // Self-dual cone
+    }
 }
 
 // spectral norm
@@ -238,140 +217,6 @@ where OC: Operator, OA: Operator, OB: Operator
     }
 }
 
-fn proj_pos(x: &mut[f64])
-{
-    for e in x {
-        *e = e.max(0.);
-    }
-}
-
-fn proj_o(x: &mut[f64])
-{
-    for e in x {
-        *e = 0.;
-    }
-}
-
-fn proj_r(_x: &mut[f64])
-{
-    //
-}
-
-fn mat_to_vec(m: &[f64], v: &mut[f64])
-{
-    let l = v.len();
-    let n = (m.len() as f64).sqrt() as usize;
-    // TODO: error when pub-ed
-    assert_eq!(m.len(), n * n);
-    assert_eq!(n * (n + 1) / 2, l);
-
-    let mut ref_m = m;
-    let mut ref_v = v;
-
-    for c in 0.. n {
-        // upper triangular elements of symmetric matrix vectorized in row-wise
-        let (r, spl_m) = ref_m.split_at(n);
-        ref_m = spl_m;
-        let (_, rc) = r.split_at(c);
-
-        let (vc, spl_v) = ref_v.split_at_mut(n - c);
-        ref_v = spl_v;
-        copy(rc, vc);
-
-        let (_, vct) = vc.split_at_mut(1);
-        scale(2_f64.sqrt(), vct);
-    }
-
-    assert!(ref_m.is_empty());
-    assert!(ref_v.is_empty());
-}
-
-fn vec_to_mat(v: &[f64], m: &mut[f64])
-{
-    let l = v.len();
-    let n = (m.len() as f64).sqrt() as usize;
-    // TODO: error when pub-ed
-    assert_eq!(m.len(), n * n);
-    assert_eq!(n * (n + 1) / 2, l);
-
-    let mut ref_m = m;
-    let mut ref_v = v;
-
-    for c in 0.. n {
-        // upper triangular elements of symmetric matrix vectorized in row-wise
-        let (r, spl_m) = ref_m.split_at_mut(n);
-        ref_m = spl_m;
-        let (_, rc) = r.split_at_mut(c);
-
-        let (vc, spl_v) = ref_v.split_at(n - c);
-        ref_v = spl_v;
-        copy(vc, rc);
-
-        let (_, rct) = rc.split_at_mut(1);
-        scale(0.5_f64.sqrt(), rct);
-    }
-
-    assert!(ref_m.is_empty());
-    assert!(ref_v.is_empty());
-}
-
-fn proj_psd(x: &mut[f64])
-{
-    let eps_zero = 1e-12;
-    let l = x.len();
-    let n = (((8 * l + 1) as f64).sqrt() as usize - 1) / 2;
-
-    // TODO: memory
-    let mut a = vec![0.; n * n];
-
-    vec_to_mat(x, &mut a);
-
-    let mut m = 0;
-    // TODO: memory
-    let mut w = vec![0.; n];
-    let mut z = vec![0.; n * n];
-
-    let n = n as i32;
-    unsafe {
-        lapacke::dsyevr(
-            lapacke::Layout::RowMajor, b'V', b'V',
-            b'U', n, &mut a, n,
-            0., f64::INFINITY, 0, 0, eps_zero,
-            &mut m, &mut w,
-            &mut z, n, &mut []);
-    }
-
-    for e in &mut a {
-        *e = 0.;
-    }
-    for i in 0.. m as usize {
-        let e = w[i];
-        let (_, ref_z) = z.split_at(i);
-        unsafe {
-            cblas::dsyr(
-                cblas::Layout::RowMajor, cblas::Part::Upper,
-                n, e,
-                ref_z, n,
-                &mut a, n);
-        }
-
-    }
-
-    mat_to_vec(&a, x);
-}
-
-fn proj_cone(x: &mut[f64])
-{
-    //proj_pos(x);
-    proj_psd(x);
-}
-
-fn proj_cone_conj(x: &mut[f64])
-{
-    //proj_pos(x);
-    proj_psd(x);
-}
-
 pub struct SolverParam
 {
     max_iter: Option<usize>,
@@ -402,8 +247,11 @@ impl Solver
         Solver
     }
 
-    pub fn solve<OC, OA, OB>(&self, par: SolverParam, op_c: OC, op_a: OA, op_b: OB)
-    where OC: Operator, OA: Operator, OB: Operator
+    pub fn solve<OC, OA, OB, PJ>(&self,
+        par: SolverParam,
+        op_c: OC, op_a: OA, op_b: OB, mut proj: PJ
+    )
+    where OC: Operator, OA: Operator, OB: Operator, PJ: Projection
     {
         let (m, n) = op_a.size();
 
@@ -433,23 +281,22 @@ impl Solver
         let mut i = 0;
         loop {
             // TODO: log
-            println!("----- {}", i);
+            //println!("----- {}", i);
 
-            { // Iteration
+            { // Update iteration
                 op_l.trans_op(-tau, &y, 1.0, &mut x);
 
-                {
+                { // Projection
                     let (_, u) = x.split_at_mut(n);
                     let (u_y, u) = u.split_at_mut(m);
                     let (u_tau, v) = u.split_at_mut(1);
                     let (v_s, v) = v.split_at_mut(m);
                     let (v_kappa, _) = v.split_at_mut(1);
     
-                    // TODO: proj
-                    proj_cone_conj(u_y);
-                    proj_pos(u_tau);
-                    proj_cone(v_s);
-                    proj_pos(v_kappa);
+                    proj.cone_conj(u_y);
+                    u_tau[0] = u_tau[0].max(0.);
+                    proj.cone(v_s);
+                    v_kappa[0] = v_kappa[0].max(0.);
                 }
     
                 add(-2., &x, &mut xx);
@@ -490,7 +337,7 @@ impl Solver
                     let term_gap = g.abs() <= par.eps_acc * (1. + g_x.abs() + g_y.abs());
     
                     // TODO: log
-                    println!("{} {} {}", term_pri, term_dual, term_gap);
+                    //println!("{} {} {}", term_pri, term_dual, term_gap);
 
                     if term_pri && term_dual && term_gap {
                         // TODO: log
@@ -524,7 +371,7 @@ impl Solver
                     );
         
                     // TODO: log
-                    println!("{} {}", term_unbdd, term_infeas);
+                    //println!("{} {}", term_unbdd, term_infeas);
         
                     if term_unbdd {
                         // TODO: log

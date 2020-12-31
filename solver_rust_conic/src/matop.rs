@@ -1,3 +1,5 @@
+// TODO: no blas/lapack
+
 use crate::solver::Operator;
 
 pub struct MatOp<'a>
