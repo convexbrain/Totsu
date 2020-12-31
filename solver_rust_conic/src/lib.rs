@@ -11,6 +11,7 @@ pub mod prelude {
 }
 
 pub mod predef {
+    // TODO: LP/QP/QCQP/SOCP/SDP
     pub use crate::matop::{MatOp};
     pub use crate::proj::{ProjPSD};
 }

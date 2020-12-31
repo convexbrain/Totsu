@@ -1,5 +1,4 @@
 // TODO: num-float
-// TODO: no-std
 // TODO: doc
 
 use crate::linalg::{norm, scale, inner_prod, copy, add};
