@@ -15,7 +15,7 @@ pub trait Operator
 pub trait Cone
 {
     fn proj(&mut self, x: &mut[f64]);
-    fn conj_proj(&mut self, x: &mut[f64])
+    fn dual_proj(&mut self, x: &mut[f64])
     {
         self.proj(x); // Self-dual cone
     }
@@ -297,7 +297,7 @@ impl Solver
                     let (v_s, v) = v.split_at_mut(m);
                     let (v_kappa, _) = v.split_at_mut(1);
     
-                    cone.conj_proj(u_y);
+                    cone.dual_proj(u_y);
                     u_tau[0] = u_tau[0].max(0.);
                     cone.proj(v_s);
                     v_kappa[0] = v_kappa[0].max(0.);
