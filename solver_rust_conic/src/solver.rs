@@ -276,6 +276,24 @@ macro_rules! writeln_or {
     };
 }
 
+fn split_tuple(
+    s: &[f64], pos: (usize, usize, usize, usize, usize)
+) -> Result<(&[f64], &[f64], &[f64], &[f64], &[f64]), SolverError>
+{
+    if s.len() < pos.0 + pos.1 + pos.2 + pos.3 + pos.4 {
+        Err(SolverError::WorkShortage)
+    }
+    else {
+        let (s0, spl) = s.split_at(pos.0);
+        let (s1, spl) = spl.split_at(pos.1);
+        let (s2, spl) = spl.split_at(pos.2);
+        let (s3, spl) = spl.split_at(pos.3);
+        let (s4, _) = spl.split_at(pos.4);
+
+        Ok((s0, s1, s2, s3, s4))
+    }
+}
+
 fn split_tuple_mut(
     s: &mut[f64], pos: (usize, usize, usize, usize, usize)
 ) -> Result<(&mut[f64], &mut[f64], &mut[f64], &mut[f64], &mut[f64]), SolverError>
@@ -294,9 +312,8 @@ fn split_tuple_mut(
     }
 }
 
-fn calc_norms<OC, OA, OB>(
-    op_l: &SelfDualEmbed<OC, OA, OB>, par: &SolverParam, work: &mut[f64]
-) -> Result<(f64, f64, f64), SolverError>
+fn calc_norms<OC, OA, OB>(par: &SolverParam, op_l: &SelfDualEmbed<OC, OA, OB>, work: &mut[f64])
+-> Result<(f64, f64, f64), SolverError>
 where OC: Operator, OA: Operator, OB: Operator
 {
     let work_one = &mut [0.];
@@ -325,31 +342,17 @@ where OC: Operator, OA: Operator, OB: Operator
     Ok((op_l_norm, b_norm, c_norm))
 }
 
-pub fn solve<'a, L, OC, OA, OB, C>(
-    par: SolverParam, logger: &mut L,
-    op_c: OC, op_a: OA, op_b: OB, mut cone: C,
-    work: &'a mut[f64]
-) -> Result<(&'a[f64], &'a[f64]), SolverError>
-where L: core::fmt::Write, OC: Operator, OA: Operator, OB: Operator, C: Cone
+fn init_vecs(work: &mut[f64], m: usize, n: usize)
+-> Result<(&mut[f64], &mut[f64], &mut[f64], &mut[f64], &mut[f64]), SolverError>
 {
-    let (m, n) = op_a.size();
-    let work_one = &mut [0.];
+    let (x, y, xx, p, d) = split_tuple_mut(work, (
+        n + (m + 1) * 2,
+        n + m + 1,
+        n + (m + 1) * 2,
+        m,
+        n
+    ))?;
 
-    let op_l = SelfDualEmbed::new(op_c, op_a, op_b);
-
-    let (op_l_norm, b_norm, c_norm) = calc_norms(&op_l, &par, work)?;
-
-    let tau = op_l_norm.recip();
-    let sigma = op_l_norm.recip();
-
-    //
-
-    // TODO: error
-    let (x, spl_work) = work.split_at_mut(n + (m + 1) * 2);
-    let (y, spl_work) = spl_work.split_at_mut(n + m + 1);
-    let (xx, spl_work) = spl_work.split_at_mut(n + (m + 1) * 2);
-    let (p, spl_work) = spl_work.split_at_mut(m);
-    let (d, _) = spl_work.split_at_mut(n);
     for e in x.iter_mut() {
         *e = 0.;
     }
@@ -363,6 +366,137 @@ where L: core::fmt::Write, OC: Operator, OA: Operator, OB: Operator, C: Cone
     x[n + m + 1 + m] = 1.; // v_kappa
     xx[n + m] = 1.; // u_tau
     xx[n + m + 1 + m] = 1.; // v_kappa
+
+    Ok((x, y, xx, p, d))
+}
+
+fn update_vecs<OC, OA, OB, C>(
+    par: &SolverParam,
+    op_l: &SelfDualEmbed<OC, OA, OB>, cone: &mut C,
+    x: &mut[f64], y: &mut[f64], xx: &mut[f64],
+    m: usize, n: usize, tau: f64, sigma: f64)
+-> Result<f64, SolverError>
+where OC: Operator, OA: Operator, OB: Operator, C: Cone
+{
+    let ret_u_tau;
+
+    op_l.trans_op(-tau, y, 1.0, x);
+
+    { // Projection
+        let (_, u_y, u_tau, v_s, v_kappa) = split_tuple_mut(x, (n, m, 1, m, 1)).unwrap();
+
+        cone.dual_proj(&par, u_y);
+        u_tau[0] = u_tau[0].max(0.);
+        cone.proj(&par, v_s);
+        v_kappa[0] = v_kappa[0].max(0.);
+
+        ret_u_tau = u_tau[0];
+    }
+
+    add(-2., x, xx);
+    op_l.op(-sigma, xx, 1., y);
+    copy(x, xx);
+
+    Ok(ret_u_tau)
+}
+
+fn criteria_conv<OC, OA, OB>(
+    op_l: &SelfDualEmbed<OC, OA, OB>,
+    x: &[f64], p: &mut[f64], d: &mut[f64],
+    m: usize, n: usize, c_norm: f64, b_norm: f64)
+-> (f64, f64, f64)
+where OC: Operator, OA: Operator, OB: Operator
+{
+    let (u_x, u_y, u_tau, v_s, _) = split_tuple(x, (n, m, 1, m, 0)).unwrap();
+
+    let u_tau = u_tau[0];
+    assert!(u_tau > 0.);
+
+    let work_one = &mut [1.];
+
+    // Calc convergence criteria
+    
+    copy(v_s, p);
+    op_l.b().op(-1., work_one, u_tau.recip(), p);
+    op_l.a().op(u_tau.recip(), u_x, 1., p);
+
+    op_l.c().op(1., work_one, 0., d);
+    op_l.a().trans_op(u_tau.recip(), u_y, 1., d);
+
+    op_l.c().trans_op(u_tau.recip(), u_x, 0., work_one);
+    let g_x = work_one[0];
+
+    op_l.b().trans_op(u_tau.recip(), u_y, 0., work_one);
+    let g_y = work_one[0];
+
+    let g = g_x + g_y;
+
+    let cri_pri = norm(p) / (1. + b_norm);
+    let cri_dual = norm(d) / (1. + c_norm);
+    let cri_gap = g.abs() / (1. + g_x.abs() + g_y.abs());
+
+    (cri_pri, cri_dual, cri_gap)
+}
+
+fn criteria_inf<OC, OA, OB>(
+    op_l: &SelfDualEmbed<OC, OA, OB>,
+    x: &[f64], p: &mut[f64], d: &mut[f64],
+    m: usize, n: usize, c_norm: f64, b_norm: f64, eps_zero:f64)
+-> (f64, f64)
+where OC: Operator, OA: Operator, OB: Operator
+{
+    let (u_x, u_y, _, v_s, _) = split_tuple(x, (n, m, 1, m, 0)).unwrap();
+
+    let work_one = &mut [0.];
+
+    // Calc undoundness and infeasibility criteria
+    
+    copy(v_s, p);
+    op_l.a().op(1., u_x, 1., p);
+
+    op_l.a().trans_op(1., u_y, 0., d);
+
+    op_l.c().trans_op(-1., u_x, 0., work_one);
+    let m_cx = work_one[0];
+
+    op_l.b().trans_op(-1., u_y, 0., work_one);
+    let m_by = work_one[0];
+
+    let cri_unbdd = if m_cx > eps_zero {
+        norm(p) * c_norm / m_cx
+    }
+    else {
+        f64::INFINITY
+    };
+    let cri_infeas = if m_by > eps_zero {
+        norm(d) * b_norm / m_by
+    }
+    else {
+        f64::INFINITY
+    };
+
+    (cri_unbdd, cri_infeas)
+}
+
+pub fn solve<'a, L, OC, OA, OB, C>(
+    par: SolverParam, logger: &mut L,
+    op_c: OC, op_a: OA, op_b: OB, mut cone: C,
+    work: &'a mut[f64]
+) -> Result<(&'a[f64], &'a[f64]), SolverError>
+where L: core::fmt::Write, OC: Operator, OA: Operator, OB: Operator, C: Cone
+{
+    let (m, n) = op_a.size();
+
+    let op_l = SelfDualEmbed::new(op_c, op_a, op_b);
+
+    // Calculate norms
+    let (op_l_norm, b_norm, c_norm) = calc_norms(&par, &op_l, work)?;
+
+    let tau = op_l_norm.recip();
+    let sigma = op_l_norm.recip();
+
+    // Initialize vectors
+    let (x, y, xx, p, d) = init_vecs(work, m, n)?;
 
     let mut i = 0;
     loop {
@@ -379,62 +513,18 @@ where L: core::fmt::Write, OC: Operator, OA: Operator, OB: Operator, C: Cone
             false
         };
 
-        { // Update iteration
-            op_l.trans_op(-tau, y, 1.0, x);
-
-            { // Projection
-                let (_, u) = x.split_at_mut(n);
-                let (u_y, u) = u.split_at_mut(m);
-                let (u_tau, v) = u.split_at_mut(1);
-                let (v_s, v) = v.split_at_mut(m);
-                let (v_kappa, _) = v.split_at_mut(1);
-
-                cone.dual_proj(&par, u_y);
-                u_tau[0] = u_tau[0].max(0.);
-                cone.proj(&par, v_s);
-                v_kappa[0] = v_kappa[0].max(0.);
-            }
-
-            add(-2., x, xx);
-            op_l.op(-sigma, xx, 1., y);
-            copy(x, xx);
-        }
+        // Update vectors
+        let u_tau = update_vecs(&par, &op_l, &mut cone, x, y, xx, m, n, tau, sigma)?;
 
         if log_trig && par.log_verbose {
             writeln_or!(logger, "{}: state {:?} {:?}", i, x, y)?;
         }
 
         { // Termination criteria
-            let (u_x, u) = x.split_at(n);
-            let (u_y, u) = u.split_at(m);
-            let (u_tau, v) = u.split_at(1);
-            let (v_s, _) = v.split_at(m);
-
-            let u_tau = u_tau[0];
-
             if u_tau > par.eps_zero {
-                // Check convergence
+                // Criteria of convergence
+                let (cri_pri, cri_dual, cri_gap) = criteria_conv(&op_l, x, p, d, m, n, c_norm, b_norm);
 
-                work_one[0] = 1.;
-
-                copy(v_s, p);
-                op_l.b().op(-1., work_one, u_tau.recip(), p);
-                op_l.a().op(u_tau.recip(), u_x, 1., p);
-
-                op_l.c().op(1., work_one, 0., d);
-                op_l.a().trans_op(u_tau.recip(), u_y, 1., d);
-
-                op_l.c().trans_op(u_tau.recip(), u_x, 0., work_one);
-                let g_x = work_one[0];
-
-                op_l.b().trans_op(u_tau.recip(), u_y, 0., work_one);
-                let g_y = work_one[0];
-
-                let g = g_x + g_y;
-
-                let cri_pri = norm(p) / (1. + b_norm);
-                let cri_dual = norm(d) / (1. + c_norm);
-                let cri_gap = g.abs() / (1. + g_x.abs() + g_y.abs());
                 let term_conv = (cri_pri <= par.eps_acc) && (cri_dual <= par.eps_acc) && (cri_gap <= par.eps_acc);
 
                 if log_trig || over_iter || term_conv {
@@ -442,8 +532,7 @@ where L: core::fmt::Write, OC: Operator, OA: Operator, OB: Operator, C: Cone
                 }
 
                 if over_iter || term_conv {
-                    let (u_x_ast, u) = x.split_at_mut(n);
-                    let (u_y_ast, _) = u.split_at_mut(m);
+                    let (u_x_ast, u_y_ast, _, _, _) = split_tuple_mut(x, (n, m, 0, 0, 0)).unwrap();
                     scale(u_tau.recip(), u_x_ast);
                     scale(u_tau.recip(), u_y_ast);
 
@@ -465,31 +554,9 @@ where L: core::fmt::Write, OC: Operator, OA: Operator, OB: Operator, C: Cone
                 }
             }
             else {
-                // Check undoundness and infeasibility
-                
-                copy(v_s, p);
-                op_l.a().op(1., u_x, 1., p);
+                // Criteria of infeasibility
+                let (cri_unbdd, cri_infeas) = criteria_inf(&op_l, x, p, d, m, n, c_norm, b_norm, par.eps_zero);
 
-                op_l.a().trans_op(1., u_y, 0., d);
-
-                op_l.c().trans_op(-1., u_x, 0., work_one);
-                let m_cx = work_one[0];
-
-                op_l.b().trans_op(-1., u_y, 0., work_one);
-                let m_by = work_one[0];
-    
-                let cri_unbdd = if m_cx > par.eps_zero {
-                    norm(p) * c_norm / m_cx
-                }
-                else {
-                    f64::INFINITY
-                };
-                let cri_infeas = if m_by > par.eps_zero {
-                    norm(d) * b_norm / m_by
-                }
-                else {
-                    f64::INFINITY
-                };
                 let term_unbdd = cri_unbdd <= par.eps_inf;
                 let term_infeas = cri_infeas <= par.eps_inf;
 
@@ -498,14 +565,7 @@ where L: core::fmt::Write, OC: Operator, OA: Operator, OB: Operator, C: Cone
                 }
 
                 if over_iter || term_unbdd || term_infeas {
-                    let (u_x_cert, u) = x.split_at_mut(n);
-                    let (u_y_cert, _) = u.split_at_mut(m);
-                    if term_unbdd {
-                        scale(m_cx.recip(), u_x_cert);
-                    }
-                    if term_infeas {
-                        scale(m_by.recip(), u_y_cert);
-                    }
+                    let (u_x_cert, u_y_cert, _, _, _) = split_tuple(x, (n, m, 0, 0, 0)).unwrap();
     
                     if par.log_verbose {
                         writeln_or!(logger, "{}: x {:?}", i, u_x_cert)?;
