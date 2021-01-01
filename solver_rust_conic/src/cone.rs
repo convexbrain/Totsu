@@ -1,6 +1,6 @@
 // TODO: no blas/lapack
 
-use crate::solver::{Cone, SolverParam};
+use crate::solver::{Cone, SolverParam, SolverError};
 use crate::linalg::{scale, copy};
 
 pub struct ConePSD<'a>
@@ -36,21 +36,21 @@ impl<'a> ConePSD<'a>
 
 impl<'a> Cone for ConePSD<'a>
 {
-    fn proj(&mut self, par: &SolverParam, x: &mut[f64])
+    fn proj(&mut self, par: &SolverParam, x: &mut[f64]) -> Result<(), SolverError>
     {
         let nvars = x.len();
         let nrows = Self::nvars_to_nrows(nvars);
+
+        if self.work.len() < (nrows * nrows) * 2 + nrows {
+            return Err(SolverError::ConeFailure);
+        }
     
-        // TODO: error
         let (a, spl_work) = self.work.split_at_mut(nrows * nrows);
+        let (mut w, spl_work) = spl_work.split_at_mut(nrows);
+        let (mut z, _) = spl_work.split_at_mut(nrows * nrows);
+        let mut m = 0;
     
         vec_to_mat(x, a);
-    
-        let mut m = 0;
-        // TODO: error
-        let (mut w, spl_work) = spl_work.split_at_mut(nrows);
-        // TODO: error
-        let (mut z, _) = spl_work.split_at_mut(nrows * nrows);
     
         let n = nrows as i32;
         unsafe {
@@ -79,6 +79,8 @@ impl<'a> Cone for ConePSD<'a>
         }
     
         mat_to_vec(a, x);
+
+        Ok(())
     }
 }
 

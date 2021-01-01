@@ -14,10 +14,10 @@ pub trait Operator
 
 pub trait Cone
 {
-    fn proj(&mut self, par: &SolverParam, x: &mut[f64]);
-    fn dual_proj(&mut self, par: &SolverParam, x: &mut[f64])
+    fn proj(&mut self, par: &SolverParam, x: &mut[f64]) -> Result<(), SolverError>;
+    fn dual_proj(&mut self, par: &SolverParam, x: &mut[f64]) -> Result<(), SolverError>
     {
-        self.proj(par, x); // Self-dual cone
+        self.proj(par, x) // Self-dual cone
     }
 }
 
@@ -91,16 +91,18 @@ struct SelfDualEmbed<OC: Operator, OA: Operator, OB: Operator>
 impl<OC, OA, OB> SelfDualEmbed<OC, OA, OB>
 where OC: Operator, OA: Operator, OB: Operator
 {
-    fn new(c: OC, a: OA, b: OB) -> Self
+    fn new(c: OC, a: OA, b: OB) -> Result<Self, SolverError>
     {
         let (m, n) = a.size();
 
-        // TODO: error
-        assert_eq!(c.size(), (n, 1));
-        assert_eq!(b.size(), (m, 1));
-
-        SelfDualEmbed {
-            n, m, c, a, b
+        if c.size() != (n, 1) {
+            Err(SolverError::InvalidOp)
+        }
+        else if b.size() != (m, 1) {
+            Err(SolverError::InvalidOp)
+        }
+        else {
+            Ok(SelfDualEmbed { n, m, c, a, b })
         }
     }
 
@@ -258,6 +260,7 @@ pub enum SolverError
     InvalidOp,
     WorkShortage,
     LogFailure,
+    ConeFailure,
 }
 
 pub fn query_worklen(op_a_size: (usize, usize)) -> usize
@@ -385,9 +388,9 @@ where OC: Operator, OA: Operator, OB: Operator, C: Cone
     { // Projection
         let (_, u_y, u_tau, v_s, v_kappa) = split_tuple_mut(x, (n, m, 1, m, 1)).unwrap();
 
-        cone.dual_proj(&par, u_y);
+        cone.dual_proj(&par, u_y)?;
         u_tau[0] = u_tau[0].max(0.);
-        cone.proj(&par, v_s);
+        cone.proj(&par, v_s)?;
         v_kappa[0] = v_kappa[0].max(0.);
 
         ret_u_tau = u_tau[0];
@@ -487,7 +490,7 @@ where L: core::fmt::Write, OC: Operator, OA: Operator, OB: Operator, C: Cone
 {
     let (m, n) = op_a.size();
 
-    let op_l = SelfDualEmbed::new(op_c, op_a, op_b);
+    let op_l = SelfDualEmbed::new(op_c, op_a, op_b)?;
 
     // Calculate norms
     let (op_l_norm, b_norm, c_norm) = calc_norms(&par, &op_l, work)?;
@@ -520,73 +523,71 @@ where L: core::fmt::Write, OC: Operator, OA: Operator, OB: Operator, C: Cone
             writeln_or!(logger, "{}: state {:?} {:?}", i, x, y)?;
         }
 
-        { // Termination criteria
-            if u_tau > par.eps_zero {
-                // Criteria of convergence
-                let (cri_pri, cri_dual, cri_gap) = criteria_conv(&op_l, x, p, d, m, n, c_norm, b_norm);
+        if u_tau > par.eps_zero {
+            // Termination criteria of convergence
+            let (cri_pri, cri_dual, cri_gap) = criteria_conv(&op_l, x, p, d, m, n, c_norm, b_norm);
 
-                let term_conv = (cri_pri <= par.eps_acc) && (cri_dual <= par.eps_acc) && (cri_gap <= par.eps_acc);
+            let term_conv = (cri_pri <= par.eps_acc) && (cri_dual <= par.eps_acc) && (cri_gap <= par.eps_acc);
 
-                if log_trig || over_iter || term_conv {
-                    writeln_or!(logger, "{}: pri_dual_gap {:.2e} {:.2e} {:.2e}", i, cri_pri, cri_dual, cri_gap)?;
+            if log_trig || over_iter || term_conv {
+                writeln_or!(logger, "{}: pri_dual_gap {:.2e} {:.2e} {:.2e}", i, cri_pri, cri_dual, cri_gap)?;
+            }
+
+            if over_iter || term_conv {
+                let (u_x_ast, u_y_ast, _, _, _) = split_tuple_mut(x, (n, m, 0, 0, 0)).unwrap();
+                scale(u_tau.recip(), u_x_ast);
+                scale(u_tau.recip(), u_y_ast);
+
+                if par.log_verbose {
+                    writeln_or!(logger, "{}: x {:?}", i, u_x_ast)?;
+                    writeln_or!(logger, "{}: y {:?}", i, u_y_ast)?;
                 }
 
-                if over_iter || term_conv {
-                    let (u_x_ast, u_y_ast, _, _, _) = split_tuple_mut(x, (n, m, 0, 0, 0)).unwrap();
-                    scale(u_tau.recip(), u_x_ast);
-                    scale(u_tau.recip(), u_y_ast);
+                if term_conv {
+                    writeln_or!(logger, "{}: Converged", i)?;
 
-                    if par.log_verbose {
-                        writeln_or!(logger, "{}: x {:?}", i, u_x_ast)?;
-                        writeln_or!(logger, "{}: y {:?}", i, u_y_ast)?;
-                    }
+                    return Ok((u_x_ast, u_y_ast));
+                }
+                else {
+                    writeln_or!(logger, "{}: OverIter", i)?;
 
-                    if term_conv {
-                        writeln_or!(logger, "{}: Converged", i)?;
-
-                        return Ok((u_x_ast, u_y_ast));
-                    }
-                    else {
-                        writeln_or!(logger, "{}: OverIter", i)?;
-
-                        return Err(SolverError::OverIter);
-                    }
+                    return Err(SolverError::OverIter);
                 }
             }
-            else {
-                // Criteria of infeasibility
-                let (cri_unbdd, cri_infeas) = criteria_inf(&op_l, x, p, d, m, n, c_norm, b_norm, par.eps_zero);
+        }
+        else {
+            // Termination criteria of infeasibility
+            let (cri_unbdd, cri_infeas) = criteria_inf(&op_l, x, p, d, m, n, c_norm, b_norm, par.eps_zero);
 
-                let term_unbdd = cri_unbdd <= par.eps_inf;
-                let term_infeas = cri_infeas <= par.eps_inf;
+            let term_unbdd = cri_unbdd <= par.eps_inf;
+            let term_infeas = cri_infeas <= par.eps_inf;
 
-                if log_trig || over_iter || term_unbdd || term_infeas {
-                    writeln_or!(logger, "{}: unbdd_infeas {:.2e} {:.2e}", i, cri_unbdd, cri_infeas)?;
+            if log_trig || over_iter || term_unbdd || term_infeas {
+                writeln_or!(logger, "{}: unbdd_infeas {:.2e} {:.2e}", i, cri_unbdd, cri_infeas)?;
+            }
+
+            if over_iter || term_unbdd || term_infeas {
+                let (u_x_cert, u_y_cert, _, _, _) = split_tuple(x, (n, m, 0, 0, 0)).unwrap();
+
+                if par.log_verbose {
+                    writeln_or!(logger, "{}: x {:?}", i, u_x_cert)?;
+                    writeln_or!(logger, "{}: y {:?}", i, u_y_cert)?;
                 }
 
-                if over_iter || term_unbdd || term_infeas {
-                    let (u_x_cert, u_y_cert, _, _, _) = split_tuple(x, (n, m, 0, 0, 0)).unwrap();
-    
-                    if par.log_verbose {
-                        writeln_or!(logger, "{}: x {:?}", i, u_x_cert)?;
-                        writeln_or!(logger, "{}: y {:?}", i, u_y_cert)?;
-                    }
+                if term_unbdd {
+                    writeln_or!(logger, "{}: Unbounded", i)?;
 
-                    if term_unbdd {
-                        writeln_or!(logger, "{}: Unbounded", i)?;
+                    return Err(SolverError::Unbounded);
+                }
+                else if term_infeas {
+                    writeln_or!(logger, "{}: Infeasible", i)?;
 
-                        return Err(SolverError::Unbounded);
-                    }
-                    else if term_infeas {
-                        writeln_or!(logger, "{}: Infeasible", i)?;
+                    return Err(SolverError::Infeasible);
+                }
+                else {
+                    writeln_or!(logger, "{}: OverIterInf", i)?;
 
-                        return Err(SolverError::Infeasible);
-                    }
-                    else {
-                        writeln_or!(logger, "{}: OverIterInf", i)?;
-
-                        return Err(SolverError::OverIterInf);
-                    }
+                    return Err(SolverError::OverIterInf);
                 }
             }
         }
