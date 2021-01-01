@@ -28,7 +28,11 @@ impl<'a, W: std::io::Write> core::fmt::Write for IoLogger<'a, W>
 {
     fn write_str(&mut self, s: &str) -> Result<(), core::fmt::Error>
     {
-        self.io_writer.write(s.as_bytes()).unwrap();
-        Ok(())
+        if let Ok(_) = self.io_writer.write(s.as_bytes()) {
+            Ok(())
+        }
+        else {
+            Err(core::fmt::Error)
+        }
     }
 }
