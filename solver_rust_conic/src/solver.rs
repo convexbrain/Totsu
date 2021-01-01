@@ -14,10 +14,10 @@ pub trait Operator
 
 pub trait Cone
 {
-    fn proj(&mut self, x: &mut[f64]);
-    fn dual_proj(&mut self, x: &mut[f64])
+    fn proj(&mut self, par: &SolverParam, x: &mut[f64]);
+    fn dual_proj(&mut self, par: &SolverParam, x: &mut[f64])
     {
-        self.proj(x); // Self-dual cone
+        self.proj(par, x); // Self-dual cone
     }
 }
 
@@ -252,228 +252,223 @@ pub enum SolverError
     OverIterInf,
 }
 
-pub struct Solver;
-
-impl Solver
+pub fn query_worklen(op_a_size: (usize, usize)) -> usize
 {
-    pub fn query_worklen(op_a_size: (usize, usize)) -> usize
-    {
-        let (m, n) = op_a_size;
+    let (m, n) = op_a_size;
 
-        let len_norms = (n + m + 1) * 5;
-        let len_iteration = (n + (m + 1) * 2) * 2 + (n + m + 1) + n + m;
+    let len_norms = (n + m + 1) * 5;
+    let len_iteration = (n + (m + 1) * 2) * 2 + (n + m + 1) + n + m;
 
-        len_norms.max(len_iteration)
+    len_norms.max(len_iteration)
+}
+
+pub fn solve<OC, OA, OB, C>(
+    par: SolverParam,
+    op_c: OC, op_a: OA, op_b: OB, mut cone: C,
+    work: &mut[f64]
+) -> Result<(&[f64], &[f64]), SolverError>
+where OC: Operator, OA: Operator, OB: Operator, C: Cone
+{
+    let (m, n) = op_a.size();
+    let work_one = &mut [0.];
+
+    let op_l = SelfDualEmbed::new(op_c, op_a, op_b);
+
+    let op_l_norm = {
+        // TODO: error
+        let (v, spl_work) = work.split_at_mut(op_l.size().1);
+        let (t, spl_work) = spl_work.split_at_mut(op_l.size().0);
+        let (w, _) = spl_work.split_at_mut(op_l.size().1);
+
+        sp_norm(&op_l, par.eps_zero, v, t, w)
+    };
+    // TODO: error
+    assert!(op_l_norm >= f64::MIN_POSITIVE);
+
+    let tau = op_l_norm.recip();
+    let sigma = op_l_norm.recip();
+
+    let b_norm = {
+        let (t, _) = work.split_at_mut(op_l.b().size().0);
+
+        fr_norm(op_l.b(), work_one, t)
+    };
+
+    let c_norm = {
+        let (t, _) = work.split_at_mut(op_l.c().size().0);
+
+        fr_norm(op_l.c(), work_one, t)
+    };
+
+    //
+
+    // TODO: error
+    let (x, spl_work) = work.split_at_mut(n + (m + 1) * 2);
+    let (y, spl_work) = spl_work.split_at_mut(n + m + 1);
+    let (xx, spl_work) = spl_work.split_at_mut(n + (m + 1) * 2);
+    let (p, spl_work) = spl_work.split_at_mut(m);
+    let (d, _) = spl_work.split_at_mut(n);
+    for e in x.iter_mut() {
+        *e = 0.;
     }
+    for e in y.iter_mut() {
+        *e = 0.;
+    }
+    for e in xx.iter_mut() {
+        *e = 0.;
+    }
+    x[n + m] = 1.; // u_tau
+    x[n + m + 1 + m] = 1.; // v_kappa
+    xx[n + m] = 1.; // u_tau
+    xx[n + m + 1 + m] = 1.; // v_kappa
 
-    pub fn solve<OC, OA, OB, C>(
-        par: SolverParam,
-        op_c: OC, op_a: OA, op_b: OB, mut cone: C,
-        work: &mut[f64]
-    ) -> Result<(&[f64], &[f64]), SolverError>
-    where OC: Operator, OA: Operator, OB: Operator, C: Cone
-    {
-        let (m, n) = op_a.size();
-        let work_one = &mut [0.];
+    let mut i = 0;
+    loop {
+        // TODO: log
+        //println!("----- {}", i);
 
-        let op_l = SelfDualEmbed::new(op_c, op_a, op_b);
+        { // Update iteration
+            op_l.trans_op(-tau, y, 1.0, x);
 
-        let op_l_norm = {
-            // TODO: error
-            let (v, spl_work) = work.split_at_mut(op_l.size().1);
-            let (t, spl_work) = spl_work.split_at_mut(op_l.size().0);
-            let (w, _) = spl_work.split_at_mut(op_l.size().1);
+            { // Projection
+                let (_, u) = x.split_at_mut(n);
+                let (u_y, u) = u.split_at_mut(m);
+                let (u_tau, v) = u.split_at_mut(1);
+                let (v_s, v) = v.split_at_mut(m);
+                let (v_kappa, _) = v.split_at_mut(1);
 
-            sp_norm(&op_l, par.eps_zero, v, t, w)
-        };
-        // TODO: error
-        assert!(op_l_norm >= f64::MIN_POSITIVE);
-
-        let tau = op_l_norm.recip();
-        let sigma = op_l_norm.recip();
-
-        let b_norm = {
-            let (t, _) = work.split_at_mut(op_l.b().size().0);
-
-            fr_norm(op_l.b(), work_one, t)
-        };
-
-        let c_norm = {
-            let (t, _) = work.split_at_mut(op_l.c().size().0);
-
-            fr_norm(op_l.c(), work_one, t)
-        };
-
-        //
-
-        // TODO: error
-        let (x, spl_work) = work.split_at_mut(n + (m + 1) * 2);
-        let (y, spl_work) = spl_work.split_at_mut(n + m + 1);
-        let (xx, spl_work) = spl_work.split_at_mut(n + (m + 1) * 2);
-        let (p, spl_work) = spl_work.split_at_mut(m);
-        let (d, _) = spl_work.split_at_mut(n);
-        for e in x.iter_mut() {
-            *e = 0.;
-        }
-        for e in y.iter_mut() {
-            *e = 0.;
-        }
-        for e in xx.iter_mut() {
-            *e = 0.;
-        }
-        x[n + m] = 1.; // u_tau
-        x[n + m + 1 + m] = 1.; // v_kappa
-        xx[n + m] = 1.; // u_tau
-        xx[n + m + 1 + m] = 1.; // v_kappa
-
-        let mut i = 0;
-        loop {
-            // TODO: log
-            //println!("----- {}", i);
-
-            { // Update iteration
-                op_l.trans_op(-tau, y, 1.0, x);
-
-                { // Projection
-                    let (_, u) = x.split_at_mut(n);
-                    let (u_y, u) = u.split_at_mut(m);
-                    let (u_tau, v) = u.split_at_mut(1);
-                    let (v_s, v) = v.split_at_mut(m);
-                    let (v_kappa, _) = v.split_at_mut(1);
-    
-                    cone.dual_proj(u_y);
-                    u_tau[0] = u_tau[0].max(0.);
-                    cone.proj(v_s);
-                    v_kappa[0] = v_kappa[0].max(0.);
-                }
-    
-                add(-2., x, xx);
-                op_l.op(-sigma, xx, 1., y);
-                copy(x, xx);
+                cone.dual_proj(&par, u_y);
+                u_tau[0] = u_tau[0].max(0.);
+                cone.proj(&par, v_s);
+                v_kappa[0] = v_kappa[0].max(0.);
             }
 
-            i += 1;
-            let over_iter = if let Some(max_iter) = par.max_iter {
-                i >= max_iter
-            } else {
-                false
-            };
+            add(-2., x, xx);
+            op_l.op(-sigma, xx, 1., y);
+            copy(x, xx);
+        }
 
-            { // Termination criteria
-                let (u_x, u) = x.split_at(n);
-                let (u_y, u) = u.split_at(m);
-                let (u_tau, v) = u.split_at(1);
-                let (v_s, _) = v.split_at(m);
+        i += 1;
+        let over_iter = if let Some(max_iter) = par.max_iter {
+            i >= max_iter
+        } else {
+            false
+        };
 
-                let u_tau = u_tau[0];
+        { // Termination criteria
+            let (u_x, u) = x.split_at(n);
+            let (u_y, u) = u.split_at(m);
+            let (u_tau, v) = u.split_at(1);
+            let (v_s, _) = v.split_at(m);
 
-                if u_tau > par.eps_zero {
-                    // Check convergence
+            let u_tau = u_tau[0];
 
-                    work_one[0] = 1.;
+            if u_tau > par.eps_zero {
+                // Check convergence
 
-                    copy(v_s, p);
-                    op_l.b().op(-1., work_one, u_tau.recip(), p);
-                    op_l.a().op(u_tau.recip(), u_x, 1., p);
-    
-                    op_l.c().op(1., work_one, 0., d);
-                    op_l.a().trans_op(u_tau.recip(), u_y, 1., d);
-    
-                    op_l.c().trans_op(u_tau.recip(), u_x, 0., work_one);
-                    let g_x = work_one[0];
-    
-                    op_l.b().trans_op(u_tau.recip(), u_y, 0., work_one);
-                    let g_y = work_one[0];
-    
-                    let g = g_x + g_y;
+                work_one[0] = 1.;
 
-                    let term_pri = norm(p) <= par.eps_acc * (1. + b_norm);
-                    let term_dual = norm(d) <= par.eps_acc * (1. + c_norm);
-                    let term_gap = g.abs() <= par.eps_acc * (1. + g_x.abs() + g_y.abs());
-    
-                    // TODO: log
-                    //println!("{} {} {}", term_pri, term_dual, term_gap);
+                copy(v_s, p);
+                op_l.b().op(-1., work_one, u_tau.recip(), p);
+                op_l.a().op(u_tau.recip(), u_x, 1., p);
 
-                    if over_iter || (term_pri && term_dual && term_gap) {
-                        let (u_x_ast, u) = x.split_at_mut(n);
-                        let (u_y_ast, _) = u.split_at_mut(m);
-                        scale(u_tau.recip(), u_x_ast);
-                        scale(u_tau.recip(), u_y_ast);
+                op_l.c().op(1., work_one, 0., d);
+                op_l.a().trans_op(u_tau.recip(), u_y, 1., d);
 
-                        if term_pri && term_dual && term_gap {
-                            // TODO: log
-                            //println!("converged");
-                            //println!("{:?}", x_ast);
-                            //println!("{:?}", y_ast);
+                op_l.c().trans_op(u_tau.recip(), u_x, 0., work_one);
+                let g_x = work_one[0];
 
-                            return Ok((u_x_ast, u_y_ast));
-                        }
-                        else {
-                            // TODO: log
-                            //println!("overiter");
+                op_l.b().trans_op(u_tau.recip(), u_y, 0., work_one);
+                let g_y = work_one[0];
 
-                            return Err(SolverError::OverIter);
-                        }
+                let g = g_x + g_y;
+
+                let term_pri = norm(p) <= par.eps_acc * (1. + b_norm);
+                let term_dual = norm(d) <= par.eps_acc * (1. + c_norm);
+                let term_gap = g.abs() <= par.eps_acc * (1. + g_x.abs() + g_y.abs());
+
+                // TODO: log
+                //println!("{} {} {}", term_pri, term_dual, term_gap);
+
+                if over_iter || (term_pri && term_dual && term_gap) {
+                    let (u_x_ast, u) = x.split_at_mut(n);
+                    let (u_y_ast, _) = u.split_at_mut(m);
+                    scale(u_tau.recip(), u_x_ast);
+                    scale(u_tau.recip(), u_y_ast);
+
+                    if term_pri && term_dual && term_gap {
+                        // TODO: log
+                        //println!("converged");
+                        //println!("{:?}", x_ast);
+                        //println!("{:?}", y_ast);
+
+                        return Ok((u_x_ast, u_y_ast));
                     }
-                }
-                else {
-                    // Check undoundness and infeasibility
-                    
-                    copy(v_s, p);
-                    op_l.a().op(1., u_x, 1., p);
+                    else {
+                        // TODO: log
+                        //println!("overiter");
 
-                    op_l.a().trans_op(1., u_y, 0., d);
-
-                    op_l.c().trans_op(-1., u_x, 0., work_one);
-                    let m_cx = work_one[0];
-
-                    op_l.b().trans_op(-1., u_y, 0., work_one);
-                    let m_by = work_one[0];
-        
-                    let term_unbdd = (m_cx > par.eps_zero) && (
-                        norm(p) * c_norm <= par.eps_inf * m_cx
-                    );
-        
-                    let term_infeas = (m_by > par.eps_zero) && (
-                        norm(d) * b_norm <= par.eps_inf * m_by
-                    );
-        
-                    // TODO: log
-                    //println!("{} {}", term_unbdd, term_infeas);
-
-                    if over_iter || term_unbdd || term_infeas {
-                        let (u_x_cert, u) = x.split_at_mut(n);
-                        let (u_y_cert, _) = u.split_at_mut(m);
-                        if term_unbdd {
-                            scale(m_cx.recip(), u_x_cert);
-                        }
-                        if term_infeas {
-                            scale(m_by.recip(), u_y_cert);
-                        }
-        
-                        if term_unbdd {
-                            // TODO: log
-                            //println!("unbounded");
-
-                            return Err(SolverError::Unbounded);
-                        }
-                        else if term_infeas {
-                            // TODO: log
-                            //println!("infeasible");
-
-                            return Err(SolverError::Infeasible);
-                        }
-                        else {
-                            // TODO: log
-                            //println!("overiterinf");
-
-                            return Err(SolverError::OverIterInf);
-                        }
+                        return Err(SolverError::OverIter);
                     }
                 }
             }
+            else {
+                // Check undoundness and infeasibility
+                
+                copy(v_s, p);
+                op_l.a().op(1., u_x, 1., p);
 
-            assert!(!over_iter);
-        } // end of loop
-    }
+                op_l.a().trans_op(1., u_y, 0., d);
+
+                op_l.c().trans_op(-1., u_x, 0., work_one);
+                let m_cx = work_one[0];
+
+                op_l.b().trans_op(-1., u_y, 0., work_one);
+                let m_by = work_one[0];
+    
+                let term_unbdd = (m_cx > par.eps_zero) && (
+                    norm(p) * c_norm <= par.eps_inf * m_cx
+                );
+    
+                let term_infeas = (m_by > par.eps_zero) && (
+                    norm(d) * b_norm <= par.eps_inf * m_by
+                );
+    
+                // TODO: log
+                //println!("{} {}", term_unbdd, term_infeas);
+
+                if over_iter || term_unbdd || term_infeas {
+                    let (u_x_cert, u) = x.split_at_mut(n);
+                    let (u_y_cert, _) = u.split_at_mut(m);
+                    if term_unbdd {
+                        scale(m_cx.recip(), u_x_cert);
+                    }
+                    if term_infeas {
+                        scale(m_by.recip(), u_y_cert);
+                    }
+    
+                    if term_unbdd {
+                        // TODO: log
+                        //println!("unbounded");
+
+                        return Err(SolverError::Unbounded);
+                    }
+                    else if term_infeas {
+                        // TODO: log
+                        //println!("infeasible");
+
+                        return Err(SolverError::Infeasible);
+                    }
+                    else {
+                        // TODO: log
+                        //println!("overiterinf");
+
+                        return Err(SolverError::OverIterInf);
+                    }
+                }
+            }
+        }
+
+        assert!(!over_iter);
+    } // end of loop
 }

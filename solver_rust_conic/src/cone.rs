@@ -1,12 +1,11 @@
 // TODO: no blas/lapack
 
-use crate::solver::Cone;
+use crate::solver::{Cone, SolverParam};
 use crate::linalg::{scale, copy};
 
 pub struct ConePSD<'a>
 {
     work: &'a mut[f64],
-    eps_zero: f64,
 }
 
 impl<'a> ConePSD<'a>
@@ -27,38 +26,38 @@ impl<'a> ConePSD<'a>
         len_a + len_w + len_z
     }
 
-    pub fn new(work: &'a mut[f64], eps_zero: f64) -> Self
+    pub fn new(work: &'a mut[f64]) -> Self
     {
         ConePSD {
-            work, eps_zero
+            work
         }
     }
 }
 
 impl<'a> Cone for ConePSD<'a>
 {
-    fn proj(&mut self, x: &mut[f64])
+    fn proj(&mut self, par: &SolverParam, x: &mut[f64])
     {
         let nvars = x.len();
         let nrows = Self::nvars_to_nrows(nvars);
     
         // TODO: error
-        let (a, work) = self.work.split_at_mut(nrows * nrows);
+        let (a, spl_work) = self.work.split_at_mut(nrows * nrows);
     
         vec_to_mat(x, a);
     
         let mut m = 0;
         // TODO: error
-        let (mut w, work) = work.split_at_mut(nrows);
+        let (mut w, spl_work) = spl_work.split_at_mut(nrows);
         // TODO: error
-        let (mut z, _work) = work.split_at_mut(nrows * nrows);
+        let (mut z, _) = spl_work.split_at_mut(nrows * nrows);
     
         let n = nrows as i32;
         unsafe {
             lapacke::dsyevr(
                 lapacke::Layout::RowMajor, b'V', b'V',
                 b'U', n, a, n,
-                0., f64::INFINITY, 0, 0, self.eps_zero,
+                0., f64::INFINITY, 0, 0, par.eps_zero,
                 &mut m, &mut w,
                 &mut z, n, &mut []);
         }
@@ -83,6 +82,7 @@ impl<'a> Cone for ConePSD<'a>
     }
 }
 
+// TODO: other cones
 fn _proj_pos(x: &mut[f64])
 {
     for e in x {

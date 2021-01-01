@@ -1,6 +1,9 @@
 extern crate intel_mkl_src;
 
-use crate::*;
+// TODO: pub use
+use crate::solver::*;
+use crate::matop::*;
+use crate::cone::*;
 
 #[test]
 fn test_smoke() {
@@ -21,9 +24,9 @@ fn test_smoke() {
     let par = SolverParam::default();
 
     let mut cone_w = vec![0.; ConePSD::query_worklen(op_a.size().0)];
-    let cone = ConePSD::new(&mut cone_w, par.eps_zero);
+    let cone = ConePSD::new(&mut cone_w);
 
-    let mut solver_w = vec![0.; Solver::query_worklen(op_a.size())];
-    let rslt = Solver::solve(par, op_c, op_a, op_b, cone, &mut solver_w);
+    let mut solver_w = vec![0.; query_worklen(op_a.size())];
+    let rslt = solve(par, op_c, op_a, op_b, cone, &mut solver_w);
     println!("{:?}", rslt);
 }
