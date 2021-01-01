@@ -228,6 +228,8 @@ pub struct SolverParam
     pub eps_acc: f64,
     pub eps_inf: f64,
     pub eps_zero: f64,
+    pub log_period: usize,
+    pub log_state: bool,
 }
 
 impl Default for SolverParam
@@ -239,6 +241,8 @@ impl Default for SolverParam
             eps_acc: 1e-6,
             eps_inf: 1e-6,
             eps_zero: 1e-12,
+            log_period: 100,
+            log_state: false,
         }
     }
 }
@@ -262,12 +266,12 @@ pub fn query_worklen(op_a_size: (usize, usize)) -> usize
     len_norms.max(len_iteration)
 }
 
-pub fn solve<OC, OA, OB, C>(
-    par: SolverParam,
+pub fn solve<'a, L, OC, OA, OB, C>(
+    par: SolverParam, logger: &mut L,
     op_c: OC, op_a: OA, op_b: OB, mut cone: C,
-    work: &mut[f64]
-) -> Result<(&[f64], &[f64]), SolverError>
-where OC: Operator, OA: Operator, OB: Operator, C: Cone
+    work: &'a mut[f64]
+) -> Result<(&'a[f64], &'a[f64]), SolverError>
+where L: core::fmt::Write, OC: Operator, OA: Operator, OB: Operator, C: Cone
 {
     let (m, n) = op_a.size();
     let work_one = &mut [0.];
@@ -324,8 +328,18 @@ where OC: Operator, OA: Operator, OB: Operator, C: Cone
 
     let mut i = 0;
     loop {
-        // TODO: log
-        //println!("----- {}", i);
+        let over_iter = if let Some(max_iter) = par.max_iter {
+            i + 1 >= max_iter
+        } else {
+            false
+        };
+
+        let log_trig = if par.log_period > 0 {
+            i % par.log_period == 0
+        }
+        else {
+            false
+        };
 
         { // Update iteration
             op_l.trans_op(-tau, y, 1.0, x);
@@ -348,12 +362,9 @@ where OC: Operator, OA: Operator, OB: Operator, C: Cone
             copy(x, xx);
         }
 
-        i += 1;
-        let over_iter = if let Some(max_iter) = par.max_iter {
-            i >= max_iter
-        } else {
-            false
-        };
+        if log_trig && par.log_state {
+            writeln!(logger, "{}: state {:?} {:?}", i, x, y).unwrap();
+        }
 
         { // Termination criteria
             let (u_x, u) = x.split_at(n);
@@ -383,30 +394,33 @@ where OC: Operator, OA: Operator, OB: Operator, C: Cone
 
                 let g = g_x + g_y;
 
-                let term_pri = norm(p) <= par.eps_acc * (1. + b_norm);
-                let term_dual = norm(d) <= par.eps_acc * (1. + c_norm);
-                let term_gap = g.abs() <= par.eps_acc * (1. + g_x.abs() + g_y.abs());
+                let cri_pri = norm(p) / (1. + b_norm);
+                let cri_dual = norm(d) / (1. + c_norm);
+                let cri_gap = g.abs() / (1. + g_x.abs() + g_y.abs());
+                let term_conv = (cri_pri <= par.eps_acc) && (cri_dual <= par.eps_acc) && (cri_gap <= par.eps_acc);
 
-                // TODO: log
-                //println!("{} {} {}", term_pri, term_dual, term_gap);
+                if log_trig || over_iter || term_conv {
+                    writeln!(logger, "{}: pri_dual_gap {:.2e} {:.2e} {:.2e}", i, cri_pri, cri_dual, cri_gap).unwrap();
+                }
 
-                if over_iter || (term_pri && term_dual && term_gap) {
+                if over_iter || term_conv {
                     let (u_x_ast, u) = x.split_at_mut(n);
                     let (u_y_ast, _) = u.split_at_mut(m);
                     scale(u_tau.recip(), u_x_ast);
                     scale(u_tau.recip(), u_y_ast);
 
-                    if term_pri && term_dual && term_gap {
-                        // TODO: log
-                        //println!("converged");
-                        //println!("{:?}", x_ast);
-                        //println!("{:?}", y_ast);
+                    if par.log_state {
+                        writeln!(logger, "{}: x {:?}", i, u_x_ast).unwrap();
+                        writeln!(logger, "{}: y {:?}", i, u_y_ast).unwrap();
+                    }
+
+                    if term_conv {
+                        writeln!(logger, "{}: Converged", i).unwrap();
 
                         return Ok((u_x_ast, u_y_ast));
                     }
                     else {
-                        // TODO: log
-                        //println!("overiter");
+                        writeln!(logger, "{}: OverIter", i).unwrap();
 
                         return Err(SolverError::OverIter);
                     }
@@ -426,16 +440,24 @@ where OC: Operator, OA: Operator, OB: Operator, C: Cone
                 op_l.b().trans_op(-1., u_y, 0., work_one);
                 let m_by = work_one[0];
     
-                let term_unbdd = (m_cx > par.eps_zero) && (
-                    norm(p) * c_norm <= par.eps_inf * m_cx
-                );
-    
-                let term_infeas = (m_by > par.eps_zero) && (
-                    norm(d) * b_norm <= par.eps_inf * m_by
-                );
-    
-                // TODO: log
-                //println!("{} {}", term_unbdd, term_infeas);
+                let cri_unbdd = if m_cx > par.eps_zero {
+                    norm(p) * c_norm / m_cx
+                }
+                else {
+                    f64::INFINITY
+                };
+                let cri_infeas = if m_by > par.eps_zero {
+                    norm(d) * b_norm / m_by
+                }
+                else {
+                    f64::INFINITY
+                };
+                let term_unbdd = cri_unbdd <= par.eps_inf;
+                let term_infeas = cri_infeas <= par.eps_inf;
+
+                if log_trig || over_iter || term_unbdd || term_infeas {
+                    writeln!(logger, "{}: unbdd_infeas {:.2e} {:.2e}", i, cri_unbdd, cri_infeas).unwrap();
+                }
 
                 if over_iter || term_unbdd || term_infeas {
                     let (u_x_cert, u) = x.split_at_mut(n);
@@ -447,21 +469,23 @@ where OC: Operator, OA: Operator, OB: Operator, C: Cone
                         scale(m_by.recip(), u_y_cert);
                     }
     
+                    if par.log_state {
+                        writeln!(logger, "{}: x {:?}", i, u_x_cert).unwrap();
+                        writeln!(logger, "{}: y {:?}", i, u_y_cert).unwrap();
+                    }
+
                     if term_unbdd {
-                        // TODO: log
-                        //println!("unbounded");
+                        writeln!(logger, "{}: Unbounded", i).unwrap();
 
                         return Err(SolverError::Unbounded);
                     }
                     else if term_infeas {
-                        // TODO: log
-                        //println!("infeasible");
+                        writeln!(logger, "{}: Infeasible", i).unwrap();
 
                         return Err(SolverError::Infeasible);
                     }
                     else {
-                        // TODO: log
-                        //println!("overiterinf");
+                        writeln!(logger, "{}: OverIterInf", i).unwrap();
 
                         return Err(SolverError::OverIterInf);
                     }
@@ -469,6 +493,7 @@ where OC: Operator, OA: Operator, OB: Operator, C: Cone
             }
         }
 
+        i += 1;
         assert!(!over_iter);
     } // end of loop
 }

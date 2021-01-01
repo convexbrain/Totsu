@@ -4,6 +4,7 @@ extern crate intel_mkl_src;
 use crate::solver::*;
 use crate::matop::*;
 use crate::cone::*;
+use crate::logger::*;
 
 #[test]
 fn test_smoke() {
@@ -26,7 +27,11 @@ fn test_smoke() {
     let mut cone_w = vec![0.; ConePSD::query_worklen(op_a.size().0)];
     let cone = ConePSD::new(&mut cone_w);
 
+    let mut stdout = std::io::stdout();
+    let mut log = io_logger(&mut stdout);
+    //let mut log = null_logger();
+
     let mut solver_w = vec![0.; query_worklen(op_a.size())];
-    let rslt = solve(par, op_c, op_a, op_b, cone, &mut solver_w);
+    let rslt = solve(par, &mut log, op_c, op_a, op_b, cone, &mut solver_w);
     println!("{:?}", rslt);
 }
