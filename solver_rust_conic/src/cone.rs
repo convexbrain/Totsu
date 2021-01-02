@@ -108,7 +108,7 @@ fn mat_to_vec(m: &[f64], v: &mut[f64])
 {
     let l = v.len();
     let n = (m.len() as f64).sqrt() as usize;
-    // TODO: error when pub-ed
+
     assert_eq!(m.len(), n * n);
     assert_eq!(n * (n + 1) / 2, l);
 
@@ -137,7 +137,7 @@ fn vec_to_mat(v: &[f64], m: &mut[f64])
 {
     let l = v.len();
     let n = (m.len() as f64).sqrt() as usize;
-    // TODO: error when pub-ed
+
     assert_eq!(m.len(), n * n);
     assert_eq!(n * (n + 1) / 2, l);
 

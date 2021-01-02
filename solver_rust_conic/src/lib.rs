@@ -8,6 +8,6 @@ pub mod cone;
 pub mod linalg;
 pub mod logger;
 
-// TODO: pub use
+// TODO: pub use, mod layout
 // TODO: LP/QP/QCQP/SOCP/SDP
 // TODO: doc

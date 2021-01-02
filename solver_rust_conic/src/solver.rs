@@ -1,4 +1,5 @@
 // TODO: num-float
+// TODO: no-std
 
 pub trait LinAlg: Copy
 {
@@ -395,12 +396,12 @@ impl<'a, L: LinAlg, W: core::fmt::Write> Solver<'a, L, W>
                     }
 
                     if term_conv {
-                        writeln_or!(self.logger, "{}: Converged", i)?;
+                        writeln_or!(self.logger, "----- Converged")?;
 
                         return Ok((u_x_ast, u_y_ast));
                     }
                     else {
-                        writeln_or!(self.logger, "{}: OverIter", i)?;
+                        writeln_or!(self.logger, "----- OverIter")?;
 
                         return Err(SolverError::OverIter);
                     }
@@ -426,17 +427,17 @@ impl<'a, L: LinAlg, W: core::fmt::Write> Solver<'a, L, W>
                     }
 
                     if term_unbdd {
-                        writeln_or!(self.logger, "{}: Unbounded", i)?;
+                        writeln_or!(self.logger, "----- Unbounded")?;
 
                         return Err(SolverError::Unbounded);
                     }
                     else if term_infeas {
-                        writeln_or!(self.logger, "{}: Infeasible", i)?;
+                        writeln_or!(self.logger, "----- Infeasible")?;
 
                         return Err(SolverError::Infeasible);
                     }
                     else {
-                        writeln_or!(self.logger, "{}: OverIterInf", i)?;
+                        writeln_or!(self.logger, "----- OverIterInf")?;
 
                         return Err(SolverError::OverIterInf);
                     }
