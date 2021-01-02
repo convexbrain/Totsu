@@ -161,13 +161,13 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         }
     }
 
-    fn b_norm(&self,
+    fn norm_b(&self,
         work_v: &mut[F], work_t: &mut[F]) -> F
     {
         Self::fr_norm(self.b(), work_v, work_t)
     }
 
-    fn c_norm(&self,
+    fn norm_c(&self,
         work_v: &mut[F], work_t: &mut[F]) -> F
     {
         Self::fr_norm(self.c(), work_v, work_t)
@@ -375,7 +375,7 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
         let (m, n) = self.op_l.a().size();
 
         // Calculate norms
-        let (op_l_norm, b_norm, c_norm) = self.calc_norms(work)?;
+        let (op_l_norm, norm_b, norm_c) = self.calc_norms(work)?;
 
         let tau = op_l_norm.recip();
         let sigma = op_l_norm.recip();
@@ -407,7 +407,7 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
 
             if u_tau > self.par.eps_zero {
                 // Termination criteria of convergence
-                let (cri_pri, cri_dual, cri_gap) = self.criteria_conv(x, p, d, c_norm, b_norm);
+                let (cri_pri, cri_dual, cri_gap) = self.criteria_conv(x, p, d, norm_c, norm_b);
 
                 let term_conv = (cri_pri <= self.par.eps_acc) && (cri_dual <= self.par.eps_acc) && (cri_gap <= self.par.eps_acc);
 
@@ -439,7 +439,7 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
             }
             else {
                 // Termination criteria of infeasibility
-                let (cri_unbdd, cri_infeas) = self.criteria_inf(x, p, d, c_norm, b_norm);
+                let (cri_unbdd, cri_infeas) = self.criteria_inf(x, p, d, norm_c, norm_b);
 
                 let term_unbdd = cri_unbdd <= self.par.eps_inf;
                 let term_infeas = cri_infeas <= self.par.eps_inf;
@@ -494,21 +494,21 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
             return Err(SolverError::InvalidOp);
         }
     
-        let b_norm = {
+        let norm_b = {
             let (nrow, _) = self.op_l.b().size();
             let (t, _, _, _, _, _) = split_tup6_mut(work, (nrow, 0, 0, 0, 0, 0))?;
     
-            self.op_l.b_norm(work_one, t)
+            self.op_l.norm_b(work_one, t)
         };
     
-        let c_norm = {
+        let norm_c = {
             let (nrow, _) = self.op_l.c().size();
             let (t, _, _, _, _, _) = split_tup6_mut(work, (nrow, 0, 0, 0, 0, 0))?;
     
-            self.op_l.c_norm(work_one, t)
+            self.op_l.norm_c(work_one, t)
         };
     
-        Ok((op_l_norm, b_norm, c_norm))
+        Ok((op_l_norm, norm_b, norm_c))
     }
     
     fn init_vecs<'b>(&self, work: &'b mut[F])
@@ -570,7 +570,7 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
 
     fn criteria_conv(&self,
         x: &[F], p: &mut[F], d: &mut[F],
-        c_norm: F, b_norm: F)
+        norm_c: F, norm_b: F)
     -> (F, F, F)
     {
         let (m, n) = self.op_l.a().size();
@@ -599,8 +599,8 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
     
         let g = g_x + g_y;
     
-        let cri_pri = L::norm(p) / (F::one() + b_norm);
-        let cri_dual = L::norm(d) / (F::one() + c_norm);
+        let cri_pri = L::norm(p) / (F::one() + norm_b);
+        let cri_dual = L::norm(d) / (F::one() + norm_c);
         let cri_gap = g.abs() / (F::one() + g_x.abs() + g_y.abs());
     
         (cri_pri, cri_dual, cri_gap)
@@ -608,7 +608,7 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
     
     fn criteria_inf(&self,
         x: &[F], p: &mut[F], d: &mut[F],
-        c_norm: F, b_norm: F)
+        norm_c: F, norm_b: F)
     -> (F, F)
     {
         let (m, n) = self.op_l.a().size();
@@ -631,13 +631,13 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
         let m_by = work_one[0];
 
         let cri_unbdd = if m_cx > self.par.eps_zero {
-            L::norm(p) * c_norm / m_cx
+            L::norm(p) * norm_c / m_cx
         }
         else {
             F::infinity()
         };
         let cri_infeas = if m_by > self.par.eps_zero {
-            L::norm(d) * b_norm / m_by
+            L::norm(d) * norm_b / m_by
         }
         else {
             F::infinity()
