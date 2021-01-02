@@ -1,7 +1,7 @@
 // TODO: no blas/lapack
 
-use crate::solver::{Cone, SolverParam, SolverError};
-use crate::linalg::{scale, copy};
+use crate::solver::{Cone, SolverParam, SolverError, LinAlg};
+use crate::linalg::F64BLAS;
 
 pub struct ConePSD<'a>
 {
@@ -123,10 +123,10 @@ fn mat_to_vec(m: &[f64], v: &mut[f64])
 
         let (vc, spl_v) = ref_v.split_at_mut(n - c);
         ref_v = spl_v;
-        copy(rc, vc);
+        F64BLAS::copy(rc, vc);
 
         let (_, vct) = vc.split_at_mut(1);
-        scale(2_f64.sqrt(), vct);
+        F64BLAS::scale(2_f64.sqrt(), vct);
     }
 
     assert!(ref_m.is_empty());
@@ -152,10 +152,10 @@ fn vec_to_mat(v: &[f64], m: &mut[f64])
 
         let (vc, spl_v) = ref_v.split_at(n - c);
         ref_v = spl_v;
-        copy(vc, rc);
+        F64BLAS::copy(vc, rc);
 
         let (_, rct) = rc.split_at_mut(1);
-        scale(0.5_f64.sqrt(), rct);
+        F64BLAS::scale(0.5_f64.sqrt(), rct);
     }
 
     assert!(ref_m.is_empty());

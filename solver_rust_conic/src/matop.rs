@@ -1,7 +1,8 @@
 // TODO: no blas/lapack
 
 use crate::solver::Operator;
-use crate::linalg::scale;
+use crate::solver::LinAlg;
+use crate::linalg::F64BLAS;
 
 pub struct MatOp<'a>
 {
@@ -21,7 +22,7 @@ fn sym_scale(n_row: usize, array: &mut[f64])
         ref_a = spl_a;
 
         let (_, rt) = r.split_at_mut(1);
-        scale(2_f64.sqrt(), rt);
+        F64BLAS::scale(2_f64.sqrt(), rt);
     }
 }
 
