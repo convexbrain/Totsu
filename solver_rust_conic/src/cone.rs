@@ -34,9 +34,9 @@ impl<'a> ConePSD<'a>
     }
 }
 
-impl<'a> Cone for ConePSD<'a>
+impl<'a> Cone<f64> for ConePSD<'a>
 {
-    fn proj(&mut self, par: &SolverParam, x: &mut[f64]) -> Result<(), SolverError>
+    fn proj(&mut self, par: &SolverParam<f64>, x: &mut[f64]) -> Result<(), SolverError>
     {
         let nvars = x.len();
         let nrows = Self::nvars_to_nrows(nvars);

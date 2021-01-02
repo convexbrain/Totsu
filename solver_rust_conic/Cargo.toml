@@ -19,6 +19,7 @@ categories = ["science"]
 license = "Unlicense"
 
 [dependencies]
+num = "0.3.1"
 lapacke = "0.2.0"
 cblas = "0.2.0"
 

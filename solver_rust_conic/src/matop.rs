@@ -81,7 +81,7 @@ impl<'a> MatOp<'a>
     }
 }
 
-impl<'a> Operator for MatOp<'a>
+impl<'a> Operator<f64> for MatOp<'a>
 {
     fn size(&self) -> (usize, usize)
     {

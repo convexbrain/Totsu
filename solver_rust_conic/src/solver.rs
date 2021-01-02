@@ -1,40 +1,43 @@
-// TODO: num-float
 // TODO: no-std
 
-pub trait LinAlg: Copy
+use num::Float;
+use core::marker::PhantomData;
+use core::fmt::{Debug, Display, LowerExp};
+
+pub trait LinAlg<F: Float>: Copy
 {
-    fn norm(x: &[f64]) -> f64;
-    fn inner_prod(x: &[f64], y: &[f64]) -> f64;
-    fn copy(x: &[f64], y: &mut[f64]);
-    fn scale(alpha: f64, x: &mut[f64]);
-    fn add(alpha: f64, x: &[f64], y: &mut[f64]);
+    fn norm(x: &[F]) -> F;
+    fn inner_prod(x: &[F], y: &[F]) -> F;
+    fn copy(x: &[F], y: &mut[F]);
+    fn scale(alpha: F, x: &mut[F]);
+    fn add(alpha: F, x: &[F], y: &mut[F]);
 }
 
-pub trait Operator
+pub trait Operator<F: Float>
 {
     fn size(&self) -> (usize, usize);
     // y = alpha * Op * x + beta * y
-    fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64]);
+    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]);
     // y = alpha * Op^T * x + beta * y
-    fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64]);
+    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]);
 }
 
-pub trait Cone
+pub trait Cone<F: Float>
 {
-    fn proj(&mut self, par: &SolverParam, x: &mut[f64]) -> Result<(), SolverError>;
-    fn dual_proj(&mut self, par: &SolverParam, x: &mut[f64]) -> Result<(), SolverError>
+    fn proj(&mut self, par: &SolverParam<F>, x: &mut[F]) -> Result<(), SolverError>;
+    fn dual_proj(&mut self, par: &SolverParam<F>, x: &mut[F]) -> Result<(), SolverError>
     {
         self.proj(par, x) // Self-dual cone
     }
 }
 
 #[derive(Debug)]
-pub struct SolverParam
+pub struct SolverParam<F: Float>
 {
     pub max_iter: Option<usize>,
-    pub eps_acc: f64,
-    pub eps_inf: f64,
-    pub eps_zero: f64,
+    pub eps_acc: F,
+    pub eps_inf: F,
+    pub eps_zero: F,
     pub log_period: usize,
     pub log_verbose: bool,
 }
@@ -97,8 +100,9 @@ fn split_tup6_mut<T>(
     }
 }
 
-struct SelfDualEmbed<L: LinAlg, OC: Operator, OA: Operator, OB: Operator>
+struct SelfDualEmbed<F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>>
 {
+    _ph_f: PhantomData<F>,
     _linalg: L,
     n: usize,
     m: usize,
@@ -107,8 +111,8 @@ struct SelfDualEmbed<L: LinAlg, OC: Operator, OA: Operator, OB: Operator>
     b: OB,
 }
 
-impl<L, OC, OA, OB> SelfDualEmbed<L, OC, OA, OB>
-where L: LinAlg, OC: Operator, OA: Operator, OB: Operator
+impl<F, L, OC, OA, OB> SelfDualEmbed<F, L, OC, OA, OB>
+where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
 {
     fn new(_linalg: L, c: OC, a: OA, b: OB) -> Result<Self, SolverError>
     {
@@ -121,7 +125,11 @@ where L: LinAlg, OC: Operator, OA: Operator, OB: Operator
             Err(SolverError::InvalidOp)
         }
         else {
-            Ok(SelfDualEmbed { _linalg, n, m, c, a, b })
+            Ok(SelfDualEmbed {
+                _ph_f: PhantomData,
+                _linalg,
+                n, m, c, a, b
+            })
         }
     }
 
@@ -142,26 +150,26 @@ where L: LinAlg, OC: Operator, OA: Operator, OB: Operator
 
     // spectral norm
     fn sp_norm(&self,
-        eps_zero: f64,
-        work_v: &mut[f64], work_t: &mut[f64], work_w: &mut[f64]) -> f64
+        eps_zero: F,
+        work_v: &mut[F], work_t: &mut[F], work_w: &mut[F]) -> F
     {
         assert_eq!(work_v.len(), self.size().1);
         assert_eq!(work_t.len(), self.size().0);
         assert_eq!(work_w.len(), self.size().1);
 
         for e in work_v.iter_mut() {
-            *e = 1.;
+            *e = F::one();
         }
-        let mut lambda = 0.;
+        let mut lambda = F::zero();
 
         loop {
             let n = L::norm(work_v);
-            if n > f64::MIN_POSITIVE {
+            if n > F::min_positive_value() {
                 L::scale(n.recip(), work_v);
             }
 
-            self.op(1., work_v, 0., work_t);
-            self.trans_op(1., work_t, 0., work_w);
+            self.op(F::one(), work_v, F::zero(), work_t);
+            self.trans_op(F::one(), work_t, F::zero(), work_w);
 
             let lambda_n = L::inner_prod(work_v, work_w);
 
@@ -175,36 +183,36 @@ where L: LinAlg, OC: Operator, OA: Operator, OB: Operator
     }
 
     fn b_norm(&self,
-        work_v: &mut[f64], work_t: &mut[f64]) -> f64
+        work_v: &mut[F], work_t: &mut[F]) -> F
     {
         Self::fr_norm(self.b(), work_v, work_t)
     }
 
     fn c_norm(&self,
-        work_v: &mut[f64], work_t: &mut[f64]) -> f64
+        work_v: &mut[F], work_t: &mut[F]) -> F
     {
         Self::fr_norm(self.c(), work_v, work_t)
     }
 
     // Frobenius norm
-    fn fr_norm<O: Operator>(
+    fn fr_norm<O: Operator<F>>(
         op: &O,
-        work_v: &mut[f64], work_t: &mut[f64]) -> f64
+        work_v: &mut[F], work_t: &mut[F]) -> F
     {
         assert_eq!(work_v.len(), op.size().1);
         assert_eq!(work_t.len(), op.size().0);
 
         for e in work_v.iter_mut() {
-            *e = 0.;
+            *e = F::zero();
         }
-        let mut sq_norm = 0.;
+        let mut sq_norm = F::zero();
 
         for row in 0.. op.size().1 {
-            work_v[row] = 1.;
-            op.op(1., work_v, 0., work_t);
+            work_v[row] = F::one();
+            op.op(F::one(), work_v, F::zero(), work_t);
             let n = L::norm(work_t);
-            sq_norm += n * n;
-            work_v[row] = 0.;
+            sq_norm = sq_norm + n * n;
+            work_v[row] = F::zero();
         }
 
         sq_norm.sqrt()
@@ -217,7 +225,7 @@ where L: LinAlg, OC: Operator, OA: Operator, OB: Operator
         (nm1, nm1 * 2)
     }
 
-    fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
+    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let n = self.n;
         let m = self.m;
@@ -239,21 +247,21 @@ where L: LinAlg, OC: Operator, OA: Operator, OB: Operator
         let (w_n, w_m, w_1, _, _, _) = split_tup6_mut(y, (n, m, 1, 0, 0, 0)).unwrap();
 
         self.a.trans_op(alpha, u_y, beta, w_n);
-        self.c.op(alpha, u_tau, 1., w_n);
+        self.c.op(alpha, u_tau, F::one(), w_n);
         if full_x {
             L::add(-alpha, v_r, w_n);
         }
 
         self.a.op(-alpha, u_x, beta, w_m);
-        self.b.op(alpha, u_tau, 1., w_m);
+        self.b.op(alpha, u_tau, F::one(), w_m);
         L::add(-alpha, v_s, w_m);
 
         self.c.trans_op(-alpha, u_x, beta, w_1);
-        self.b.trans_op(-alpha, u_y, 1., w_1);
+        self.b.trans_op(-alpha, u_y, F::one(), w_1);
         L::add(-alpha, v_kappa, w_1);
     }
 
-    fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
+    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let n = self.n;
         let m = self.m;
@@ -275,13 +283,13 @@ where L: LinAlg, OC: Operator, OA: Operator, OB: Operator
         let (u_x, u_y, u_tau, v_r, v_s, v_kappa) = split_tup6_mut(y, (n, m, 1, if full_y {n} else {0}, m, 1)).unwrap();
 
         self.a.trans_op(-alpha, w_m, beta, u_x);
-        self.c.op(-alpha, w_1, 1., u_x);
+        self.c.op(-alpha, w_1, F::one(), u_x);
 
         self.a.op(alpha, w_n, beta, u_y);
-        self.b.op(-alpha, w_1, 1., u_y);
+        self.b.op(-alpha, w_1, F::one(), u_y);
 
         self.c.trans_op(alpha, w_n, beta, u_tau);
-        self.b.trans_op(alpha, w_m, 1., u_tau);
+        self.b.trans_op(alpha, w_m, F::one(), u_tau);
 
         if full_y {
             L::scale(beta, v_r);
@@ -306,25 +314,26 @@ pub fn solver_query_worklen(op_a_size: (usize, usize)) -> usize
     len_norms.max(len_iteration)
 }
 
-pub struct Solver<'a, L: LinAlg, W: core::fmt::Write>
+pub struct Solver<'a, F: Float + Debug + Display + LowerExp, L: LinAlg<F>, W: core::fmt::Write>
 {
-    pub par: SolverParam,
+    pub par: SolverParam<F>,
 
     linalg: L,
     logger: W,
-    work: &'a mut[f64]
+    work: &'a mut[F]
 }
 
-impl<'a, L: LinAlg, W: core::fmt::Write> Solver<'a, L, W>
+impl<'a, F, L, W> Solver<'a, F, L, W>
+where F: Float + Debug + Display + LowerExp, L: LinAlg<F>, W: core::fmt::Write
 {
-    pub fn new(linalg: L, logger: W, work: &'a mut[f64]) -> Self
+    pub fn new(linalg: L, logger: W, work: &'a mut[F]) -> Self
     {
         Solver {
             par: SolverParam {
                 max_iter: Some(10_000),
-                eps_acc: 1e-6,
-                eps_inf: 1e-6,
-                eps_zero: 1e-12,
+                eps_acc: F::from(1e-6).unwrap(),
+                eps_inf: F::from(1e-6).unwrap(),
+                eps_zero: F::from(1e-12).unwrap(),
                 log_period: 0,
                 log_verbose: false,
             },
@@ -336,8 +345,8 @@ impl<'a, L: LinAlg, W: core::fmt::Write> Solver<'a, L, W>
 
     pub fn solve<OC, OA, OB, C>(&mut self,
         op_c: OC, op_a: OA, op_b: OB, mut cone: C
-    ) -> Result<(&[f64], &[f64]), SolverError>
-    where OC: Operator, OA: Operator, OB: Operator, C: Cone
+    ) -> Result<(&[F], &[F]), SolverError>
+    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
     {
         writeln_or!(self.logger, "----- Started")?;
         let (m, n) = op_a.size();
@@ -449,18 +458,18 @@ impl<'a, L: LinAlg, W: core::fmt::Write> Solver<'a, L, W>
         } // end of loop
     }
 
-    fn calc_norms<OC, OA, OB>(par: &SolverParam, op_l: &SelfDualEmbed<L, OC, OA, OB>, work: &mut[f64])
-    -> Result<(f64, f64, f64), SolverError>
-    where OC: Operator, OA: Operator, OB: Operator
+    fn calc_norms<OC, OA, OB>(par: &SolverParam<F>, op_l: &SelfDualEmbed<F, L, OC, OA, OB>, work: &mut[F])
+    -> Result<(F, F, F), SolverError>
+    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
     {
-        let work_one = &mut [0.];
+        let work_one = &mut [F::zero()];
         
         let op_l_norm = {
             let (v, t, w, _, _, _) = split_tup6_mut(work, (op_l.size().1, op_l.size().0, op_l.size().1, 0, 0, 0))?;
     
             op_l.sp_norm(par.eps_zero, v, t, w)
         };
-        if op_l_norm < f64::MIN_POSITIVE {
+        if op_l_norm < F::min_positive_value() {
             return Err(SolverError::InvalidOp);
         }
     
@@ -479,8 +488,8 @@ impl<'a, L: LinAlg, W: core::fmt::Write> Solver<'a, L, W>
         Ok((op_l_norm, b_norm, c_norm))
     }
     
-    fn init_vecs(work: &mut[f64], m: usize, n: usize)
-    -> Result<(&mut[f64], &mut[f64], &mut[f64], &mut[f64], &mut[f64]), SolverError>
+    fn init_vecs(work: &mut[F], m: usize, n: usize)
+    -> Result<(&mut[F], &mut[F], &mut[F], &mut[F], &mut[F]), SolverError>
     {
         let (x, y, xx, p, d, _) = split_tup6_mut(work, (
             n + (m + 1) * 2,
@@ -492,13 +501,13 @@ impl<'a, L: LinAlg, W: core::fmt::Write> Solver<'a, L, W>
         ))?;
     
         for e in x.iter_mut() {
-            *e = 0.;
+            *e = F::zero();
         }
         for e in y.iter_mut() {
-            *e = 0.;
+            *e = F::zero();
         }
-        x[n + m] = 1.; // u_tau
-        x[n + m + 1 + m] = 1.; // v_kappa
+        x[n + m] = F::one(); // u_tau
+        x[n + m + 1 + m] = F::one(); // v_kappa
     
         L::copy(x, xx);
     
@@ -506,108 +515,108 @@ impl<'a, L: LinAlg, W: core::fmt::Write> Solver<'a, L, W>
     }
     
     fn update_vecs<OC, OA, OB, C>(
-        par: &SolverParam,
-        op_l: &SelfDualEmbed<L, OC, OA, OB>, cone: &mut C,
-        x: &mut[f64], y: &mut[f64], xx: &mut[f64],
-        m: usize, n: usize, tau: f64, sigma: f64)
-    -> Result<f64, SolverError>
-    where OC: Operator, OA: Operator, OB: Operator, C: Cone
+        par: &SolverParam<F>,
+        op_l: &SelfDualEmbed<F, L, OC, OA, OB>, cone: &mut C,
+        x: &mut[F], y: &mut[F], xx: &mut[F],
+        m: usize, n: usize, tau: F, sigma: F)
+    -> Result<F, SolverError>
+    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
     {
         let ret_u_tau;
 
-        op_l.trans_op(-tau, y, 1.0, x);
+        op_l.trans_op(-tau, y, F::one(), x);
 
         { // Projection
             let (_, u_y, u_tau, v_s, v_kappa, _) = split_tup6_mut(x, (n, m, 1, m, 1, 0)).unwrap();
 
             cone.dual_proj(&par, u_y)?;
-            u_tau[0] = u_tau[0].max(0.);
+            u_tau[0] = u_tau[0].max(F::zero());
             cone.proj(&par, v_s)?;
-            v_kappa[0] = v_kappa[0].max(0.);
+            v_kappa[0] = v_kappa[0].max(F::zero());
 
             ret_u_tau = u_tau[0];
         }
 
-        L::add(-2., x, xx);
-        op_l.op(-sigma, xx, 1., y);
+        L::add(-F::one()-F::one(), x, xx);
+        op_l.op(-sigma, xx, F::one(), y);
         L::copy(x, xx);
 
         Ok(ret_u_tau)
     }
 
     fn criteria_conv<OC, OA, OB>(
-        op_l: &SelfDualEmbed<L, OC, OA, OB>,
-        x: &[f64], p: &mut[f64], d: &mut[f64],
-        m: usize, n: usize, c_norm: f64, b_norm: f64)
-    -> (f64, f64, f64)
-    where OC: Operator, OA: Operator, OB: Operator
+        op_l: &SelfDualEmbed<F, L, OC, OA, OB>,
+        x: &[F], p: &mut[F], d: &mut[F],
+        m: usize, n: usize, c_norm: F, b_norm: F)
+    -> (F, F, F)
+    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
     {
         let (u_x, u_y, u_tau, v_s, _, _) = split_tup6(x, (n, m, 1, m, 0, 0)).unwrap();
     
         let u_tau = u_tau[0];
-        assert!(u_tau > 0.);
+        assert!(u_tau > F::zero());
     
-        let work_one = &mut [1.];
+        let work_one = &mut [F::one()];
     
         // Calc convergence criteria
         
         L::copy(v_s, p);
-        op_l.b().op(-1., work_one, u_tau.recip(), p);
-        op_l.a().op(u_tau.recip(), u_x, 1., p);
+        op_l.b().op(-F::one(), work_one, u_tau.recip(), p);
+        op_l.a().op(u_tau.recip(), u_x, F::one(), p);
     
-        op_l.c().op(1., work_one, 0., d);
-        op_l.a().trans_op(u_tau.recip(), u_y, 1., d);
+        op_l.c().op(F::one(), work_one, F::zero(), d);
+        op_l.a().trans_op(u_tau.recip(), u_y, F::one(), d);
     
-        op_l.c().trans_op(u_tau.recip(), u_x, 0., work_one);
+        op_l.c().trans_op(u_tau.recip(), u_x, F::zero(), work_one);
         let g_x = work_one[0];
     
-        op_l.b().trans_op(u_tau.recip(), u_y, 0., work_one);
+        op_l.b().trans_op(u_tau.recip(), u_y, F::zero(), work_one);
         let g_y = work_one[0];
     
         let g = g_x + g_y;
     
-        let cri_pri = L::norm(p) / (1. + b_norm);
-        let cri_dual = L::norm(d) / (1. + c_norm);
-        let cri_gap = g.abs() / (1. + g_x.abs() + g_y.abs());
+        let cri_pri = L::norm(p) / (F::one() + b_norm);
+        let cri_dual = L::norm(d) / (F::one() + c_norm);
+        let cri_gap = g.abs() / (F::one() + g_x.abs() + g_y.abs());
     
         (cri_pri, cri_dual, cri_gap)
     }
     
     fn criteria_inf<OC, OA, OB>(
-        op_l: &SelfDualEmbed<L, OC, OA, OB>,
-        x: &[f64], p: &mut[f64], d: &mut[f64],
-        m: usize, n: usize, c_norm: f64, b_norm: f64, eps_zero:f64)
-    -> (f64, f64)
-    where OC: Operator, OA: Operator, OB: Operator
+        op_l: &SelfDualEmbed<F, L, OC, OA, OB>,
+        x: &[F], p: &mut[F], d: &mut[F],
+        m: usize, n: usize, c_norm: F, b_norm: F, eps_zero:F)
+    -> (F, F)
+    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
     {
         let (u_x, u_y, _, v_s, _, _) = split_tup6(x, (n, m, 1, m, 0, 0)).unwrap();
 
-        let work_one = &mut [0.];
+        let work_one = &mut [F::zero()];
 
         // Calc undoundness and infeasibility criteria
         
         L::copy(v_s, p);
-        op_l.a().op(1., u_x, 1., p);
+        op_l.a().op(F::one(), u_x, F::one(), p);
 
-        op_l.a().trans_op(1., u_y, 0., d);
+        op_l.a().trans_op(F::one(), u_y, F::zero(), d);
 
-        op_l.c().trans_op(-1., u_x, 0., work_one);
+        op_l.c().trans_op(-F::one(), u_x, F::zero(), work_one);
         let m_cx = work_one[0];
 
-        op_l.b().trans_op(-1., u_y, 0., work_one);
+        op_l.b().trans_op(-F::one(), u_y, F::zero(), work_one);
         let m_by = work_one[0];
 
         let cri_unbdd = if m_cx > eps_zero {
             L::norm(p) * c_norm / m_cx
         }
         else {
-            f64::INFINITY
+            F::infinity()
         };
         let cri_infeas = if m_by > eps_zero {
             L::norm(d) * b_norm / m_by
         }
         else {
-            f64::INFINITY
+            F::infinity()
         };
 
         (cri_unbdd, cri_infeas)

@@ -5,7 +5,7 @@ use crate::solver::LinAlg;
 #[derive(Copy, Clone)]
 pub struct F64BLAS;
 
-impl LinAlg for F64BLAS
+impl LinAlg<f64> for F64BLAS
 {
     fn norm(x: &[f64]) -> f64
     {
