@@ -2,9 +2,9 @@
 
 use num::Float;
 use core::marker::PhantomData;
-use core::fmt::{Debug, Display, LowerExp};
+use core::fmt::{Debug, LowerExp};
 
-pub trait LinAlg<F: Float>: Copy
+pub trait LinAlg<F: Float>
 {
     fn norm(x: &[F]) -> F;
     fn inner_prod(x: &[F], y: &[F]) -> F;
@@ -103,7 +103,7 @@ fn split_tup6_mut<T>(
 struct SelfDualEmbed<F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>>
 {
     _ph_f: PhantomData<F>,
-    _linalg: L,
+    _ph_l: PhantomData<L>,
     n: usize,
     m: usize,
     c: OC,
@@ -114,7 +114,7 @@ struct SelfDualEmbed<F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, O
 impl<F, L, OC, OA, OB> SelfDualEmbed<F, L, OC, OA, OB>
 where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
 {
-    fn new(_linalg: L, c: OC, a: OA, b: OB) -> Result<Self, SolverError>
+    fn new(_linalg: &L, c: OC, a: OA, b: OB) -> Result<Self, SolverError>
     {
         let (m, n) = a.size();
 
@@ -127,7 +127,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         else {
             Ok(SelfDualEmbed {
                 _ph_f: PhantomData,
-                _linalg,
+                _ph_l: PhantomData,
                 n, m, c, a, b
             })
         }
@@ -314,7 +314,7 @@ pub fn solver_query_worklen(op_a_size: (usize, usize)) -> usize
     len_norms.max(len_iteration)
 }
 
-pub struct Solver<'a, F: Float + Debug + Display + LowerExp, L: LinAlg<F>, W: core::fmt::Write>
+pub struct Solver<'a, F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write>
 {
     pub par: SolverParam<F>,
 
@@ -324,16 +324,18 @@ pub struct Solver<'a, F: Float + Debug + Display + LowerExp, L: LinAlg<F>, W: co
 }
 
 impl<'a, F, L, W> Solver<'a, F, L, W>
-where F: Float + Debug + Display + LowerExp, L: LinAlg<F>, W: core::fmt::Write
+where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
 {
     pub fn new(linalg: L, logger: W, work: &'a mut[F]) -> Self
     {
+        let ten = F::from(10).unwrap();
+
         Solver {
             par: SolverParam {
                 max_iter: Some(10_000),
-                eps_acc: F::from(1e-6).unwrap(),
-                eps_inf: F::from(1e-6).unwrap(),
-                eps_zero: F::from(1e-12).unwrap(),
+                eps_acc: ten.powi(-6),
+                eps_inf: ten.powi(-6),
+                eps_zero: ten.powi(-12),
                 log_period: 0,
                 log_verbose: false,
             },
@@ -351,7 +353,7 @@ where F: Float + Debug + Display + LowerExp, L: LinAlg<F>, W: core::fmt::Write
         writeln_or!(self.logger, "----- Started")?;
         let (m, n) = op_a.size();
 
-        let op_l = SelfDualEmbed::new(self.linalg, op_c, op_a, op_b)?;
+        let op_l = SelfDualEmbed::new(&self.linalg, op_c, op_a, op_b)?;
 
         // Calculate norms
         let (op_l_norm, b_norm, c_norm) = Self::calc_norms(&self.par, &op_l, self.work)?;
