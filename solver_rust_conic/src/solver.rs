@@ -104,8 +104,6 @@ struct SelfDualEmbed<F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, O
 {
     _ph_f: PhantomData<F>,
     _ph_l: PhantomData<L>,
-    n: usize,
-    m: usize,
     c: OC,
     a: OA,
     b: OB,
@@ -114,25 +112,6 @@ struct SelfDualEmbed<F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, O
 impl<F, L, OC, OA, OB> SelfDualEmbed<F, L, OC, OA, OB>
 where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
 {
-    fn new(_linalg: &L, c: OC, a: OA, b: OB) -> Result<Self, SolverError>
-    {
-        let (m, n) = a.size();
-
-        if c.size() != (n, 1) {
-            Err(SolverError::InvalidOp)
-        }
-        else if b.size() != (m, 1) {
-            Err(SolverError::InvalidOp)
-        }
-        else {
-            Ok(SelfDualEmbed {
-                _ph_f: PhantomData,
-                _ph_l: PhantomData,
-                n, m, c, a, b
-            })
-        }
-    }
-
     fn c(&self) -> &OC
     {
         &self.c
@@ -220,15 +199,15 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
     
     fn size(&self) -> (usize, usize)
     {
-        let nm1 = self.n + self.m + 1;
+        let (m, n) = self.a.size();
+        let nm1 = n + m + 1;
 
         (nm1, nm1 * 2)
     }
 
     fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
-        let n = self.n;
-        let m = self.m;
+        let (m, n) = self.a.size();
         
         let full_x = if x.len() == (n + m + 1) * 2 {
             true
@@ -263,8 +242,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
 
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
-        let n = self.n;
-        let m = self.m;
+        let (m, n) = self.a.size();
         
         assert_eq!(x.len(), n + m + 1);
         let full_y = if y.len() == (n + m + 1) * 2 {
@@ -304,29 +282,18 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
     }
 }
 
-pub fn solver_query_worklen(op_a_size: (usize, usize)) -> usize
-{
-    let (m, n) = op_a_size;
-
-    let len_norms = (n + m + 1) * 5;
-    let len_iteration = (n + (m + 1) * 2) * 2 + (n + m + 1) + n + m;
-
-    len_norms.max(len_iteration)
-}
-
-pub struct Solver<'a, F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write>
+pub struct Solver<F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write>
 {
     pub par: SolverParam<F>,
 
-    linalg: L,
+    _ph_l: PhantomData::<L>,
     logger: W,
-    work: &'a mut[F]
 }
 
-impl<'a, F, L, W> Solver<'a, F, L, W>
+impl<F, L, W> Solver<F, L, W>
 where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
 {
-    pub fn new(linalg: L, logger: W, work: &'a mut[F]) -> Self
+    pub fn new(_linalg: L, logger: W) -> Self
     {
         let ten = F::from(10).unwrap();
 
@@ -339,30 +306,82 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
                 log_period: 0,
                 log_verbose: false,
             },
-            linalg,
+            _ph_l: PhantomData::<L>,
             logger,
-            work,
         }
     }
 
-    pub fn solve<OC, OA, OB, C>(&mut self,
-        op_c: OC, op_a: OA, op_b: OB, mut cone: C
+    pub fn query_worklen(&self, op_a_size: (usize, usize)) -> usize
+    {
+        let (m, n) = op_a_size;
+
+        let len_norms = (n + m + 1) * 5;
+        let len_iteration = (n + (m + 1) * 2) * 2 + (n + m + 1) + n + m;
+
+        len_norms.max(len_iteration)
+    }
+
+    pub fn solve<OC, OA, OB, C>(self,
+        op_c: OC, op_a: OA, op_b: OB, cone: C,
+        work: &mut[F]
     ) -> Result<(&[F], &[F]), SolverError>
     where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
     {
-        writeln_or!(self.logger, "----- Started")?;
         let (m, n) = op_a.size();
 
-        let op_l = SelfDualEmbed::new(&self.linalg, op_c, op_a, op_b)?;
+        if op_c.size() != (n, 1) || op_b.size() != (m, 1) {
+            return Err(SolverError::InvalidOp);
+        }
+    
+        let op_l = SelfDualEmbed {
+            _ph_f: PhantomData::<F>,
+            _ph_l: PhantomData::<L>,
+            c: op_c, a: op_a, b: op_b
+        };
+
+        let core = SolverCore {
+            par: self.par,
+            _ph_l: PhantomData,
+            logger: self.logger,
+            op_l,
+            cone,
+        };
+
+        core.solve(work)
+    }
+}
+
+struct SolverCore<
+    F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
+    OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
+    >
+{
+    par: SolverParam<F>,
+
+    _ph_l: PhantomData<L>,
+    logger: W,
+
+    op_l: SelfDualEmbed<F, L, OC, OA, OB>,
+    cone: C,
+}
+
+impl<F, L, W, OC, OA, OB, C> SolverCore<F, L, W, OC, OA, OB, C>
+where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
+      OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
+{
+    fn solve(mut self, work: &mut[F]) -> Result<(&[F], &[F]), SolverError>
+    {
+        writeln_or!(self.logger, "----- Started")?;
+        let (m, n) = self.op_l.a().size();
 
         // Calculate norms
-        let (op_l_norm, b_norm, c_norm) = Self::calc_norms(&self.par, &op_l, self.work)?;
+        let (op_l_norm, b_norm, c_norm) = self.calc_norms(work)?;
 
         let tau = op_l_norm.recip();
         let sigma = op_l_norm.recip();
 
         // Initialize vectors
-        let (x, y, xx, p, d) = Self::init_vecs(self.work, m, n)?;
+        let (x, y, xx, p, d) = self.init_vecs(work)?;
 
         let mut i = 0;
         loop {
@@ -380,7 +399,7 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
             };
 
             // Update vectors
-            let u_tau = Self::update_vecs(&self.par, &op_l, &mut cone, x, y, xx, m, n, tau, sigma)?;
+            let u_tau = self.update_vecs(x, y, xx, tau, sigma)?;
 
             if log_trig && self.par.log_verbose {
                 writeln_or!(self.logger, "{}: state {:?} {:?}", i, x, y)?;
@@ -388,7 +407,7 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
 
             if u_tau > self.par.eps_zero {
                 // Termination criteria of convergence
-                let (cri_pri, cri_dual, cri_gap) = Self::criteria_conv(&op_l, x, p, d, m, n, c_norm, b_norm);
+                let (cri_pri, cri_dual, cri_gap) = self.criteria_conv(x, p, d, c_norm, b_norm);
 
                 let term_conv = (cri_pri <= self.par.eps_acc) && (cri_dual <= self.par.eps_acc) && (cri_gap <= self.par.eps_acc);
 
@@ -420,7 +439,7 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
             }
             else {
                 // Termination criteria of infeasibility
-                let (cri_unbdd, cri_infeas) = Self::criteria_inf(&op_l, x, p, d, m, n, c_norm, b_norm, self.par.eps_zero);
+                let (cri_unbdd, cri_infeas) = self.criteria_inf(x, p, d, c_norm, b_norm);
 
                 let term_unbdd = cri_unbdd <= self.par.eps_inf;
                 let term_infeas = cri_infeas <= self.par.eps_inf;
@@ -460,39 +479,43 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
         } // end of loop
     }
 
-    fn calc_norms<OC, OA, OB>(par: &SolverParam<F>, op_l: &SelfDualEmbed<F, L, OC, OA, OB>, work: &mut[F])
+    fn calc_norms(&mut self, work: &mut[F])
     -> Result<(F, F, F), SolverError>
-    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
     {
         let work_one = &mut [F::zero()];
         
         let op_l_norm = {
-            let (v, t, w, _, _, _) = split_tup6_mut(work, (op_l.size().1, op_l.size().0, op_l.size().1, 0, 0, 0))?;
+            let (nrow, ncol) = self.op_l.size();
+            let (v, t, w, _, _, _) = split_tup6_mut(work, (ncol, nrow, ncol, 0, 0, 0))?;
     
-            op_l.sp_norm(par.eps_zero, v, t, w)
+            self.op_l.sp_norm(self.par.eps_zero, v, t, w)
         };
         if op_l_norm < F::min_positive_value() {
             return Err(SolverError::InvalidOp);
         }
     
         let b_norm = {
-            let (t, _, _, _, _, _) = split_tup6_mut(work, (op_l.b().size().0, 0, 0, 0, 0, 0))?;
+            let (nrow, _) = self.op_l.b().size();
+            let (t, _, _, _, _, _) = split_tup6_mut(work, (nrow, 0, 0, 0, 0, 0))?;
     
-            op_l.b_norm(work_one, t)
+            self.op_l.b_norm(work_one, t)
         };
     
         let c_norm = {
-            let (t, _, _, _, _, _) = split_tup6_mut(work, (op_l.c().size().0, 0, 0, 0, 0, 0))?;
+            let (nrow, _) = self.op_l.c().size();
+            let (t, _, _, _, _, _) = split_tup6_mut(work, (nrow, 0, 0, 0, 0, 0))?;
     
-            op_l.c_norm(work_one, t)
+            self.op_l.c_norm(work_one, t)
         };
     
         Ok((op_l_norm, b_norm, c_norm))
     }
     
-    fn init_vecs(work: &mut[F], m: usize, n: usize)
-    -> Result<(&mut[F], &mut[F], &mut[F], &mut[F], &mut[F]), SolverError>
+    fn init_vecs<'b>(&self, work: &'b mut[F])
+    -> Result<(&'b mut[F], &'b mut[F], &'b mut[F], &'b mut[F], &'b mut[F]), SolverError>
     {
+        let (m, n) = self.op_l.a().size();
+
         let (x, y, xx, p, d, _) = split_tup6_mut(work, (
             n + (m + 1) * 2,
             n + m + 1,
@@ -516,43 +539,42 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
         Ok((x, y, xx, p, d))
     }
     
-    fn update_vecs<OC, OA, OB, C>(
-        par: &SolverParam<F>,
-        op_l: &SelfDualEmbed<F, L, OC, OA, OB>, cone: &mut C,
+    fn update_vecs(&mut self,
         x: &mut[F], y: &mut[F], xx: &mut[F],
-        m: usize, n: usize, tau: F, sigma: F)
+        tau: F, sigma: F)
     -> Result<F, SolverError>
-    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
     {
+        let (m, n) = self.op_l.a().size();
+
         let ret_u_tau;
 
-        op_l.trans_op(-tau, y, F::one(), x);
+        self.op_l.trans_op(-tau, y, F::one(), x);
 
         { // Projection
             let (_, u_y, u_tau, v_s, v_kappa, _) = split_tup6_mut(x, (n, m, 1, m, 1, 0)).unwrap();
 
-            cone.dual_proj(&par, u_y)?;
+            self.cone.dual_proj(&self.par, u_y)?;
             u_tau[0] = u_tau[0].max(F::zero());
-            cone.proj(&par, v_s)?;
+            self.cone.proj(&self.par, v_s)?;
             v_kappa[0] = v_kappa[0].max(F::zero());
 
             ret_u_tau = u_tau[0];
         }
 
         L::add(-F::one()-F::one(), x, xx);
-        op_l.op(-sigma, xx, F::one(), y);
+        self.op_l.op(-sigma, xx, F::one(), y);
         L::copy(x, xx);
 
         Ok(ret_u_tau)
     }
 
-    fn criteria_conv<OC, OA, OB>(
-        op_l: &SelfDualEmbed<F, L, OC, OA, OB>,
+    fn criteria_conv(&self,
         x: &[F], p: &mut[F], d: &mut[F],
-        m: usize, n: usize, c_norm: F, b_norm: F)
+        c_norm: F, b_norm: F)
     -> (F, F, F)
-    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
     {
+        let (m, n) = self.op_l.a().size();
+
         let (u_x, u_y, u_tau, v_s, _, _) = split_tup6(x, (n, m, 1, m, 0, 0)).unwrap();
     
         let u_tau = u_tau[0];
@@ -563,16 +585,16 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
         // Calc convergence criteria
         
         L::copy(v_s, p);
-        op_l.b().op(-F::one(), work_one, u_tau.recip(), p);
-        op_l.a().op(u_tau.recip(), u_x, F::one(), p);
+        self.op_l.b().op(-F::one(), work_one, u_tau.recip(), p);
+        self.op_l.a().op(u_tau.recip(), u_x, F::one(), p);
     
-        op_l.c().op(F::one(), work_one, F::zero(), d);
-        op_l.a().trans_op(u_tau.recip(), u_y, F::one(), d);
+        self.op_l.c().op(F::one(), work_one, F::zero(), d);
+        self.op_l.a().trans_op(u_tau.recip(), u_y, F::one(), d);
     
-        op_l.c().trans_op(u_tau.recip(), u_x, F::zero(), work_one);
+        self.op_l.c().trans_op(u_tau.recip(), u_x, F::zero(), work_one);
         let g_x = work_one[0];
     
-        op_l.b().trans_op(u_tau.recip(), u_y, F::zero(), work_one);
+        self.op_l.b().trans_op(u_tau.recip(), u_y, F::zero(), work_one);
         let g_y = work_one[0];
     
         let g = g_x + g_y;
@@ -584,13 +606,13 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
         (cri_pri, cri_dual, cri_gap)
     }
     
-    fn criteria_inf<OC, OA, OB>(
-        op_l: &SelfDualEmbed<F, L, OC, OA, OB>,
+    fn criteria_inf(&self,
         x: &[F], p: &mut[F], d: &mut[F],
-        m: usize, n: usize, c_norm: F, b_norm: F, eps_zero:F)
+        c_norm: F, b_norm: F)
     -> (F, F)
-    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
     {
+        let (m, n) = self.op_l.a().size();
+
         let (u_x, u_y, _, v_s, _, _) = split_tup6(x, (n, m, 1, m, 0, 0)).unwrap();
 
         let work_one = &mut [F::zero()];
@@ -598,23 +620,23 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
         // Calc undoundness and infeasibility criteria
         
         L::copy(v_s, p);
-        op_l.a().op(F::one(), u_x, F::one(), p);
+        self.op_l.a().op(F::one(), u_x, F::one(), p);
 
-        op_l.a().trans_op(F::one(), u_y, F::zero(), d);
+        self.op_l.a().trans_op(F::one(), u_y, F::zero(), d);
 
-        op_l.c().trans_op(-F::one(), u_x, F::zero(), work_one);
+        self.op_l.c().trans_op(-F::one(), u_x, F::zero(), work_one);
         let m_cx = work_one[0];
 
-        op_l.b().trans_op(-F::one(), u_y, F::zero(), work_one);
+        self.op_l.b().trans_op(-F::one(), u_y, F::zero(), work_one);
         let m_by = work_one[0];
 
-        let cri_unbdd = if m_cx > eps_zero {
+        let cri_unbdd = if m_cx > self.par.eps_zero {
             L::norm(p) * c_norm / m_cx
         }
         else {
             F::infinity()
         };
-        let cri_infeas = if m_by > eps_zero {
+        let cri_infeas = if m_by > self.par.eps_zero {
             L::norm(d) * b_norm / m_by
         }
         else {
