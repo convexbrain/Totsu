@@ -104,7 +104,7 @@ fn _proj_r(_x: &mut[f64])
     //
 }
 
-fn mat_to_vec(m: &[f64], v: &mut[f64])
+fn mat_to_vec(m: &mut[f64], v: &mut[f64])
 {
     let l = v.len();
     let n = (m.len() as f64).sqrt() as usize;
@@ -112,7 +112,10 @@ fn mat_to_vec(m: &[f64], v: &mut[f64])
     assert_eq!(m.len(), n * n);
     assert_eq!(n * (n + 1) / 2, l);
 
-    let mut ref_m = m;
+    // scale diagonals to match the resulted vector norm with the matrix norm multiplied by 0.5
+    unsafe { cblas::dscal(n as i32, 0.5_f64.sqrt(), m, (n + 1) as i32) }
+
+    let (_, mut ref_m) = m.split_at(0);
     let mut ref_v = v;
 
     for c in 0.. n {
@@ -125,8 +128,9 @@ fn mat_to_vec(m: &[f64], v: &mut[f64])
         ref_v = spl_v;
         F64BLAS::copy(rc, vc);
 
-        let (_, vct) = vc.split_at_mut(1);
-        F64BLAS::scale(2_f64.sqrt(), vct);
+        // scale diagonals instead
+        //let (_, vct) = vc.split_at_mut(1);
+        //F64BLAS::scale(2_f64.sqrt(), vct);
     }
 
     assert!(ref_m.is_empty());
@@ -141,7 +145,7 @@ fn vec_to_mat(v: &[f64], m: &mut[f64])
     assert_eq!(m.len(), n * n);
     assert_eq!(n * (n + 1) / 2, l);
 
-    let mut ref_m = m;
+    let (_, mut ref_m) = m.split_at_mut(0);
     let mut ref_v = v;
 
     for c in 0.. n {
@@ -154,10 +158,14 @@ fn vec_to_mat(v: &[f64], m: &mut[f64])
         ref_v = spl_v;
         F64BLAS::copy(vc, rc);
 
-        let (_, rct) = rc.split_at_mut(1);
-        F64BLAS::scale(0.5_f64.sqrt(), rct);
+        // scale diagonals instead
+        //let (_, rct) = rc.split_at_mut(1);
+        //F64BLAS::scale(0.5_f64.sqrt(), rct);
     }
 
     assert!(ref_m.is_empty());
     assert!(ref_v.is_empty());
+
+    // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
+    unsafe { cblas::dscal(n as i32, 2_f64.sqrt(), m, (n + 1) as i32) }
 }
