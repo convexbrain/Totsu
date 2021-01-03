@@ -3,6 +3,7 @@
 use crate::solver::Operator;
 use crate::solver::LinAlg;
 use crate::linalg::F64BLAS;
+use core::ops::{Index, IndexMut};
 
 pub struct MatOp<'a>
 {
@@ -12,42 +13,14 @@ pub struct MatOp<'a>
     col_major: bool,
 }
 
-fn sym_scale(n_row: usize, array: &mut[f64])
-{
-    let n = (((8 * n_row + 1) as f64).sqrt() as usize - 1) / 2;
-
-    let mut ref_a = array;
-    for d in 0.. n {
-        let (r, spl_a) = ref_a.split_at_mut(n - d);
-        ref_a = spl_a;
-
-        let (_, rt) = r.split_at_mut(1);
-        F64BLAS::scale(2_f64.sqrt(), rt);
-    }
-}
-
 impl<'a> MatOp<'a>
 {
-    // From a row-major array
-    pub fn new((n_row, n_col): (usize, usize), array: &'a[f64]) -> Self
+    pub fn new((n_row, n_col): (usize, usize), col_major: bool, array: &'a[f64]) -> Self
     {
         assert_eq!(n_row * n_col, array.len());
 
         MatOp {
-            n_row, n_col, array, col_major: false
-        }
-    }
-
-    // From a column-major array, each column of which is
-    // upper triangular elements of symmetric matrix vectorized in row-wise
-    pub fn new_sym((n_row, n_col): (usize, usize), array: &'a mut[f64]) -> Self
-    {
-        assert_eq!(n_row * n_col, array.len());
-
-        sym_scale(n_row, array);
-
-        MatOp {
-            n_row, n_col, array, col_major: true
+            n_row, n_col, array, col_major
         }
     }
 
@@ -96,5 +69,112 @@ impl<'a> Operator<f64> for MatOp<'a>
     fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
     {
         self.op_impl(true, alpha, x, beta, y);
+    }
+}
+
+//
+
+pub struct MatBuilder<'a>
+{
+    n_row: usize,
+    n_col: usize,
+    array: &'a mut[f64],
+    col_major: bool,
+}
+
+impl<'a> MatBuilder<'a>
+{
+    pub fn new((n_row, n_col): (usize, usize), col_major: bool, array: &'a mut[f64]) -> Self
+    {
+        assert_eq!(n_row * n_col, array.len());
+
+        MatBuilder {
+            n_row, n_col, array, col_major
+        }
+    }
+
+    // Each column is upper triangular elements of symmetric matrix vectorized in row-wise
+    pub fn build_sym(self) -> Option<Self>
+    {
+        let n = (((8 * self.n_row + 1) as f64).sqrt() as usize - 1) / 2;
+
+        if n * (n + 1) / 2 != self.n_row {
+            return None;
+        }
+
+        let (_, mut ref_a) = self.array.split_at_mut(0);
+        if self.col_major {
+            while !ref_a.is_empty() {
+                for sym_r in 0.. n {
+                    let (sym_row, spl_a) = ref_a.split_at_mut(n - sym_r);
+                    ref_a = spl_a;
+            
+                    let (_, sym_row_ndiag) = sym_row.split_at_mut(1);
+                    F64BLAS::scale(2_f64.sqrt(), sym_row_ndiag);
+                }
+            }
+        }
+        else {
+            for sym_r in 0.. n {
+                let (_, spl_a) = ref_a.split_at_mut(self.n_col);
+                ref_a = spl_a;
+
+                let (sym_row, spl_a) = ref_a.split_at_mut(self.n_col * (n - 1 - sym_r));
+                ref_a = spl_a;
+                F64BLAS::scale(2_f64.sqrt(), sym_row);
+            }
+        }
+        Some(self)
+    }
+
+    fn index(&self, (r, c): (usize, usize)) -> usize
+    {
+        assert!(r < self.n_row);
+        assert!(c < self.n_col);
+
+        let i = if self.col_major {
+            r * self.n_row + c
+        }
+        else {
+            c * self.n_col + r
+        };
+
+        assert!(i < self.array.len());
+
+        i
+    }
+}
+
+impl<'a> Index<(usize, usize)> for MatBuilder<'a>
+{
+    type Output = f64;
+    fn index(&self, index: (usize, usize)) -> &f64
+    {
+        let i = self.index(index);
+
+        &self.array[i]
+    }
+}
+
+impl<'a> IndexMut<(usize, usize)> for MatBuilder<'a>
+{
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut f64
+    {
+        let i = self.index(index);
+
+        &mut self.array[i]
+    }
+}
+
+impl<'a> From<MatBuilder<'a>> for MatOp<'a>
+{
+    fn from(m: MatBuilder<'a>) -> Self
+    {
+        MatOp {
+            n_row: m.n_row,
+            n_col: m.n_col,
+            array: m.array,
+            col_major: m.col_major,
+        }
     }
 }
