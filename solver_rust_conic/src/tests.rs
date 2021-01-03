@@ -14,15 +14,15 @@ fn test_smoke() {
     ]);
 
     let array_a = &mut[
-        0., -1.,
-            -3.,
+         0.,
+        -1., -3.,
     ];
     let mat_a = MatBuilder::new((3, 1), true, array_a).build_sym().unwrap();
     let op_a = MatOp::from(mat_a);
 
     let array_b = &mut[
-        1.,  0.,
-            10.,
+        1.,
+        0., 10.,
     ];
     let mat_b = MatBuilder::new((3, 1), true, array_b).build_sym().unwrap();
     let op_b = MatOp::from(mat_b);

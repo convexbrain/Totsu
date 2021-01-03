@@ -56,7 +56,7 @@ impl<'a> Cone<f64> for ConePSD<'a>
         unsafe {
             lapacke::dsyevr(
                 lapacke::Layout::RowMajor, b'V', b'V',
-                b'U', n, a, n,
+                b'L', n, a, n,
                 0., f64::INFINITY, 0, 0, par.eps_zero,
                 &mut m, &mut w,
                 &mut z, n, &mut []);
@@ -70,7 +70,7 @@ impl<'a> Cone<f64> for ConePSD<'a>
             let (_, ref_z) = z.split_at(i);
             unsafe {
                 cblas::dsyr(
-                    cblas::Layout::RowMajor, cblas::Part::Upper,
+                    cblas::Layout::RowMajor, cblas::Part::Lower,
                     n, e,
                     ref_z, n,
                     a, n);
@@ -118,19 +118,15 @@ fn mat_to_vec(m: &mut[f64], v: &mut[f64])
     let (_, mut ref_m) = m.split_at(0);
     let mut ref_v = v;
 
+    // The vector is a symmetric matrix, packing the lower triangle by rows.
     for c in 0.. n {
-        // upper triangular elements of symmetric matrix vectorized in row-wise
         let (r, spl_m) = ref_m.split_at(n);
         ref_m = spl_m;
-        let (_, rc) = r.split_at(c);
+        let (rc, _) = r.split_at(c + 1);
 
-        let (vc, spl_v) = ref_v.split_at_mut(n - c);
+        let (vc, spl_v) = ref_v.split_at_mut(c + 1);
         ref_v = spl_v;
         F64BLAS::copy(rc, vc);
-
-        // scale diagonals instead
-        //let (_, vct) = vc.split_at_mut(1);
-        //F64BLAS::scale(2_f64.sqrt(), vct);
     }
 
     assert!(ref_m.is_empty());
@@ -148,19 +144,15 @@ fn vec_to_mat(v: &[f64], m: &mut[f64])
     let (_, mut ref_m) = m.split_at_mut(0);
     let mut ref_v = v;
 
+    // The vector is a symmetric matrix, packing the lower triangle by rows.
     for c in 0.. n {
-        // upper triangular elements of symmetric matrix vectorized in row-wise
         let (r, spl_m) = ref_m.split_at_mut(n);
         ref_m = spl_m;
-        let (_, rc) = r.split_at_mut(c);
+        let (rc, _) = r.split_at_mut(c + 1);
 
-        let (vc, spl_v) = ref_v.split_at(n - c);
+        let (vc, spl_v) = ref_v.split_at(c + 1);
         ref_v = spl_v;
         F64BLAS::copy(vc, rc);
-
-        // scale diagonals instead
-        //let (_, rct) = rc.split_at_mut(1);
-        //F64BLAS::scale(0.5_f64.sqrt(), rct);
     }
 
     assert!(ref_m.is_empty());

@@ -93,35 +93,35 @@ impl<'a> MatBuilder<'a>
         }
     }
 
-    // Each column is upper triangular elements of symmetric matrix vectorized in row-wise
+    // Each column is a symmetric matrix, packing the lower triangle by rows.
     pub fn build_sym(self) -> Option<Self>
     {
-        let n = (((8 * self.n_row + 1) as f64).sqrt() as usize - 1) / 2;
+        let sym_n = (((8 * self.n_row + 1) as f64).sqrt() as usize - 1) / 2;
 
-        if n * (n + 1) / 2 != self.n_row {
+        if sym_n * (sym_n + 1) / 2 != self.n_row {
             return None;
         }
 
         let (_, mut ref_a) = self.array.split_at_mut(0);
         if self.col_major {
             while !ref_a.is_empty() {
-                for sym_r in 0.. n {
-                    let (sym_row, spl_a) = ref_a.split_at_mut(n - sym_r);
+                for sym_r in 0.. sym_n {
+                    let (sym_row, spl_a) = ref_a.split_at_mut(sym_r + 1);
                     ref_a = spl_a;
             
-                    let (_, sym_row_ndiag) = sym_row.split_at_mut(1);
-                    F64BLAS::scale(2_f64.sqrt(), sym_row_ndiag);
+                    let (sym_row_nondiag, _) = sym_row.split_at_mut(sym_r);
+                    F64BLAS::scale(2_f64.sqrt(), sym_row_nondiag);
                 }
             }
         }
         else {
-            for sym_r in 0.. n {
+            for sym_r in 0.. sym_n {
+                let (sym_rows_nondiag, spl_a) = ref_a.split_at_mut(self.n_col * sym_r);
+                ref_a = spl_a;
+                F64BLAS::scale(2_f64.sqrt(), sym_rows_nondiag);
+
                 let (_, spl_a) = ref_a.split_at_mut(self.n_col);
                 ref_a = spl_a;
-
-                let (sym_row, spl_a) = ref_a.split_at_mut(self.n_col * (n - 1 - sym_r));
-                ref_a = spl_a;
-                F64BLAS::scale(2_f64.sqrt(), sym_row);
             }
         }
         Some(self)
