@@ -282,18 +282,27 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
     }
 }
 
-pub struct Solver<F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write>
+pub struct Solver<F: Float + Debug + LowerExp, L: LinAlg<F>>
 {
     pub par: SolverParam<F>,
 
     _ph_l: PhantomData::<L>,
-    logger: W,
 }
 
-impl<F, L, W> Solver<F, L, W>
-where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
+impl<F, L> Solver<F, L>
+where F: Float + Debug + LowerExp, L: LinAlg<F>
 {
-    pub fn new(_linalg: L, logger: W) -> Self
+    pub fn query_worklen(_linalg: L, op_a_size: (usize, usize)) -> usize
+    {
+        let (m, n) = op_a_size;
+
+        let len_norms = (n + m + 1) * 5;
+        let len_iteration = (n + (m + 1) * 2) * 2 + (n + m + 1) + n + m;
+
+        len_norms.max(len_iteration)
+    }
+
+    pub fn new(_linalg: L) -> Self
     {
         let ten = F::from(10).unwrap();
 
@@ -307,25 +316,14 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
                 log_verbose: false,
             },
             _ph_l: PhantomData::<L>,
-            logger,
         }
     }
 
-    pub fn query_worklen(&self, op_a_size: (usize, usize)) -> usize
-    {
-        let (m, n) = op_a_size;
-
-        let len_norms = (n + m + 1) * 5;
-        let len_iteration = (n + (m + 1) * 2) * 2 + (n + m + 1) + n + m;
-
-        len_norms.max(len_iteration)
-    }
-
-    pub fn solve<OC, OA, OB, C>(self,
+    pub fn solve<OC, OA, OB, C, W>(self,
         op_c: OC, op_a: OA, op_b: OB, cone: C,
-        work: &mut[F]
+        work: &mut[F], logger: W
     ) -> Result<(&[F], &[F]), SolverError>
-    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
+    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>, W: core::fmt::Write
     {
         let (m, n) = op_a.size();
 
@@ -342,7 +340,7 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
         let core = SolverCore {
             par: self.par,
             _ph_l: PhantomData,
-            logger: self.logger,
+            logger,
             op_l,
             cone,
         };
