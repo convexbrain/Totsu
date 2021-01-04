@@ -161,3 +161,50 @@ fn vec_to_mat(v: &[f64], m: &mut[f64])
     // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
     unsafe { cblas::dscal(n as i32, 2_f64.sqrt(), m, (n + 1) as i32) }
 }
+
+
+#[test]
+fn test_cone1() {
+    use float_eq::assert_float_eq;
+
+    let ref_v = &[
+         1.*0.7,
+         2.,  3.*0.7,
+         4.,  5.,  6.*0.7,
+         7.,  8.,  9., 10.*0.7,
+        11., 12., 13., 14., 15.*0.7,
+    ];
+    let ref_m = &[
+         1.,  0.,  0.,  0.,  0.,
+         2.,  3.,  0.,  0.,  0.,
+         4.,  5.,  6.,  0.,  0.,
+         7.,  8.,  9., 10.,  0.,
+        11., 12., 13., 14., 15.,
+    ];
+    let mut v = ref_v.clone();
+    let m = &mut[0.; 25];
+    vec_to_mat(&mut v, m);
+    assert_float_eq!(ref_m, m, abs_all <= 0.5);
+    mat_to_vec(m, &mut v);
+    assert_float_eq!(ref_v, &v, abs_all <= 1e-6);
+}
+
+#[test]
+fn test_cone2() {
+    use float_eq::assert_float_eq;
+
+    let ref_x = &[
+        5.,
+        0., 0.,
+    ];
+    let x = &mut[
+        5.,
+        0., -5.,
+    ];
+    assert_eq!(ConePSD::query_worklen(x.len()), 10);
+    let w = &mut[0.; 10];
+    let mut c = ConePSD::new(w);
+    let p = SolverParam::default();
+    c.proj(&p, x).unwrap();
+    assert_float_eq!(ref_x, x, abs_all <= 1e-6);
+}

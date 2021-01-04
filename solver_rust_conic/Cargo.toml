@@ -23,6 +23,9 @@ num = "0.3.1"
 lapacke = "0.2.0"
 cblas = "0.2.0"
 
+[dev-dependencies]
+float_eq = "0.5.0"
+
 [dev-dependencies.intel-mkl-src]
 default-features = false
 version = "0.6.0+mkl2020.1"

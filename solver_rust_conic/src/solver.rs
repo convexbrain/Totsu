@@ -31,15 +31,10 @@ pub trait Cone<F: Float>
     }
 }
 
-#[derive(Debug)]
-pub struct SolverParam<F: Float>
-{
-    pub max_iter: Option<usize>,
-    pub eps_acc: F,
-    pub eps_inf: F,
-    pub eps_zero: F,
-    pub log_period: usize,
-    pub log_verbose: bool,
+macro_rules! writeln_or {
+    ( $( $arg: expr ),* ) => {
+        writeln!( $( $arg ),* ).or(Err(SolverError::LogFailure))
+    };
 }
 
 #[derive(Debug)]
@@ -56,10 +51,32 @@ pub enum SolverError
     ConeFailure,
 }
 
-macro_rules! writeln_or {
-    ( $( $arg: expr ),* ) => {
-        writeln!( $( $arg ),* ).or(Err(SolverError::LogFailure))
-    };
+#[derive(Debug)]
+pub struct SolverParam<F: Float>
+{
+    pub max_iter: Option<usize>,
+    pub eps_acc: F,
+    pub eps_inf: F,
+    pub eps_zero: F,
+    pub log_period: usize,
+    pub log_verbose: bool,
+}
+
+impl<F: Float> Default for SolverParam<F>
+{
+    fn default() -> Self
+    {
+        let ten = F::from(10).unwrap();
+
+        SolverParam {
+            max_iter: Some(10_000),
+            eps_acc: ten.powi(-6),
+            eps_inf: ten.powi(-6),
+            eps_zero: ten.powi(-12),
+            log_period: 0,
+            log_verbose: false,
+        }
+    }
 }
 
 fn split_tup6<T>(
@@ -304,17 +321,8 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>
 
     pub fn new(_linalg: L) -> Self
     {
-        let ten = F::from(10).unwrap();
-
         Solver {
-            par: SolverParam {
-                max_iter: Some(10_000),
-                eps_acc: ten.powi(-6),
-                eps_inf: ten.powi(-6),
-                eps_zero: ten.powi(-12),
-                log_period: 0,
-                log_verbose: false,
-            },
+            par: SolverParam::default(),
             _ph_l: PhantomData::<L>,
         }
     }

@@ -178,3 +178,60 @@ impl<'a> From<MatBuilder<'a>> for MatOp<'a>
         }
     }
 }
+
+
+#[test]
+fn test_matop1() {
+    use float_eq::assert_float_eq;
+
+    let ref_array = &[
+        1.,
+        2.*1.4,  3.,
+        4.*1.4,  5.*1.4,  6.,
+        7.*1.4,  8.*1.4,  9.*1.4, 10.,
+       11.*1.4, 12.*1.4, 13.*1.4, 14.*1.4, 15.,
+        1.,
+        2.*1.4,  3.,
+        4.*1.4,  5.*1.4,  6.,
+        7.*1.4,  8.*1.4,  9.*1.4, 10.,
+       11.*1.4, 12.*1.4, 13.*1.4, 14.*1.4, 15.,
+    ];
+    let array = &mut[
+        1.,
+        2.,  3.,
+        4.,  5.,  6.,
+        7.,  8.,  9., 10.,
+       11., 12., 13., 14., 15.,
+        1.,
+        2.,  3.,
+        4.,  5.,  6.,
+        7.,  8.,  9., 10.,
+       11., 12., 13., 14., 15.,
+    ];
+    MatBuilder::new((15, 2), true, array).build_sym().unwrap();
+
+    assert_float_eq!(ref_array, array, abs_all <= 0.5);
+}
+
+#[test]
+fn test_matop2() {
+    use float_eq::assert_float_eq;
+
+    let ref_array = &[
+        1.,
+        2.*1.4,  3.,
+        4.*1.4,  5.*1.4,  6.,
+        7.*1.4,  8.*1.4,  9.*1.4, 10.,
+       11.*1.4, 12.*1.4, 13.*1.4, 14.*1.4, 15.,
+    ];
+    let array = &mut[
+        1.,
+        2.,  3.,
+        4.,  5.,  6.,
+        7.,  8.,  9., 10.,
+       11., 12., 13., 14., 15.,
+    ];
+    MatBuilder::new((15, 1), false, array).build_sym().unwrap();
+
+    assert_float_eq!(ref_array, array, abs_all <= 0.5);
+}
