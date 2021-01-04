@@ -84,24 +84,34 @@ impl<'a> Cone<f64> for ConePSD<'a>
     }
 }
 
-// TODO: other cones
-fn _proj_pos(x: &mut[f64])
+pub struct ConeRPos;
+
+impl Cone<f64> for ConeRPos
 {
-    for e in x {
-        *e = e.max(0.);
+    fn proj(&mut self, _par: &SolverParam<f64>, x: &mut[f64]) -> Result<(), SolverError>
+    {
+        for e in x {
+            *e = e.max(0.);
+        }
+        Ok(())
     }
 }
 
-fn _proj_o(x: &mut[f64])
-{
-    for e in x {
-        *e = 0.;
-    }
-}
+pub struct ConeZero;
 
-fn _proj_r(_x: &mut[f64])
+impl Cone<f64> for ConeZero
 {
-    //
+    fn proj(&mut self, _par: &SolverParam<f64>, x: &mut[f64]) -> Result<(), SolverError>
+    {
+        for e in x {
+            *e = 0.;
+        }
+        Ok(())
+    }
+    fn dual_proj(&mut self, _par: &SolverParam<f64>, _x: &mut[f64]) -> Result<(), SolverError>
+    {
+        Ok(())
+    }
 }
 
 fn mat_to_vec(m: &mut[f64], v: &mut[f64])

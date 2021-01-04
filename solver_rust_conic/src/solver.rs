@@ -16,14 +16,21 @@ pub trait LinAlg<F: Float>
 pub trait Operator<F: Float>
 {
     fn size(&self) -> (usize, usize);
+
     // y = alpha * Op * x + beta * y
+    // x.len() shall be size().1
+    // y.len() shall be size().0
     fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]);
+
     // y = alpha * Op^T * x + beta * y
+    // x.len() shall be size().0
+    // y.len() shall be size().1
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]);
 }
 
 pub trait Cone<F: Float>
 {
+    // x.len() shall be op_a.size().0
     fn proj(&mut self, par: &SolverParam<F>, x: &mut[F]) -> Result<(), SolverError>;
     fn dual_proj(&mut self, par: &SolverParam<F>, x: &mut[F]) -> Result<(), SolverError>
     {
@@ -299,17 +306,18 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
     }
 }
 
-pub struct Solver<F: Float + Debug + LowerExp, L: LinAlg<F>>
+pub struct Solver<F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write>
 {
     pub par: SolverParam<F>,
 
     _ph_l: PhantomData::<L>,
+    logger: W,
 }
 
-impl<F, L> Solver<F, L>
-where F: Float + Debug + LowerExp, L: LinAlg<F>
+impl<F, L, W> Solver<F, L, W>
+where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
 {
-    pub fn query_worklen(_linalg: L, op_a_size: (usize, usize)) -> usize
+    pub fn query_worklen(&self, op_a_size: (usize, usize)) -> usize
     {
         let (m, n) = op_a_size;
 
@@ -319,19 +327,20 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>
         len_norms.max(len_iteration)
     }
 
-    pub fn new(_linalg: L) -> Self
+    pub fn new(_linalg: L, logger: W) -> Self
     {
         Solver {
             par: SolverParam::default(),
             _ph_l: PhantomData::<L>,
+            logger,
         }
     }
 
-    pub fn solve<OC, OA, OB, C, W>(self,
+    pub fn solve<OC, OA, OB, C>(self,
         op_c: OC, op_a: OA, op_b: OB, cone: C,
-        work: &mut[F], logger: W
+        work: &mut[F],
     ) -> Result<(&[F], &[F]), SolverError>
-    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>, W: core::fmt::Write
+    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
     {
         let (m, n) = op_a.size();
 
@@ -348,7 +357,7 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>
         let core = SolverCore {
             par: self.par,
             _ph_l: PhantomData,
-            logger,
+            logger: self.logger,
             op_l,
             cone,
         };

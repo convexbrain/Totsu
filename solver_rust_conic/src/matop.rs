@@ -72,8 +72,17 @@ impl<'a> Operator<f64> for MatOp<'a>
     }
 }
 
+impl<'a> AsRef<[f64]> for MatOp<'a>
+{
+    fn as_ref(&self) -> &[f64]
+    {
+        self.array
+    }
+}
+
 //
 
+#[derive(Debug)]
 pub struct MatBuilder<'a>
 {
     n_row: usize,
@@ -133,10 +142,10 @@ impl<'a> MatBuilder<'a>
         assert!(c < self.n_col);
 
         let i = if self.col_major {
-            r * self.n_row + c
+            r * self.n_col + c
         }
         else {
-            c * self.n_col + r
+            c * self.n_row + r
         };
 
         assert!(i < self.array.len());
@@ -163,6 +172,22 @@ impl<'a> IndexMut<(usize, usize)> for MatBuilder<'a>
         let i = self.index(index);
 
         &mut self.array[i]
+    }
+}
+
+impl<'a> AsRef<[f64]> for MatBuilder<'a>
+{
+    fn as_ref(&self) -> &[f64]
+    {
+        self.array
+    }
+}
+
+impl<'a> AsMut<[f64]> for MatBuilder<'a>
+{
+    fn as_mut(&mut self) -> &mut[f64]
+    {
+        &mut self.array
     }
 }
 
