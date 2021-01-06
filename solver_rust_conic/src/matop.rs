@@ -9,29 +9,22 @@ pub struct MatOp<'a>
 {
     n_row: usize,
     n_col: usize,
-    array: &'a[f64],
-    col_major: bool,
+    array: &'a[f64]
 }
 
 impl<'a> MatOp<'a>
 {
-    pub fn new((n_row, n_col): (usize, usize), col_major: bool, array: &'a[f64]) -> Self
+    pub fn new((n_row, n_col): (usize, usize), array: &'a[f64]) -> Self
     {
         assert_eq!(n_row * n_col, array.len());
 
         MatOp {
-            n_row, n_col, array, col_major
+            n_row, n_col, array,
         }
     }
 
     fn op_impl(&self, trans: bool, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
     {
-        let (layout, lda) = if self.col_major {
-            (cblas::Layout::ColumnMajor, self.n_row)
-        } else {
-            (cblas::Layout::RowMajor, self.n_col)
-        };
-        
         let trans = if trans {
             assert_eq!(x.len(), self.n_row);
             assert_eq!(y.len(), self.n_col);
@@ -45,9 +38,9 @@ impl<'a> MatOp<'a>
         };
         
         unsafe { cblas::dgemv(
-            layout, trans,
+            cblas::Layout::ColumnMajor, trans,
             self.n_row as i32, self.n_col as i32,
-            alpha, self.array, lda as i32,
+            alpha, self.array, self.n_row as i32,
             x, 1,
             beta, y, 1
         ) }
@@ -88,17 +81,16 @@ pub struct MatBuilder<'a>
     n_row: usize,
     n_col: usize,
     array: &'a mut[f64],
-    col_major: bool,
 }
 
 impl<'a> MatBuilder<'a>
 {
-    pub fn new((n_row, n_col): (usize, usize), col_major: bool, array: &'a mut[f64]) -> Self
+    pub fn new((n_row, n_col): (usize, usize), array: &'a mut[f64]) -> Self
     {
         assert_eq!(n_row * n_col, array.len());
 
         MatBuilder {
-            n_row, n_col, array, col_major
+            n_row, n_col, array,
         }
     }
 
@@ -112,25 +104,13 @@ impl<'a> MatBuilder<'a>
         }
 
         let (_, mut ref_a) = self.array.split_at_mut(0);
-        if self.col_major {
-            while !ref_a.is_empty() {
-                for sym_r in 0.. sym_n {
-                    let (sym_row, spl_a) = ref_a.split_at_mut(sym_r + 1);
-                    ref_a = spl_a;
-            
-                    let (sym_row_nondiag, _) = sym_row.split_at_mut(sym_r);
-                    F64BLAS::scale(2_f64.sqrt(), sym_row_nondiag);
-                }
-            }
-        }
-        else {
+        while !ref_a.is_empty() {
             for sym_r in 0.. sym_n {
-                let (sym_rows_nondiag, spl_a) = ref_a.split_at_mut(self.n_col * sym_r);
+                let (sym_row, spl_a) = ref_a.split_at_mut(sym_r + 1);
                 ref_a = spl_a;
-                F64BLAS::scale(2_f64.sqrt(), sym_rows_nondiag);
-
-                let (_, spl_a) = ref_a.split_at_mut(self.n_col);
-                ref_a = spl_a;
+        
+                let (sym_row_nondiag, _) = sym_row.split_at_mut(sym_r);
+                F64BLAS::scale(2_f64.sqrt(), sym_row_nondiag);
             }
         }
         Some(self)
@@ -141,12 +121,7 @@ impl<'a> MatBuilder<'a>
         assert!(r < self.n_row);
         assert!(c < self.n_col);
 
-        let i = if self.col_major {
-            r * self.n_col + c
-        }
-        else {
-            c * self.n_row + r
-        };
+        let i = r * self.n_col + c;
 
         assert!(i < self.array.len());
 
@@ -199,7 +174,6 @@ impl<'a> From<MatBuilder<'a>> for MatOp<'a>
             n_row: m.n_row,
             n_col: m.n_col,
             array: m.array,
-            col_major: m.col_major,
         }
     }
 }
@@ -209,7 +183,7 @@ impl<'a> From<MatBuilder<'a>> for MatOp<'a>
 fn test_matop1() {
     use float_eq::assert_float_eq;
 
-    let ref_array = &[
+    let ref_array = &[ // column-major, upper-triangle (seen as if transposed)
         1.,
         2.*1.4,  3.,
         4.*1.4,  5.*1.4,  6.,
@@ -221,7 +195,7 @@ fn test_matop1() {
         7.*1.4,  8.*1.4,  9.*1.4, 10.,
        11.*1.4, 12.*1.4, 13.*1.4, 14.*1.4, 15.,
     ];
-    let array = &mut[
+    let array = &mut[ // column-major, upper-triangle (seen as if transposed)
         1.,
         2.,  3.,
         4.,  5.,  6.,
@@ -233,30 +207,7 @@ fn test_matop1() {
         7.,  8.,  9., 10.,
        11., 12., 13., 14., 15.,
     ];
-    MatBuilder::new((15, 2), true, array).build_sym().unwrap();
-
-    assert_float_eq!(ref_array, array, abs_all <= 0.5);
-}
-
-#[test]
-fn test_matop2() {
-    use float_eq::assert_float_eq;
-
-    let ref_array = &[
-        1.,
-        2.*1.4,  3.,
-        4.*1.4,  5.*1.4,  6.,
-        7.*1.4,  8.*1.4,  9.*1.4, 10.,
-       11.*1.4, 12.*1.4, 13.*1.4, 14.*1.4, 15.,
-    ];
-    let array = &mut[
-        1.,
-        2.,  3.,
-        4.,  5.,  6.,
-        7.,  8.,  9., 10.,
-       11., 12., 13., 14., 15.,
-    ];
-    MatBuilder::new((15, 1), false, array).build_sym().unwrap();
+    MatBuilder::new((15, 2), array).build_sym().unwrap();
 
     assert_float_eq!(ref_array, array, abs_all <= 0.5);
 }

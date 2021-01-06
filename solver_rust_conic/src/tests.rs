@@ -9,7 +9,7 @@ use crate::linalg::*;
 
 #[test]
 fn test_smoke() {
-    let op_c = MatOp::new((1, 1), false, &[
+    let op_c = MatOp::new((1, 1), &[
         1.,
     ]);
 
@@ -17,14 +17,14 @@ fn test_smoke() {
          0.,
         -1., -3.,
     ];
-    let mat_a = MatBuilder::new((3, 1), true, array_a).build_sym().unwrap();
+    let mat_a = MatBuilder::new((3, 1), array_a).build_sym().unwrap();
     let op_a = MatOp::from(mat_a);
 
     let array_b = &mut[
         1.,
         0., 10.,
     ];
-    let mat_b = MatBuilder::new((3, 1), true, array_b).build_sym().unwrap();
+    let mat_b = MatBuilder::new((3, 1), array_b).build_sym().unwrap();
     let op_b = MatOp::from(mat_b);
 
     let mut cone_w = vec![0.; ConePSD::query_worklen(op_a.size().0)];

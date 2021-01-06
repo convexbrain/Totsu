@@ -55,8 +55,8 @@ impl<'a> Cone<f64> for ConePSD<'a>
         let n = nrows as i32;
         unsafe {
             lapacke::dsyevr(
-                lapacke::Layout::RowMajor, b'V', b'V',
-                b'L', n, a, n,
+                lapacke::Layout::ColumnMajor, b'V', b'V',
+                b'U', n, a, n,
                 0., f64::INFINITY, 0, 0, par.eps_zero,
                 &mut m, &mut w,
                 &mut z, n, &mut []);
@@ -67,12 +67,12 @@ impl<'a> Cone<f64> for ConePSD<'a>
         }
         for i in 0.. m as usize {
             let e = w[i];
-            let (_, ref_z) = z.split_at(i);
+            let (_, ref_z) = z.split_at(i * nrows);
             unsafe {
                 cblas::dsyr(
-                    cblas::Layout::RowMajor, cblas::Part::Lower,
+                    cblas::Layout::ColumnMajor, cblas::Part::Upper,
                     n, e,
-                    ref_z, n,
+                    ref_z, 1,
                     a, n);
             }
     
@@ -114,6 +114,35 @@ impl Cone<f64> for ConeZero
     }
 }
 
+fn vec_to_mat(v: &[f64], m: &mut[f64])
+{
+    let l = v.len();
+    let n = (m.len() as f64).sqrt() as usize;
+
+    assert_eq!(m.len(), n * n);
+    assert_eq!(n * (n + 1) / 2, l);
+
+    let (_, mut ref_m) = m.split_at_mut(0);
+    let mut ref_v = v;
+
+    // The vector is a symmetric matrix, packing the upper-triangle by columns.
+    for c in 0.. n {
+        let (col, spl_m) = ref_m.split_at_mut(n);
+        ref_m = spl_m;
+        let (cut, _) = col.split_at_mut(c + 1);
+
+        let (v_cut, spl_v) = ref_v.split_at(c + 1);
+        ref_v = spl_v;
+        F64BLAS::copy(v_cut, cut);
+    }
+
+    assert!(ref_m.is_empty());
+    assert!(ref_v.is_empty());
+
+    // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
+    unsafe { cblas::dscal(n as i32, 2_f64.sqrt(), m, (n + 1) as i32) }
+}
+
 fn mat_to_vec(m: &mut[f64], v: &mut[f64])
 {
     let l = v.len();
@@ -128,48 +157,19 @@ fn mat_to_vec(m: &mut[f64], v: &mut[f64])
     let (_, mut ref_m) = m.split_at(0);
     let mut ref_v = v;
 
-    // The vector is a symmetric matrix, packing the lower triangle by rows.
+    // The vector is a symmetric matrix, packing the upper-triangle by columns.
     for c in 0.. n {
-        let (r, spl_m) = ref_m.split_at(n);
+        let (col, spl_m) = ref_m.split_at(n);
         ref_m = spl_m;
-        let (rc, _) = r.split_at(c + 1);
+        let (cut, _) = col.split_at(c + 1);
 
-        let (vc, spl_v) = ref_v.split_at_mut(c + 1);
+        let (v_cut, spl_v) = ref_v.split_at_mut(c + 1);
         ref_v = spl_v;
-        F64BLAS::copy(rc, vc);
+        F64BLAS::copy(cut, v_cut);
     }
 
     assert!(ref_m.is_empty());
     assert!(ref_v.is_empty());
-}
-
-fn vec_to_mat(v: &[f64], m: &mut[f64])
-{
-    let l = v.len();
-    let n = (m.len() as f64).sqrt() as usize;
-
-    assert_eq!(m.len(), n * n);
-    assert_eq!(n * (n + 1) / 2, l);
-
-    let (_, mut ref_m) = m.split_at_mut(0);
-    let mut ref_v = v;
-
-    // The vector is a symmetric matrix, packing the lower triangle by rows.
-    for c in 0.. n {
-        let (r, spl_m) = ref_m.split_at_mut(n);
-        ref_m = spl_m;
-        let (rc, _) = r.split_at_mut(c + 1);
-
-        let (vc, spl_v) = ref_v.split_at(c + 1);
-        ref_v = spl_v;
-        F64BLAS::copy(vc, rc);
-    }
-
-    assert!(ref_m.is_empty());
-    assert!(ref_v.is_empty());
-
-    // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
-    unsafe { cblas::dscal(n as i32, 2_f64.sqrt(), m, (n + 1) as i32) }
 }
 
 
@@ -177,14 +177,14 @@ fn vec_to_mat(v: &[f64], m: &mut[f64])
 fn test_cone1() {
     use float_eq::assert_float_eq;
 
-    let ref_v = &[
+    let ref_v = &[ // column-major, upper-triangle (seen as if transposed)
          1.*0.7,
          2.,  3.*0.7,
          4.,  5.,  6.*0.7,
          7.,  8.,  9., 10.*0.7,
         11., 12., 13., 14., 15.*0.7,
     ];
-    let ref_m = &[
+    let ref_m = &[ // column-major, upper-triangle (seen as if transposed)
          1.,  0.,  0.,  0.,  0.,
          2.,  3.,  0.,  0.,  0.,
          4.,  5.,  6.,  0.,  0.,
@@ -203,11 +203,11 @@ fn test_cone1() {
 fn test_cone2() {
     use float_eq::assert_float_eq;
 
-    let ref_x = &[
+    let ref_x = &[ // column-major, upper-triangle (seen as if transposed)
         5.,
         0., 0.,
     ];
-    let x = &mut[
+    let x = &mut[ // column-major, upper-triangle (seen as if transposed)
         5.,
         0., -5.,
     ];
