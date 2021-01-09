@@ -8,24 +8,32 @@ use crate::logger::*;
 use crate::linalg::*;
 
 #[test]
-fn test_smoke() {
+fn test_smoke1() {
+    use float_eq::assert_float_eq;
+
     let op_c = MatOp::new((1, 1), &[
         1.,
     ]);
 
-    let array_a = &mut[
-         0.,
+    let array_a = &[
+         0., -1.,
         -1., -3.,
     ];
-    let mat_a = MatBuilder::new((3, 1), array_a).build_sym().unwrap();
-    let op_a = MatOp::from(mat_a);
+    let mat_a = MatBuild::new(MatType::SymPack(2))
+                .iter_rowmaj(array_a)
+                .scale_nondiag(2_f64.sqrt())
+                .reshape_colvec();
+    let op_a = MatOp::from(&mat_a);
 
-    let array_b = &mut[
-        1.,
+    let array_b = &[
+        1.,  0.,
         0., 10.,
     ];
-    let mat_b = MatBuilder::new((3, 1), array_b).build_sym().unwrap();
-    let op_b = MatOp::from(mat_b);
+    let mat_b = MatBuild::new(MatType::SymPack(2))
+                .iter_rowmaj(array_b)
+                .scale_nondiag(2_f64.sqrt())
+                .reshape_colvec();
+    let op_b = MatOp::from(&mat_b);
 
     let mut cone_w = vec![0.; ConePSD::query_worklen(op_a.size().0)];
     let cone = ConePSD::new(&mut cone_w);
@@ -37,6 +45,8 @@ fn test_smoke() {
     let s = Solver::new(F64BLAS, log);
     println!("{:?}", s.par);
     let mut solver_w = vec![0.; s.query_worklen(op_a.size())];
-    let rslt = s.solve(op_c, op_a, op_b, cone, &mut solver_w);
+    let rslt = s.solve(op_c, op_a, op_b, cone, &mut solver_w).unwrap();
     println!("{:?}", rslt);
+
+    assert_float_eq!(rslt.0[0], -2., abs_all <= 1e-3);
 }
