@@ -1,6 +1,5 @@
-// TODO: no blas/lapack
-
 use crate::solver::Operator;
+use crate::linalg::{LinAlgAux, F64BLAS};
 
 //
 
@@ -50,43 +49,19 @@ impl<'a> MatOp<'a>
         }
     }
 
-    fn op_impl(&self, trans: bool, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
+    fn op_impl(&self, transpose: bool, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
     {
-        let (nr, nc) = self.typ.size();
-
-        let trans = if trans {
-            assert_eq!(x.len(), nr);
-            assert_eq!(y.len(), nc);
-    
-            cblas::Transpose::Ordinary
-        } else {
-            assert_eq!(x.len(), nc);
-            assert_eq!(y.len(), nr);
-    
-            cblas::Transpose::None
-        };
-
-        if nr > 0 {
-            match self.typ {
-                MatType::General(_, _) => {
-                    unsafe { cblas::dgemv(
-                        cblas::Layout::ColumnMajor, trans,
-                        nr as i32, nc as i32,
-                        alpha, self.array, nr as i32,
-                        x, 1,
-                        beta, y, 1
-                    ) }
-                },
-                MatType::SymPack(_) => {
-                    unsafe { cblas::dspmv(
-                        cblas::Layout::ColumnMajor, cblas::Part::Upper,
-                        nr as i32,
-                        alpha, self.array,
-                        x, 1,
-                        beta, y, 1
-                    ) }
-                },
-            }
+        match self.typ {
+            MatType::General(nr, nc) => {
+                if nr > 0 && nc > 0 {
+                    F64BLAS::transform_ge(transpose, nr, nc, alpha, self.as_ref(), x, beta, y)
+                }
+            },
+            MatType::SymPack(n) => {
+                if n > 0 {
+                    F64BLAS::transform_sp(n, alpha, self.as_ref(), x, beta, y)
+                }
+            },
         }
     }
 }

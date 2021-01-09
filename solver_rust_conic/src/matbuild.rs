@@ -1,5 +1,3 @@
-// TODO: no blas/lapack
-
 use crate::matop::{MatType, MatOp};
 use crate::solver::LinAlg;
 use crate::linalg::F64BLAS;
