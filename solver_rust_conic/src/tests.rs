@@ -39,9 +39,9 @@ fn test_smoke1() {
     let mut cone_w = vec![0.; ConePSD::query_worklen(op_a.size().0)];
     let cone = ConePSD::new(&mut cone_w);
 
-    let mut stdout = std::io::stdout();
-    let log = IoLogger(&mut stdout);
-    //let log = NullLogger;
+    //let mut stdout = std::io::stdout();
+    //let log = IoLogger(&mut stdout);
+    let log = NullLogger;
 
     let s = Solver::new(F64BLAS, log);
     println!("{:?}", s.par);

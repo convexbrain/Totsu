@@ -10,7 +10,7 @@ pub mod linalg;
 pub mod matbuild;
 pub mod logger;
 
-//pub mod qp;
+pub mod probqp;
 
 // TODO: pub use, mod layout
 /*

@@ -66,7 +66,7 @@ impl<'a> MatOp<'a>
             cblas::Transpose::None
         };
 
-        if nr > 0 && nc > 0 {
+        if nr > 0 {
             match self.typ {
                 MatType::General(_, _) => {
                     unsafe { cblas::dgemv(
