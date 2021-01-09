@@ -4,14 +4,15 @@ extern crate intel_mkl_src;
 use crate::solver::*;
 use crate::matop::*;
 use crate::cone::*;
-use crate::logger::*;
 use crate::linalg::*;
+use crate::matbuild::*;
+use crate::logger::*;
 
 #[test]
 fn test_smoke1() {
     use float_eq::assert_float_eq;
 
-    let op_c = MatOp::new((1, 1), &[
+    let op_c = MatOp::new(MatType::General(1, 1), &[
         1.,
     ]);
 

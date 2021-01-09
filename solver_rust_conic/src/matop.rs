@@ -1,50 +1,91 @@
 // TODO: no blas/lapack
 
 use crate::solver::Operator;
-use crate::solver::LinAlg;
-use crate::linalg::F64BLAS;
-use core::ops::{Index, IndexMut};
+
+//
+
+#[derive(Debug, Clone, Copy)]
+pub enum MatType
+{
+    General(usize, usize),
+    SymPack(usize),
+}
+
+impl MatType
+{
+    pub fn len(&self) -> usize
+    {
+        match self {
+            MatType::General(n_row, n_col) => n_row * n_col,
+            MatType::SymPack(n) => n * (n + 1) / 2,
+        }
+    }
+
+    pub fn size(&self) -> (usize, usize)
+    {
+        match self {
+            MatType::General(n_row, n_col) => (*n_row, *n_col),
+            MatType::SymPack(n) => (*n, *n),
+        }
+    }
+}
+
+//
 
 #[derive(Debug, Clone)]
 pub struct MatOp<'a>
 {
-    n_row: usize,
-    n_col: usize,
+    typ: MatType,
     array: &'a[f64]
 }
 
 impl<'a> MatOp<'a>
 {
-    pub fn new((n_row, n_col): (usize, usize), array: &'a[f64]) -> Self
+    pub fn new(typ: MatType, array: &'a[f64]) -> Self
     {
-        assert_eq!(n_row * n_col, array.len());
+        assert_eq!(typ.len(), array.len());
 
         MatOp {
-            n_row, n_col, array,
+            typ, array,
         }
     }
 
     fn op_impl(&self, trans: bool, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
     {
+        let (nr, nc) = self.typ.size();
+
         let trans = if trans {
-            assert_eq!(x.len(), self.n_row);
-            assert_eq!(y.len(), self.n_col);
+            assert_eq!(x.len(), nr);
+            assert_eq!(y.len(), nc);
     
             cblas::Transpose::Ordinary
         } else {
-            assert_eq!(x.len(), self.n_col);
-            assert_eq!(y.len(), self.n_row);
+            assert_eq!(x.len(), nc);
+            assert_eq!(y.len(), nr);
     
             cblas::Transpose::None
         };
-        
-        unsafe { cblas::dgemv(
-            cblas::Layout::ColumnMajor, trans,
-            self.n_row as i32, self.n_col as i32,
-            alpha, self.array, self.n_row as i32,
-            x, 1,
-            beta, y, 1
-        ) }
+
+        match self.typ {
+            MatType::General(_, _) => {
+                unsafe { cblas::dgemv(
+                    cblas::Layout::ColumnMajor, trans,
+                    nr as i32, nc as i32,
+                    alpha, self.array, nr as i32,
+                    x, 1,
+                    beta, y, 1
+                ) }
+            },
+            MatType::SymPack(_) => {
+                unsafe { cblas::dspmv(
+                    cblas::Layout::ColumnMajor, cblas::Part::Upper,
+                    nr as i32,
+                    alpha, self.array,
+                    x, 1,
+                    beta, y, 1
+                ) }
+            },
+        }
     }
 }
 
@@ -52,7 +93,7 @@ impl<'a> Operator<f64> for MatOp<'a>
 {
     fn size(&self) -> (usize, usize)
     {
-        (self.n_row, self.n_col)
+        self.typ.size()
     }
 
     fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
@@ -72,274 +113,4 @@ impl<'a> AsRef<[f64]> for MatOp<'a>
     {
         self.array
     }
-}
-
-//
-
-#[derive(Debug, Clone)]
-pub enum MatType
-{
-    General(usize, usize),
-    SymPack(usize),
-}
-
-#[derive(Debug, Clone)]
-pub struct MatBuild
-{
-    typ: MatType,
-    array: Vec<f64>,
-}
-
-impl MatBuild
-{
-    pub fn new(typ: MatType) -> Self
-    {
-        let sz = match typ {
-            MatType::General(nr, nc) => nr * nc,
-            MatType::SymPack(n) => n * (n + 1) / 2,
-        };
-
-        MatBuild {
-            typ,
-            array: vec![0.; sz],
-        }
-    }
-
-    pub fn set_by_fn<F>(&mut self, mut func: F)
-    where F: FnMut(usize, usize) -> f64
-    {
-        match self.typ {
-            MatType::General(nr, nc) => {
-                for c in 0.. nc {
-                    for r in 0.. nr {
-                        self[(r, c)] = func(r, c);
-                    }
-                }
-            },
-            MatType::SymPack(n) => {
-                for c in 0.. n {
-                    for r in 0..= c {
-                        self[(r, c)] = func(r, c);
-                    }
-                }
-            },
-        };
-    }
-    pub fn by_fn<F>(mut self, func: F) -> Self
-    where F: FnMut(usize, usize) -> f64
-    {
-        self.set_by_fn(func);
-        self
-    }
-
-    pub fn set_iter_colmaj<'a, T>(&mut self, iter: T)
-    where T: IntoIterator<Item=&'a f64>
-    {
-        let mut i = iter.into_iter();
-        let (nr, nc) = match self.typ {
-            MatType::General(nr, nc) => (nr, nc),
-            MatType::SymPack(n) => (n, n),
-        };
-
-        for c in 0.. nc {
-            for r in 0.. nr {
-                if let Some(v) = i.next() {
-                    self[(r, c)] = *v;
-                }
-                else {
-                    break;
-                }
-            }
-        }
-    }
-    pub fn iter_colmaj<'a, T>(mut self, iter: T) -> Self
-    where T: IntoIterator<Item=&'a f64>
-    {
-        self.set_iter_colmaj(iter);
-        self
-    }
-
-    pub fn set_iter_rowmaj<'a, T>(&mut self, iter: T)
-    where T: IntoIterator<Item=&'a f64>
-    {
-        let mut i = iter.into_iter();
-        let (nr, nc) = match self.typ {
-            MatType::General(nr, nc) => (nr, nc),
-            MatType::SymPack(n) => (n, n),
-        };
-
-        for r in 0.. nr {
-            for c in 0.. nc {
-                if let Some(v) = i.next() {
-                    self[(r, c)] = *v;
-                }
-                else {
-                    break;
-                }
-            }
-        }
-    }
-    pub fn iter_rowmaj<'a, T>(mut self, iter: T) -> Self
-    where T: IntoIterator<Item=&'a f64>
-    {
-        self.set_iter_rowmaj(iter);
-        self
-    }
-
-    pub fn set_scale(&mut self, alpha: f64)
-    {
-        F64BLAS::scale(alpha, self.as_mut());
-    }
-    pub fn scale(mut self, alpha: f64) -> Self
-    {
-        self.set_scale(alpha);
-        self
-    }
-
-    pub fn set_scale_nondiag(&mut self, alpha: f64)
-    {
-        match self.typ {
-            MatType::General(nr, nc) => {
-                let n = nr.min(nc);
-                for c in 0.. n - 1 {
-                    let i = self.index((c, c));
-                    let (_, spl) = self.as_mut().split_at_mut(i + 1);
-                    let (spl, _) = spl.split_at_mut(nc);
-                    F64BLAS::scale(alpha, spl);
-                }
-                let i = self.index((n, n));
-                let (_, spl) = self.as_mut().split_at_mut(i + 1);
-                F64BLAS::scale(alpha, spl);
-            },
-            MatType::SymPack(n) => {
-                for c in 0.. n - 1 {
-                    let i = self.index((c, c));
-                    let ii = self.index((c + 1, c + 1));
-                    let (_, spl) = self.as_mut().split_at_mut(i + 1);
-                    let (spl, _) = spl.split_at_mut(ii - i - 1);
-                    F64BLAS::scale(alpha, spl);
-                }
-            },
-        }
-    }
-    pub fn scale_nondiag(mut self, alpha: f64) -> Self
-    {
-        self.set_scale_nondiag(alpha);
-        self
-    }
-
-    pub fn set_reshape_vec(&mut self)
-    {
-        let sz = self.as_ref().len();
-        self.typ = MatType::General(sz, 1);
-    }
-    pub fn reshape_colvec(mut self) -> Self
-    {
-        self.set_reshape_vec();
-        self
-    }
-
-    fn index(&self, (r, c): (usize, usize)) -> usize
-    {
-        let i = match self.typ {
-            MatType::General(nr, nc) => {
-                assert!(r < nr);
-                assert!(c < nc);
-                c * nr + r
-            },
-            MatType::SymPack(n) => {
-                assert!(r < n);
-                assert!(c < n);
-                let (r, c) = if r <= c {
-                    (r, c)
-                }
-                else {
-                    (c, r)
-                };
-                c * (c + 1) / 2 + r
-            },
-        };
-
-        assert!(i < self.array.len());
-        i
-    }
-}
-
-impl Index<(usize, usize)> for MatBuild
-{
-    type Output = f64;
-    fn index(&self, index: (usize, usize)) -> &f64
-    {
-        let i = self.index(index);
-
-        &self.array[i]
-    }
-}
-
-impl IndexMut<(usize, usize)> for MatBuild
-{
-    fn index_mut(&mut self, index: (usize, usize)) -> &mut f64
-    {
-        let i = self.index(index);
-
-        &mut self.array[i]
-    }
-}
-
-impl AsRef<[f64]> for MatBuild
-{
-    fn as_ref(&self) -> &[f64]
-    {
-        &self.array
-    }
-}
-
-impl AsMut<[f64]> for MatBuild
-{
-    fn as_mut(&mut self) -> &mut[f64]
-    {
-        &mut self.array
-    }
-}
-
-impl<'a> From<&'a MatBuild> for MatOp<'a>
-{
-    fn from(m: &'a MatBuild) -> Self
-    {
-        let (n_row, n_col) = match m.typ {
-            MatType::General(nr, nc) => (nr, nc),
-            MatType::SymPack(_n) => {todo!()},
-        };
-
-        MatOp {
-            n_row, n_col, array: m.as_ref(),
-        }
-    }
-}
-
-
-#[test]
-fn test_matop1() {
-    use float_eq::assert_float_eq;
-
-    let ref_array = &[ // column-major, upper-triangle (seen as if transposed)
-        1.,
-        2.*1.4,  3.,
-        4.*1.4,  5.*1.4,  6.,
-        7.*1.4,  8.*1.4,  9.*1.4, 10.,
-       11.*1.4, 12.*1.4, 13.*1.4, 14.*1.4, 15.,
-    ];
-    let array = &[ // column-major, upper-triangle (seen as if transposed)
-        1.,  0.,  0.,  0.,  0.,
-        2.,  3.,  0.,  0.,  0.,
-        4.,  5.,  6.,  0.,  0.,
-        7.,  8.,  9., 10.,  0.,
-       11., 12., 13., 14., 15.,
-    ];
-
-    let m = MatBuild::new(MatType::SymPack(5))
-            .iter_colmaj(array)
-            .scale_nondiag(1.4);
-
-    assert_float_eq!(m.as_ref(), ref_array.as_ref(), abs_all <= 1e-3);
 }
