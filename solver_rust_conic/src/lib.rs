@@ -14,23 +14,28 @@ pub mod probqp;
 
 // TODO: pub use, mod layout
 /*
-totsu --- solver
-       |
-       -- float_generic --- linalg
-       |                 |
-       |                 -- matop
-       |                 |
-       |                 -- cone
-       |
-       -- f64_lapack --- linalg
-       |              |
-       |              -- use f64_generic::matop
-       |              |
-       |              -- use f64_generic::cone
-       |
-       -- logger
+* totsu
+  * solver
+  * float_generic
+    * linalg
+    * cone
+    * matop
+    * matbuild
+  * f64_lapack
+    * linalg
+    * use float_generic::cone
+    * use float_generic::matop
+    * use float_generic::matbuild
+  * logger
+  * predef
+    * problp
+    * probqp
+    * probqcqp
+    * probsocp
+    * probsdp
 */ 
 
 
 // TODO: LP/QP/QCQP/SOCP/SDP
 // TODO: doc
+// TODO: thorough tests

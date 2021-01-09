@@ -43,9 +43,9 @@ fn test_smoke1() {
     //let log = IoLogger(&mut stdout);
     let log = NullLogger;
 
-    let s = Solver::new(F64BLAS, log);
+    let s = SolverGen::new(F64BLAS, log);
     println!("{:?}", s.par);
-    let mut solver_w = vec![0.; solver_query_worklen(op_a.size())];
+    let mut solver_w = vec![0.; SolverGen::query_worklen(op_a.size())];
     let rslt = s.solve((op_c, op_a, op_b, cone, &mut solver_w)).unwrap();
     println!("{:?}", rslt);
 

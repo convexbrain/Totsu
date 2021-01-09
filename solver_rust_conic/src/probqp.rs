@@ -1,6 +1,6 @@
 use crate::matop::{MatOp, MatType};
 use crate::matbuild::MatBuild;
-use crate::solver::{Operator, Cone, LinAlg, SolverParam, SolverError, solver_query_worklen};
+use crate::solver::{Operator, Cone, LinAlg, SolverParam, SolverError, SolverGen};
 use crate::linalg::F64BLAS;
 use crate::cone::{ConePSD, ConeRPos, ConeZero};
 
@@ -273,13 +273,12 @@ impl ProbQP
     pub fn new(
         sym_p: MatBuild, vec_q: MatBuild,
         mat_g: MatBuild, vec_h: MatBuild,
-        mat_a: MatBuild, vec_b: MatBuild) -> Option<Self>
+        mat_a: MatBuild, vec_b: MatBuild) -> Self
     {
         let n = vec_q.typ().size().0;
         let m = vec_h.typ().size().0;
         let p = vec_b.typ().size().0;
     
-        // TODO: error
         assert_eq!(sym_p.typ(), &MatType::SymPack(n));
         assert_eq!(vec_q.typ().size(), (n, 1));
         assert_eq!(mat_g.typ().size(), (m, n));
@@ -291,7 +290,7 @@ impl ProbQP
                        .scale_nondiag(2_f64.sqrt())
                        .reshape_colvec();
 
-        Some(ProbQP {
+        ProbQP {
             sym_p,
             vec_q,
             mat_g,
@@ -301,7 +300,7 @@ impl ProbQP
             symvec_p,
             w_cone_psd: Vec::new(),
             w_solver: Vec::new(),
-        })
+        }
     }
 
     pub fn problem(&mut self) -> (ProbQPOpC, ProbQPOpA, ProbQPOpB, ProbQPCone, &mut[f64])
@@ -334,7 +333,7 @@ impl ProbQP
             cone_zero: ConeZero,
         };
 
-        self.w_solver.resize(solver_query_worklen(op_a.size()), 0.);
+        self.w_solver.resize(SolverGen::query_worklen(op_a.size()), 0.);
 
         (op_c, op_a, op_b, cone, self.w_solver.as_mut())
     }
@@ -343,7 +342,6 @@ impl ProbQP
 
 #[test]
 fn test_qp1() {
-    use crate::solver::Solver;
     use crate::logger::*;
     use float_eq::assert_float_eq;
 
@@ -376,9 +374,9 @@ fn test_qp1() {
     //let log = IoLogger(&mut stdout);
     let log = NullLogger;
 
-    let s = Solver::new(F64BLAS, log);
+    let s = SolverGen::new(F64BLAS, log);
     println!("{:?}", s.par);
-    let mut qp = ProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b).unwrap();
+    let mut qp = ProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b);
     let rslt = s.solve(qp.problem()).unwrap();
     println!("{:?}", rslt);
 

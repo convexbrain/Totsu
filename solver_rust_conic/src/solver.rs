@@ -38,11 +38,7 @@ pub trait Cone<F: Float>
     }
 }
 
-macro_rules! writeln_or {
-    ( $( $arg: expr ),* ) => {
-        writeln!( $( $arg ),* ).or(Err(SolverError::LogFailure))
-    };
-}
+//
 
 #[derive(Debug)]
 pub enum SolverError
@@ -57,6 +53,8 @@ pub enum SolverError
     LogFailure,
     ConeFailure,
 }
+
+//
 
 #[derive(Debug)]
 pub struct SolverParam<F: Float>
@@ -85,6 +83,15 @@ impl<F: Float> Default for SolverParam<F>
         }
     }
 }
+
+//
+
+macro_rules! writeln_or {
+    ( $( $arg: expr ),* ) => {
+        writeln!( $( $arg ),* ).or(Err(SolverError::LogFailure))
+    };
+}
+
 
 fn split_tup6<T>(
     s: &[T], pos: (usize, usize, usize, usize, usize, usize)
@@ -123,6 +130,8 @@ fn split_tup6_mut<T>(
         Ok((s0, s1, s2, s3, s4, s5))
     }
 }
+
+//
 
 struct SelfDualEmbed<F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>>
 {
@@ -306,15 +315,34 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
     }
 }
 
-pub fn solver_query_worklen(op_a_size: (usize, usize)) -> usize
+//
+
+pub struct SolverGen;
+
+impl SolverGen
 {
-    let (m, n) = op_a_size;
+    pub fn query_worklen(op_a_size: (usize, usize)) -> usize
+    {
+        let (m, n) = op_a_size;
+    
+        let len_norms = (n + m + 1) * 5;
+        let len_iteration = (n + (m + 1) * 2) * 2 + (n + m + 1) + n + m;
+    
+        len_norms.max(len_iteration)
+    }
 
-    let len_norms = (n + m + 1) * 5;
-    let len_iteration = (n + (m + 1) * 2) * 2 + (n + m + 1) + n + m;
-
-    len_norms.max(len_iteration)
+    pub fn new<F, L, W>(_linalg: L, logger: W) -> Solver<F, L, W>
+    where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
+    {
+        Solver {
+            par: SolverParam::default(),
+            _ph_l: PhantomData::<L>,
+            logger,
+        }
+    }
 }
+
+//
 
 pub struct Solver<F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write>
 {
@@ -327,15 +355,6 @@ pub struct Solver<F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
 impl<F, L, W> Solver<F, L, W>
 where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
 {
-    pub fn new(_linalg: L, logger: W) -> Self
-    {
-        Solver {
-            par: SolverParam::default(),
-            _ph_l: PhantomData::<L>,
-            logger,
-        }
-    }
-
     pub fn solve<OC, OA, OB, C>(self,
         (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut[F])
     ) -> Result<(&[F], &[F]), SolverError>
@@ -364,6 +383,8 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
         core.solve(work)
     }
 }
+
+//
 
 struct SolverCore<
     F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
