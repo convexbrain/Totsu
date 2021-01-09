@@ -114,3 +114,35 @@ impl<'a> AsRef<[f64]> for MatOp<'a>
         self.array
     }
 }
+
+
+#[test]
+fn test_matop1() {
+    use float_eq::assert_float_eq;
+
+    let array = &[ // column-major, upper-triangle (seen as if transposed)
+        1.,
+        2.,  3.,
+        4.,  5.,  6.,
+        7.,  8.,  9., 10.,
+       11., 12., 13., 14., 15.,
+    ];
+    let ref_array = &[
+        1.,  2.,  4.,  7., 11.,
+        2.,  3.,  5.,  8., 12.,
+        4.,  5.,  6.,  9., 13.,
+        7.,  8.,  9., 10., 14.,
+       11., 12., 13., 14., 15.,
+    ];
+    let x = &mut[0.; 5];
+    let y = &mut[0.; 5];
+
+    let m = MatOp::new(MatType::SymPack(5), array);
+
+    for i in 0.. x.len() {
+        x[i] = 1.;
+        m.op(1., x, 0., y);
+        assert_float_eq!(y.as_ref(), ref_array[i * 5 .. i * 5 + 5].as_ref(), abs_all <= 1e-3);
+        x[i] = 0.;
+    }
+}
