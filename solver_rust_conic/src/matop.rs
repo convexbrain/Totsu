@@ -4,7 +4,7 @@ use crate::solver::Operator;
 
 //
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MatType
 {
     General(usize, usize),
@@ -66,25 +66,27 @@ impl<'a> MatOp<'a>
             cblas::Transpose::None
         };
 
-        match self.typ {
-            MatType::General(_, _) => {
-                unsafe { cblas::dgemv(
-                    cblas::Layout::ColumnMajor, trans,
-                    nr as i32, nc as i32,
-                    alpha, self.array, nr as i32,
-                    x, 1,
-                    beta, y, 1
-                ) }
-            },
-            MatType::SymPack(_) => {
-                unsafe { cblas::dspmv(
-                    cblas::Layout::ColumnMajor, cblas::Part::Upper,
-                    nr as i32,
-                    alpha, self.array,
-                    x, 1,
-                    beta, y, 1
-                ) }
-            },
+        if nr > 0 && nc > 0 {
+            match self.typ {
+                MatType::General(_, _) => {
+                    unsafe { cblas::dgemv(
+                        cblas::Layout::ColumnMajor, trans,
+                        nr as i32, nc as i32,
+                        alpha, self.array, nr as i32,
+                        x, 1,
+                        beta, y, 1
+                    ) }
+                },
+                MatType::SymPack(_) => {
+                    unsafe { cblas::dspmv(
+                        cblas::Layout::ColumnMajor, cblas::Part::Upper,
+                        nr as i32,
+                        alpha, self.array,
+                        x, 1,
+                        beta, y, 1
+                    ) }
+                },
+            }
         }
     }
 }

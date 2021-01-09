@@ -45,8 +45,8 @@ fn test_smoke1() {
 
     let s = Solver::new(F64BLAS, log);
     println!("{:?}", s.par);
-    let mut solver_w = vec![0.; s.query_worklen(op_a.size())];
-    let rslt = s.solve(op_c, op_a, op_b, cone, &mut solver_w).unwrap();
+    let mut solver_w = vec![0.; solver_query_worklen(op_a.size())];
+    let rslt = s.solve((op_c, op_a, op_b, cone, &mut solver_w)).unwrap();
     println!("{:?}", rslt);
 
     assert_float_eq!(rslt.0[0], -2., abs_all <= 1e-3);

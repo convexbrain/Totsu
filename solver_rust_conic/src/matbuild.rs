@@ -24,6 +24,11 @@ impl MatBuild
         }
     }
 
+    pub fn typ(&self) -> &MatType
+    {
+        &self.typ
+    }
+
     pub fn set_by_fn<F>(&mut self, mut func: F)
     where F: FnMut(usize, usize) -> f64
     {
