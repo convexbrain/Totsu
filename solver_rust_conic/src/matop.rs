@@ -1,5 +1,5 @@
 use crate::solver::Operator;
-use crate::linalg::LinAlgEx;
+use crate::linalgex::LinAlgEx;
 use core::marker::PhantomData;
 
 //
@@ -103,9 +103,9 @@ where L: LinAlgEx<f64>
 #[test]
 fn test_matop1() {
     use float_eq::assert_float_eq;
-    use crate::linalg::F64BLAS;
+    use crate::f64_lapack::F64LAPACK;
 
-    type AMatOp<'a> = MatOp<'a, F64BLAS>;
+    type AMatOp<'a> = MatOp<'a, F64LAPACK>;
 
     let array = &[ // column-major, upper-triangle (seen as if transposed)
         1.,

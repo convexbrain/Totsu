@@ -1,5 +1,5 @@
 use crate::matop::{MatType, MatOp};
-use crate::linalg::LinAlgEx;
+use crate::linalgex::LinAlgEx;
 use core::ops::{Index, IndexMut};
 use core::marker::PhantomData;
 
@@ -239,9 +239,9 @@ where L: LinAlgEx<f64>
 #[test]
 fn test_matbuild1() {
     use float_eq::assert_float_eq;
-    use crate::linalg::F64BLAS;
+    use crate::f64_lapack::F64LAPACK;
 
-    type AMatBuild = MatBuild<F64BLAS>;
+    type AMatBuild = MatBuild<F64LAPACK>;
 
     let ref_array = &[ // column-major, upper-triangle (seen as if transposed)
         1.,

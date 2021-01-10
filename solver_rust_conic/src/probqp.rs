@@ -1,7 +1,7 @@
 use crate::matop::{MatOp, MatType};
 use crate::matbuild::MatBuild;
 use crate::solver::{Operator, Cone, SolverError, Solver};
-use crate::linalg::LinAlgEx;
+use crate::linalgex::LinAlgEx;
 use crate::cone::{ConePSD, ConeRPos, ConeZero};
 use core::marker::PhantomData;
 
@@ -367,10 +367,10 @@ where L: LinAlgEx<f64>
 fn test_qp1() {
     use crate::logger::*;
     use float_eq::assert_float_eq;
-    use crate::linalg::F64BLAS;
+    use crate::f64_lapack::F64LAPACK;
     
-    type ASolver = Solver<F64BLAS, f64>;
-    type AProbQP = ProbQP<F64BLAS>;
+    type ASolver = Solver<F64LAPACK, f64>;
+    type AProbQP = ProbQP<F64LAPACK>;
 
     let n = 2; // x0, x1
     let m = 1;

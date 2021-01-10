@@ -1,22 +1,10 @@
-// TODO: no blas/lapack
-
-use num::Float;
 use crate::solver::LinAlg;
-
-pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
-{
-    // y = a*mat*x + b*y
-    fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64]);
-    // y = a*mat*x + b*y
-    fn transform_sp(n: usize, alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64]);
-    fn proj_psd_worklen(sn: usize) -> usize;
-    fn proj_psd(x: &mut[f64], eps_zero: f64, work: &mut[f64]);
-}
+use crate::linalgex::LinAlgEx;
 
 #[derive(Clone)]
-pub struct F64BLAS;
+pub struct F64LAPACK;
 
-impl LinAlg<f64> for F64BLAS
+impl LinAlg<f64> for F64LAPACK
 {
     fn norm(x: &[f64]) -> f64
     {
@@ -50,7 +38,7 @@ impl LinAlg<f64> for F64BLAS
     }
 }
 
-impl LinAlgEx<f64> for F64BLAS
+impl LinAlgEx<f64> for F64LAPACK
 {
     // y = a*mat*x + b*y
     fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64])
@@ -170,7 +158,7 @@ fn vec_to_mat(v: &[f64], m: &mut[f64])
 
         let (v_cut, spl_v) = ref_v.split_at(c + 1);
         ref_v = spl_v;
-        F64BLAS::copy(v_cut, cut);
+        F64LAPACK::copy(v_cut, cut);
     }
 
     assert!(ref_m.is_empty());
@@ -202,7 +190,7 @@ fn mat_to_vec(m: &mut[f64], v: &mut[f64])
 
         let (v_cut, spl_v) = ref_v.split_at_mut(c + 1);
         ref_v = spl_v;
-        F64BLAS::copy(cut, v_cut);
+        F64LAPACK::copy(cut, v_cut);
     }
 
     assert!(ref_m.is_empty());
@@ -211,7 +199,7 @@ fn mat_to_vec(m: &mut[f64], v: &mut[f64])
 
 
 #[test]
-fn test_linalg1() {
+fn test_f64lapack1() {
     use float_eq::assert_float_eq;
 
     let ref_v = &[ // column-major, upper-triangle (seen as if transposed)

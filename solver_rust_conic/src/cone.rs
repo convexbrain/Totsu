@@ -1,5 +1,5 @@
 use crate::solver::{Cone, SolverError};
-use crate::linalg::LinAlgEx;
+use crate::linalgex::LinAlgEx;
 use core::marker::PhantomData;
 
 pub struct ConePSD<'a, L>
@@ -74,10 +74,10 @@ impl Cone<f64> for ConeZero
 
 #[test]
 fn test_cone1() {
-    use crate::linalg::F64BLAS;
+    use crate::f64_lapack::F64LAPACK;
     use float_eq::assert_float_eq;
     
-    type AConePSD<'a> = ConePSD<'a, F64BLAS>;
+    type AConePSD<'a> = ConePSD<'a, F64LAPACK>;
 
     let ref_x = &[ // column-major, upper-triangle (seen as if transposed)
         5.,
