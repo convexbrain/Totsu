@@ -14,6 +14,7 @@ pub mod logger;
 
 // TODO: predef LP/QP/QCQP/SOCP/SDP
 pub mod probqp;
+pub mod probsocp;
 
 // TODO: pub use, mod layout
 /*
