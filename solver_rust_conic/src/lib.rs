@@ -12,6 +12,7 @@ pub mod cone;
 pub mod matbuild;
 pub mod logger;
 
+// TODO: predef LP/QP/QCQP/SOCP/SDP
 pub mod probqp;
 
 // TODO: pub use, mod layout
@@ -31,7 +32,5 @@ pub mod probqp;
               probsdp
 */ 
 
-
-// TODO: LP/QP/QCQP/SOCP/SDP
 // TODO: doc
 // TODO: thorough tests
