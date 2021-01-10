@@ -11,6 +11,9 @@ use crate::logger::*;
 #[test]
 fn test_smoke1() {
     use float_eq::assert_float_eq;
+    
+    type AConePSD<'a> = ConePSD<'a, F64BLAS>;
+    type ASolver = Solver<F64BLAS, f64>;
 
     let op_c = MatOp::new(MatType::General(1, 1), &[
         1.,
@@ -36,17 +39,17 @@ fn test_smoke1() {
                 .reshape_colvec();
     let op_b = MatOp::from(&mat_b);
 
-    let mut cone_w = vec![0.; ConePSD::query_worklen(op_a.size().0)];
-    let cone = ConePSD::new(&mut cone_w);
+    let mut cone_w = vec![0.; AConePSD::query_worklen(op_a.size().0)];
+    let cone = AConePSD::new(&mut cone_w);
 
     //let mut stdout = std::io::stdout();
     //let log = IoLogger(&mut stdout);
     let log = NullLogger;
 
-    let s = SolverGen::new(F64BLAS, log);
+    let s = ASolver::new();
     println!("{:?}", s.par);
-    let mut solver_w = vec![0.; SolverGen::query_worklen(op_a.size())];
-    let rslt = s.solve((op_c, op_a, op_b, cone, &mut solver_w)).unwrap();
+    let mut solver_w = vec![0.; ASolver::query_worklen(op_a.size())];
+    let rslt = s.solve((op_c, op_a, op_b, cone, &mut solver_w), log).unwrap();
     println!("{:?}", rslt);
 
     assert_float_eq!(rslt.0[0], -2., abs_all <= 1e-3);

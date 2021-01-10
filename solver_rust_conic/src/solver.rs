@@ -317,9 +317,15 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
 
 //
 
-pub struct SolverGen;
+pub struct Solver<L: LinAlg<F>, F: Float + Debug + LowerExp>
+{
+    pub par: SolverParam<F>,
 
-impl SolverGen
+    _ph_l: PhantomData<L>,
+}
+
+impl<L, F> Solver<L, F>
+where L: LinAlg<F>, F: Float + Debug + LowerExp
 {
     pub fn query_worklen(op_a_size: (usize, usize)) -> usize
     {
@@ -331,34 +337,19 @@ impl SolverGen
         len_norms.max(len_iteration)
     }
 
-    pub fn new<F, L, W>(_linalg: L, logger: W) -> Solver<F, L, W>
-    where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
+    pub fn new() -> Self
     {
         Solver {
             par: SolverParam::default(),
-            _ph_l: PhantomData::<L>,
-            logger,
+            _ph_l: PhantomData,
         }
     }
-}
 
-//
-
-pub struct Solver<F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write>
-{
-    pub par: SolverParam<F>,
-
-    _ph_l: PhantomData::<L>,
-    logger: W,
-}
-
-impl<F, L, W> Solver<F, L, W>
-where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
-{
-    pub fn solve<OC, OA, OB, C>(self,
-        (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut[F])
+    pub fn solve<OC, OA, OB, C, W>(self,
+        (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut[F]),
+        logger: W
     ) -> Result<(&[F], &[F]), SolverError>
-    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
+    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>, W: core::fmt::Write
     {
         let (m, n) = op_a.size();
 
@@ -375,7 +366,7 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
         let core = SolverCore {
             par: self.par,
             _ph_l: PhantomData,
-            logger: self.logger,
+            logger,
             op_l,
             cone,
         };
@@ -386,10 +377,10 @@ where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write
 
 //
 
-struct SolverCore<
-    F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
-    OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
-    >
+struct SolverCore<L, F, OC, OA, OB, C, W>
+where L: LinAlg<F>, F: Float + Debug + LowerExp,
+      OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>,
+      W: core::fmt::Write
 {
     par: SolverParam<F>,
 
@@ -400,9 +391,10 @@ struct SolverCore<
     cone: C,
 }
 
-impl<F, L, W, OC, OA, OB, C> SolverCore<F, L, W, OC, OA, OB, C>
-where F: Float + Debug + LowerExp, L: LinAlg<F>, W: core::fmt::Write,
-      OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
+impl<L, F, OC, OA, OB, C, W> SolverCore<L, F, OC, OA, OB, C, W>
+where L: LinAlg<F>, F: Float + Debug + LowerExp,
+      OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>,
+      W: core::fmt::Write
 {
     fn solve(mut self, work: &mut[F]) -> Result<(&[F], &[F]), SolverError>
     {

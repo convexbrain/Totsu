@@ -1,5 +1,5 @@
 use crate::solver::Operator;
-use crate::linalg::{LinAlgAux, F64BLAS};
+use crate::linalg::{LinAlgEx, F64BLAS};
 
 //
 

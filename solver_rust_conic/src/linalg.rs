@@ -1,8 +1,9 @@
 // TODO: no blas/lapack
 
+use num::Float;
 use crate::solver::LinAlg;
 
-pub trait LinAlgAux
+pub trait LinAlgEx<F: Float>: LinAlg<F>
 {
     // y = a*mat*x + b*y
     fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64]);
@@ -48,7 +49,7 @@ impl LinAlg<f64> for F64BLAS
     }
 }
 
-impl LinAlgAux for F64BLAS
+impl LinAlgEx<f64> for F64BLAS
 {
     // y = a*mat*x + b*y
     fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64])
