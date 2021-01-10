@@ -4,18 +4,19 @@ use crate::solver::{Operator, Cone, SolverError, Solver};
 use crate::linalgex::LinAlgEx;
 use crate::cone::{ConePSD, ConeRPos, ConeZero};
 use core::marker::PhantomData;
+use num::Float;
 
 //
 
-pub struct ProbQPOpC<'a, L>
-where L: LinAlgEx<f64>
+pub struct ProbQPOpC<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
     _ph_l: PhantomData<L>,
-    vec_q: MatOp<'a, L, f64>,
+    vec_q: MatOp<'a, L, F>,
 }
 
-impl<'a, L> ProbQPOpC<'a, L>
-where L: LinAlgEx<f64>
+impl<'a, L, F> ProbQPOpC<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
     fn dim(&self) -> usize
     {
@@ -25,8 +26,8 @@ where L: LinAlgEx<f64>
     }
 }
 
-impl<'a, L> Operator<f64> for ProbQPOpC<'a, L>
-where L: LinAlgEx<f64>
+impl<'a, L, F> Operator<F> for ProbQPOpC<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
     fn size(&self) -> (usize, usize)
     {
@@ -35,7 +36,7 @@ where L: LinAlgEx<f64>
         (n + 1, 1)
     }
 
-    fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
+    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let n = self.dim();
         let (y_n, y_1) = y.split_at_mut(n);
@@ -48,7 +49,7 @@ where L: LinAlgEx<f64>
         L::add(alpha, x, y_1);
     }
 
-    fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
+    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let n = self.dim();
         let (x_n, x_1) = x.split_at(n);
@@ -61,17 +62,17 @@ where L: LinAlgEx<f64>
 
 //
 
-pub struct ProbQPOpA<'a, L>
-where L: LinAlgEx<f64>
+pub struct ProbQPOpA<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
     _ph_l: PhantomData<L>,
-    sym_p: MatOp<'a, L, f64>,
-    mat_g: MatOp<'a, L, f64>,
-    mat_a: MatOp<'a, L, f64>,
+    sym_p: MatOp<'a, L, F>,
+    mat_g: MatOp<'a, L, F>,
+    mat_a: MatOp<'a, L, F>,
 }
 
-impl<'a, L> ProbQPOpA<'a, L>
-where L: LinAlgEx<f64>
+impl<'a, L, F> ProbQPOpA<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
     fn dim(&self) -> (usize, usize, usize, usize)
     {
@@ -86,8 +87,8 @@ where L: LinAlgEx<f64>
     }
 }
 
-impl<'a, L> Operator<f64> for ProbQPOpA<'a, L>
-where L: LinAlgEx<f64>
+impl<'a, L, F> Operator<F> for ProbQPOpA<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
     fn size(&self) -> (usize, usize)
     {
@@ -96,7 +97,7 @@ where L: LinAlgEx<f64>
         ((sn + n + 1) + m + p, n + 1)
     }
 
-    fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
+    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let (n, sn, m, p) = self.dim();
         let (x_n, x) = x.split_at(n);
@@ -107,15 +108,18 @@ where L: LinAlgEx<f64>
         let (y_m, y) = y.split_at_mut(m);
         let (y_p, _) = y.split_at_mut(p);
 
+        let f2 = F::one() + F::one();
+        let fsqrt2 = f2.sqrt();
+        
         // y_sn = 0*x_n + 0*x_1 + b*y_sn
         L::scale(beta, y_sn);
 
         // y_n = a*-sqrt(2)*sym_p*x_n + b*y_n
-        self.sym_p.op(-alpha * 2_f64.sqrt(), x_n, beta, y_n);
+        self.sym_p.op(-alpha * fsqrt2, x_n, beta, y_n);
 
         // y_1 = 0*x_n + a*-2*x_1 + b*y_1
         L::scale(beta, y_1);
-        L::add(-2. * alpha, x_1, y_1);
+        L::add(-f2 * alpha, x_1, y_1);
 
         // y_m = a*mat_g*x_n + 0*x_1 + b*y_m
         self.mat_g.op(alpha, x_n, beta, y_m);
@@ -124,7 +128,7 @@ where L: LinAlgEx<f64>
         self.mat_a.op(alpha, x_n, beta, y_p);
     }
 
-    fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
+    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let (n, sn, m, p) = self.dim();
         let (_x_sn, x) = x.split_at(sn);
@@ -135,31 +139,35 @@ where L: LinAlgEx<f64>
         let (y_n, y) = y.split_at_mut(n);
         let (y_1, _) = y.split_at_mut(1);
 
+        let f1 = F::one();
+        let f2 = f1 + f1;
+        let fsqrt2 = f2.sqrt();
+        
         // y_n = 0*x_sn + a*-sqrt(2)*sym_p*x_n + 0*x_1 + a*mat_g^T*x_m + a*mat_a^T*x_p + b*y_n
-        self.sym_p.trans_op(-alpha * 2_f64.sqrt(), x_n, beta, y_n);
-        self.mat_g.trans_op(alpha, x_m, 1., y_n);
-        self.mat_a.trans_op(alpha, x_p, 1., y_n);
+        self.sym_p.trans_op(-alpha * fsqrt2, x_n, beta, y_n);
+        self.mat_g.trans_op(alpha, x_m, f1, y_n);
+        self.mat_a.trans_op(alpha, x_p, f1, y_n);
 
         // y_1 = 0*x_sn + 0*x_n + a*-2*x_1 + 0*x_m + 0*x_p + b*y_1
         L::scale(beta, y_1);
-        L::add(-2. * alpha, x_1, y_1);
+        L::add(-f2 * alpha, x_1, y_1);
     }
 }
 
 //
 
-pub struct ProbQPOpB<'a, L>
-where L: LinAlgEx<f64>
+pub struct ProbQPOpB<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
     _ph_l: PhantomData<L>,
     n: usize,
-    symvec_p: MatOp<'a, L, f64>,
-    vec_h: MatOp<'a, L, f64>,
-    vec_b: MatOp<'a, L, f64>,
+    symvec_p: MatOp<'a, L, F>,
+    vec_h: MatOp<'a, L, F>,
+    vec_b: MatOp<'a, L, F>,
 }
 
-impl<'a, L> ProbQPOpB<'a, L>
-where L: LinAlgEx<f64>
+impl<'a, L, F> ProbQPOpB<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
     fn dim(&self) -> (usize, usize, usize, usize)
     {
@@ -175,8 +183,8 @@ where L: LinAlgEx<f64>
     }
 }
 
-impl<'a, L> Operator<f64> for ProbQPOpB<'a, L>
-where L: LinAlgEx<f64>
+impl<'a, L, F> Operator<F> for ProbQPOpB<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
     fn size(&self) -> (usize, usize)
     {
@@ -185,7 +193,7 @@ where L: LinAlgEx<f64>
         ((sn + n + 1) + m + p, 1)
     }
 
-    fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
+    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let (n, sn, m, p) = self.dim();
         let (y_sn, y) = y.split_at_mut(sn);
@@ -206,7 +214,7 @@ where L: LinAlgEx<f64>
         self.vec_b.op(alpha, x, beta, y_p);
     }
 
-    fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
+    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let (n, sn, m, p) = self.dim();
         let (x_sn, x) = x.split_at(sn);
@@ -214,30 +222,32 @@ where L: LinAlgEx<f64>
         let (x_m, x) = x.split_at(m);
         let (x_p, _) = x.split_at(p);
 
+        let f1 = F::one();
+
         // y = a*symvec_p^T*x_sn + 0*x_n1 + a*vec_h^T*x_m + a*vec_b^T*x_p + b*y
         self.symvec_p.trans_op(alpha, x_sn, beta, y);
-        self.vec_h.trans_op(alpha, x_m, 1., y);
-        self.vec_b.trans_op(alpha, x_p, 1., y);
+        self.vec_h.trans_op(alpha, x_m, f1, y);
+        self.vec_b.trans_op(alpha, x_p, f1, y);
     }
 }
 
 //
 
-pub struct ProbQPCone<'a, L>
-where L: LinAlgEx<f64>
+pub struct ProbQPCone<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
     n: usize,
     m: usize,
     p: usize,
-    cone_psd: ConePSD<'a, L, f64>,
-    cone_rpos: ConeRPos<f64>,
-    cone_zero: ConeZero<f64>,
+    cone_psd: ConePSD<'a, L, F>,
+    cone_rpos: ConeRPos<F>,
+    cone_zero: ConeZero<F>,
 }
 
-impl<'a, L> Cone<f64> for ProbQPCone<'a, L>
-where L: LinAlgEx<f64>
+impl<'a, L, F> Cone<F> for ProbQPCone<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
-    fn proj(&mut self, eps_zero: f64, x: &mut[f64]) -> Result<(), SolverError>
+    fn proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
     {
         let (n, m, p) = (self.n, self.m, self.p);
         let sn = n * (n + 1) / 2;
@@ -251,7 +261,7 @@ where L: LinAlgEx<f64>
         Ok(())
     }
 
-    fn dual_proj(&mut self, eps_zero: f64, x: &mut[f64]) -> Result<(), SolverError>
+    fn dual_proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
     {
         let (n, m, p) = (self.n, self.m, self.p);
         let sn = n * (n + 1) / 2;
@@ -268,31 +278,31 @@ where L: LinAlgEx<f64>
 
 //
 
-pub struct ProbQP<L>
-where L: LinAlgEx<f64>
+pub struct ProbQP<L, F>
+where L: LinAlgEx<F>, F: Float
 {
     _ph_l: PhantomData::<L>,
 
-    sym_p: MatBuild<L, f64>,
-    vec_q: MatBuild<L, f64>,
-    mat_g: MatBuild<L, f64>,
-    vec_h: MatBuild<L, f64>,
-    mat_a: MatBuild<L, f64>,
-    vec_b: MatBuild<L, f64>,
+    sym_p: MatBuild<L, F>,
+    vec_q: MatBuild<L, F>,
+    mat_g: MatBuild<L, F>,
+    vec_h: MatBuild<L, F>,
+    mat_a: MatBuild<L, F>,
+    vec_b: MatBuild<L, F>,
 
-    symvec_p: MatBuild<L, f64>,
+    symvec_p: MatBuild<L, F>,
 
-    w_cone_psd: Vec<f64>,
-    w_solver: Vec<f64>,
+    w_cone_psd: Vec<F>,
+    w_solver: Vec<F>,
 }
 
-impl<L> ProbQP<L>
-where L: LinAlgEx<f64>
+impl<L, F> ProbQP<L, F>
+where L: LinAlgEx<F>, F: Float
 {
     pub fn new(
-        sym_p: MatBuild<L, f64>, vec_q: MatBuild<L, f64>,
-        mat_g: MatBuild<L, f64>, vec_h: MatBuild<L, f64>,
-        mat_a: MatBuild<L, f64>, vec_b: MatBuild<L, f64>) -> Self
+        sym_p: MatBuild<L, F>, vec_q: MatBuild<L, F>,
+        mat_g: MatBuild<L, F>, vec_h: MatBuild<L, F>,
+        mat_a: MatBuild<L, F>, vec_b: MatBuild<L, F>) -> Self
     {
         let n = vec_q.typ().size().0;
         let m = vec_h.typ().size().0;
@@ -304,9 +314,13 @@ where L: LinAlgEx<f64>
         assert_eq!(vec_h.typ().size(), (m, 1));
         assert_eq!(mat_a.typ().size(), (p, n));
         assert_eq!(vec_b.typ().size(), (p, 1));
+
+        let f1 = F::one();
+        let f2 = f1 + f1;
+        let fsqrt2 = f2.sqrt();
     
         let symvec_p = sym_p.clone()
-                       .scale_nondiag(2_f64.sqrt())
+                       .scale_nondiag(fsqrt2)
                        .reshape_colvec();
 
         ProbQP {
@@ -323,12 +337,14 @@ where L: LinAlgEx<f64>
         }
     }
 
-    pub fn problem(&mut self) -> (ProbQPOpC<L>, ProbQPOpA<L>, ProbQPOpB<L>, ProbQPCone<'_, L>, &mut[f64])
+    pub fn problem(&mut self) -> (ProbQPOpC<L, F>, ProbQPOpA<L, F>, ProbQPOpB<L, F>, ProbQPCone<'_, L, F>, &mut[F])
     {
         let n = self.vec_q.typ().size().0;
         let m = self.vec_h.typ().size().0;
         let p = self.vec_b.typ().size().0;
         let sn = n * (n + 1) / 2;
+
+        let f0 = F::zero();
 
         let op_c = ProbQPOpC {
             _ph_l: PhantomData,
@@ -348,7 +364,7 @@ where L: LinAlgEx<f64>
             vec_b: MatOp::from(&self.vec_b),
         };
 
-        self.w_cone_psd.resize(ConePSD::<L, _>::query_worklen(sn + n + 1), 0.);
+        self.w_cone_psd.resize(ConePSD::<L, _>::query_worklen(sn + n + 1), f0);
         let cone = ProbQPCone {
             n, m, p,
             cone_psd: ConePSD::new(self.w_cone_psd.as_mut()),
@@ -356,7 +372,7 @@ where L: LinAlgEx<f64>
             cone_zero: ConeZero::new(),
         };
 
-        self.w_solver.resize(Solver::<L, _>::query_worklen(op_a.size()), 0.);
+        self.w_solver.resize(Solver::<L, _>::query_worklen(op_a.size()), f0);
 
         (op_c, op_a, op_b, cone, self.w_solver.as_mut())
     }
@@ -371,7 +387,7 @@ fn test_qp1() {
     use crate::f64_lapack::F64LAPACK;
     
     type ASolver = Solver<F64LAPACK, f64>;
-    type AProbQP = ProbQP<F64LAPACK>;
+    type AProbQP = ProbQP<F64LAPACK, f64>;
 
     let n = 2; // x0, x1
     let m = 1;

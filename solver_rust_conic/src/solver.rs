@@ -169,10 +169,13 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         assert_eq!(work_t.len(), self.size().0);
         assert_eq!(work_w.len(), self.size().1);
 
+        let f0 = F::zero();
+        let f1 = F::one();
+
         for e in work_v.iter_mut() {
-            *e = F::one();
+            *e = f1;
         }
-        let mut lambda = F::zero();
+        let mut lambda = f0;
 
         loop {
             let n = L::norm(work_v);
@@ -180,8 +183,8 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
                 L::scale(n.recip(), work_v);
             }
 
-            self.op(F::one(), work_v, F::zero(), work_t);
-            self.trans_op(F::one(), work_t, F::zero(), work_w);
+            self.op(f1, work_v, f0, work_t);
+            self.trans_op(f1, work_t, f0, work_w);
 
             let lambda_n = L::inner_prod(work_v, work_w);
 
@@ -214,17 +217,20 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         assert_eq!(work_v.len(), op.size().1);
         assert_eq!(work_t.len(), op.size().0);
 
+        let f0 = F::zero();
+        let f1 = F::one();
+
         for e in work_v.iter_mut() {
-            *e = F::zero();
+            *e = f0;
         }
-        let mut sq_norm = F::zero();
+        let mut sq_norm = f0;
 
         for row in 0.. op.size().1 {
-            work_v[row] = F::one();
-            op.op(F::one(), work_v, F::zero(), work_t);
+            work_v[row] = f1;
+            op.op(f1, work_v, f0, work_t);
             let n = L::norm(work_t);
             sq_norm = sq_norm + n * n;
-            work_v[row] = F::zero();
+            work_v[row] = f0;
         }
 
         sq_norm.sqrt()
@@ -258,18 +264,20 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
 
         let (w_n, w_m, w_1, _, _, _) = split_tup6_mut(y, (n, m, 1, 0, 0, 0)).unwrap();
 
+        let f1 = F::one();
+
         self.a.trans_op(alpha, u_y, beta, w_n);
-        self.c.op(alpha, u_tau, F::one(), w_n);
+        self.c.op(alpha, u_tau, f1, w_n);
         if full_x {
             L::add(-alpha, v_r, w_n);
         }
 
         self.a.op(-alpha, u_x, beta, w_m);
-        self.b.op(alpha, u_tau, F::one(), w_m);
+        self.b.op(alpha, u_tau, f1, w_m);
         L::add(-alpha, v_s, w_m);
 
         self.c.trans_op(-alpha, u_x, beta, w_1);
-        self.b.trans_op(-alpha, u_y, F::one(), w_1);
+        self.b.trans_op(-alpha, u_y, f1, w_1);
         L::add(-alpha, v_kappa, w_1);
     }
 
@@ -293,14 +301,16 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
 
         let (u_x, u_y, u_tau, v_r, v_s, v_kappa) = split_tup6_mut(y, (n, m, 1, if full_y {n} else {0}, m, 1)).unwrap();
 
+        let f1 = F::one();
+
         self.a.trans_op(-alpha, w_m, beta, u_x);
-        self.c.op(-alpha, w_1, F::one(), u_x);
+        self.c.op(-alpha, w_1, f1, u_x);
 
         self.a.op(alpha, w_n, beta, u_y);
-        self.b.op(-alpha, w_1, F::one(), u_y);
+        self.b.op(-alpha, w_1, f1, u_y);
 
         self.c.trans_op(alpha, w_n, beta, u_tau);
-        self.b.trans_op(alpha, w_m, F::one(), u_tau);
+        self.b.trans_op(alpha, w_m, f1, u_tau);
 
         if full_y {
             L::scale(beta, v_r);
@@ -317,7 +327,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
 
 //
 
-pub struct Solver<L: LinAlg<F>, F: Float + Debug + LowerExp>
+pub struct Solver<L: LinAlg<F>, F: Float>
 {
     pub par: SolverParam<F>,
 
@@ -325,7 +335,7 @@ pub struct Solver<L: LinAlg<F>, F: Float + Debug + LowerExp>
 }
 
 impl<L, F> Solver<L, F>
-where L: LinAlg<F>, F: Float + Debug + LowerExp
+where L: LinAlg<F>, F: Float
 {
     pub fn query_worklen(op_a_size: (usize, usize)) -> usize
     {
@@ -344,7 +354,11 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp
             _ph_l: PhantomData,
         }
     }
+}
 
+impl<L, F> Solver<L, F>
+where L: LinAlg<F>, F: Float + Debug + LowerExp
+{
     pub fn solve<OC, OA, OB, C, W>(self,
         (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut[F]),
         logger: W
@@ -551,15 +565,18 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
             n,
             0
         ))?;
+
+        let f0 = F::zero();
+        let f1 = F::one();
     
         for e in x.iter_mut() {
-            *e = F::zero();
+            *e = f0;
         }
         for e in y.iter_mut() {
-            *e = F::zero();
+            *e = f0;
         }
-        x[n + m] = F::one(); // u_tau
-        x[n + m + 1 + m] = F::one(); // v_kappa
+        x[n + m] = f1; // u_tau
+        x[n + m + 1 + m] = f1; // v_kappa
     
         L::copy(x, xx);
     
@@ -575,21 +592,24 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
 
         let ret_u_tau;
 
-        self.op_l.trans_op(-tau, y, F::one(), x);
+        let f0 = F::zero();
+        let f1 = F::one();
+    
+        self.op_l.trans_op(-tau, y, f1, x);
 
         { // Projection
             let (_, u_y, u_tau, v_s, v_kappa, _) = split_tup6_mut(x, (n, m, 1, m, 1, 0)).unwrap();
 
             self.cone.dual_proj(self.par.eps_zero, u_y)?;
-            u_tau[0] = u_tau[0].max(F::zero());
+            u_tau[0] = u_tau[0].max(f0);
             self.cone.proj(self.par.eps_zero, v_s)?;
-            v_kappa[0] = v_kappa[0].max(F::zero());
+            v_kappa[0] = v_kappa[0].max(f0);
 
             ret_u_tau = u_tau[0];
         }
 
-        L::add(-F::one()-F::one(), x, xx);
-        self.op_l.op(-sigma, xx, F::one(), y);
+        L::add(-f1-f1, x, xx);
+        self.op_l.op(-sigma, xx, f1, y);
         L::copy(x, xx);
 
         Ok(ret_u_tau)
@@ -604,31 +624,34 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
 
         let (u_x, u_y, u_tau, v_s, _, _) = split_tup6(x, (n, m, 1, m, 0, 0)).unwrap();
     
-        let u_tau = u_tau[0];
-        assert!(u_tau > F::zero());
+        let f0 = F::zero();
+        let f1 = F::one();
     
-        let work_one = &mut [F::one()];
+        let u_tau = u_tau[0];
+        assert!(u_tau > f0);
+    
+        let work_one = &mut [f1];
     
         // Calc convergence criteria
         
         L::copy(v_s, p);
-        self.op_l.b().op(-F::one(), work_one, u_tau.recip(), p);
-        self.op_l.a().op(u_tau.recip(), u_x, F::one(), p);
+        self.op_l.b().op(-f1, work_one, u_tau.recip(), p);
+        self.op_l.a().op(u_tau.recip(), u_x, f1, p);
     
-        self.op_l.c().op(F::one(), work_one, F::zero(), d);
-        self.op_l.a().trans_op(u_tau.recip(), u_y, F::one(), d);
+        self.op_l.c().op(f1, work_one, f0, d);
+        self.op_l.a().trans_op(u_tau.recip(), u_y, f1, d);
     
-        self.op_l.c().trans_op(u_tau.recip(), u_x, F::zero(), work_one);
+        self.op_l.c().trans_op(u_tau.recip(), u_x, f0, work_one);
         let g_x = work_one[0];
     
-        self.op_l.b().trans_op(u_tau.recip(), u_y, F::zero(), work_one);
+        self.op_l.b().trans_op(u_tau.recip(), u_y, f0, work_one);
         let g_y = work_one[0];
     
         let g = g_x + g_y;
     
-        let cri_pri = L::norm(p) / (F::one() + norm_b);
-        let cri_dual = L::norm(d) / (F::one() + norm_c);
-        let cri_gap = g.abs() / (F::one() + g_x.abs() + g_y.abs());
+        let cri_pri = L::norm(p) / (f1 + norm_b);
+        let cri_dual = L::norm(d) / (f1 + norm_c);
+        let cri_gap = g.abs() / (f1 + g_x.abs() + g_y.abs());
     
         (cri_pri, cri_dual, cri_gap)
     }
@@ -642,32 +665,36 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
 
         let (u_x, u_y, _, v_s, _, _) = split_tup6(x, (n, m, 1, m, 0, 0)).unwrap();
 
-        let work_one = &mut [F::zero()];
+        let f0 = F::zero();
+        let f1 = F::one();
+        let finf = F::infinity();
+    
+        let work_one = &mut [f0];
 
         // Calc undoundness and infeasibility criteria
         
         L::copy(v_s, p);
-        self.op_l.a().op(F::one(), u_x, F::one(), p);
+        self.op_l.a().op(f1, u_x, f1, p);
 
-        self.op_l.a().trans_op(F::one(), u_y, F::zero(), d);
+        self.op_l.a().trans_op(f1, u_y, f0, d);
 
-        self.op_l.c().trans_op(-F::one(), u_x, F::zero(), work_one);
+        self.op_l.c().trans_op(-f1, u_x, f0, work_one);
         let m_cx = work_one[0];
 
-        self.op_l.b().trans_op(-F::one(), u_y, F::zero(), work_one);
+        self.op_l.b().trans_op(-f1, u_y, f0, work_one);
         let m_by = work_one[0];
 
         let cri_unbdd = if m_cx > self.par.eps_zero {
             L::norm(p) * norm_c / m_cx
         }
         else {
-            F::infinity()
+            finf
         };
         let cri_infeas = if m_by > self.par.eps_zero {
             L::norm(d) * norm_b / m_by
         }
         else {
-            F::infinity()
+            finf
         };
 
         (cri_unbdd, cri_infeas)
