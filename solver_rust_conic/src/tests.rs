@@ -14,7 +14,7 @@ use crate::logger::*;
 fn test_smoke1() {
     use float_eq::assert_float_eq;
     
-    type AMatOp<'a> = MatOp<'a, F64LAPACK>;
+    type AMatOp<'a> = MatOp<'a, F64LAPACK, f64>;
     type AConePSD<'a> = ConePSD<'a, F64LAPACK, f64>;
     type ASolver = Solver<F64LAPACK, f64>;
 

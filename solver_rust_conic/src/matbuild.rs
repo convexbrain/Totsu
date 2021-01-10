@@ -226,7 +226,7 @@ where L: LinAlgEx<f64>
     }
 }
 
-impl<'a, L> From<&'a MatBuild<L>> for MatOp<'a, L>
+impl<'a, L> From<&'a MatBuild<L>> for MatOp<'a, L, f64>
 where L: LinAlgEx<f64>
 {
     fn from(m: &'a MatBuild<L>) -> Self

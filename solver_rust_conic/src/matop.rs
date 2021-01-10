@@ -1,6 +1,7 @@
 use crate::solver::Operator;
 use crate::linalgex::LinAlgEx;
 use core::marker::PhantomData;
+use num::Float;
 
 //
 
@@ -33,18 +34,18 @@ impl MatType
 //
 
 #[derive(Debug, Clone)]
-pub struct MatOp<'a, L>
-where L: LinAlgEx<f64>
+pub struct MatOp<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
     _ph_l: PhantomData<L>,
     typ: MatType,
-    array: &'a[f64]
+    array: &'a[F]
 }
 
-impl<'a, L> MatOp<'a, L>
-where L: LinAlgEx<f64>
+impl<'a, L, F> MatOp<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
-    pub fn new(typ: MatType, array: &'a[f64]) -> Self
+    pub fn new(typ: MatType, array: &'a[F]) -> Self
     {
         assert_eq!(typ.len(), array.len());
 
@@ -54,7 +55,7 @@ where L: LinAlgEx<f64>
         }
     }
 
-    fn op_impl(&self, transpose: bool, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
+    fn op_impl(&self, transpose: bool, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         match self.typ {
             MatType::General(nr, nc) => {
@@ -71,41 +72,42 @@ where L: LinAlgEx<f64>
     }
 }
 
-impl<'a, L> Operator<f64> for MatOp<'a, L>
-where L: LinAlgEx<f64>
+impl<'a, L, F> Operator<F> for MatOp<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
     fn size(&self) -> (usize, usize)
     {
         self.typ.size()
     }
 
-    fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
+    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         self.op_impl(false, alpha, x, beta, y);
     }
 
-    fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
+    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         self.op_impl(true, alpha, x, beta, y);
     }
 }
 
-impl<'a, L> AsRef<[f64]> for MatOp<'a, L>
-where L: LinAlgEx<f64>
+impl<'a, L, F> AsRef<[F]> for MatOp<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
-    fn as_ref(&self) -> &[f64]
+    fn as_ref(&self) -> &[F]
     {
         self.array
     }
 }
 
+//
 
 #[test]
 fn test_matop1() {
     use float_eq::assert_float_eq;
     use crate::f64_lapack::F64LAPACK;
 
-    type AMatOp<'a> = MatOp<'a, F64LAPACK>;
+    type AMatOp<'a> = MatOp<'a, F64LAPACK, f64>;
 
     let array = &[ // column-major, upper-triangle (seen as if transposed)
         1.,

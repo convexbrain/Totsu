@@ -11,7 +11,7 @@ pub struct ProbQPOpC<'a, L>
 where L: LinAlgEx<f64>
 {
     _ph_l: PhantomData<L>,
-    vec_q: MatOp<'a, L>,
+    vec_q: MatOp<'a, L, f64>,
 }
 
 impl<'a, L> ProbQPOpC<'a, L>
@@ -65,9 +65,9 @@ pub struct ProbQPOpA<'a, L>
 where L: LinAlgEx<f64>
 {
     _ph_l: PhantomData<L>,
-    sym_p: MatOp<'a, L>,
-    mat_g: MatOp<'a, L>,
-    mat_a: MatOp<'a, L>,
+    sym_p: MatOp<'a, L, f64>,
+    mat_g: MatOp<'a, L, f64>,
+    mat_a: MatOp<'a, L, f64>,
 }
 
 impl<'a, L> ProbQPOpA<'a, L>
@@ -153,9 +153,9 @@ where L: LinAlgEx<f64>
 {
     _ph_l: PhantomData<L>,
     n: usize,
-    symvec_p: MatOp<'a, L>,
-    vec_h: MatOp<'a, L>,
-    vec_b: MatOp<'a, L>,
+    symvec_p: MatOp<'a, L, f64>,
+    vec_h: MatOp<'a, L, f64>,
+    vec_b: MatOp<'a, L, f64>,
 }
 
 impl<'a, L> ProbQPOpB<'a, L>
