@@ -3,7 +3,7 @@
 use num::Float;
 use crate::solver::LinAlg;
 
-pub trait LinAlgEx<F: Float>: LinAlg<F>
+pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
 {
     // y = a*mat*x + b*y
     fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64]);
@@ -13,6 +13,7 @@ pub trait LinAlgEx<F: Float>: LinAlg<F>
     fn proj_psd(x: &mut[f64], eps_zero: f64, work: &mut[f64]);
 }
 
+#[derive(Clone)]
 pub struct F64BLAS;
 
 impl LinAlg<f64> for F64BLAS

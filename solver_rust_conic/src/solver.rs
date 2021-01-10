@@ -31,10 +31,10 @@ pub trait Operator<F: Float>
 pub trait Cone<F: Float>
 {
     // x.len() shall be op_a.size().0
-    fn proj(&mut self, par: &SolverParam<F>, x: &mut[F]) -> Result<(), SolverError>;
-    fn dual_proj(&mut self, par: &SolverParam<F>, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>;
+    fn dual_proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
     {
-        self.proj(par, x) // Self-dual cone
+        self.proj(eps_zero, x) // Self-dual cone
     }
 }
 
@@ -580,9 +580,9 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         { // Projection
             let (_, u_y, u_tau, v_s, v_kappa, _) = split_tup6_mut(x, (n, m, 1, m, 1, 0)).unwrap();
 
-            self.cone.dual_proj(&self.par, u_y)?;
+            self.cone.dual_proj(self.par.eps_zero, u_y)?;
             u_tau[0] = u_tau[0].max(F::zero());
-            self.cone.proj(&self.par, v_s)?;
+            self.cone.proj(self.par.eps_zero, v_s)?;
             v_kappa[0] = v_kappa[0].max(F::zero());
 
             ret_u_tau = u_tau[0];

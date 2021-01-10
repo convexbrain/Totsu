@@ -1,22 +1,26 @@
 use crate::matop::{MatType, MatOp};
-use crate::solver::LinAlg;
-use crate::linalg::F64BLAS;
+use crate::linalg::LinAlgEx;
 use core::ops::{Index, IndexMut};
+use core::marker::PhantomData;
 
 //
 
 #[derive(Debug, Clone)]
-pub struct MatBuild
+pub struct MatBuild<L>
+where L: LinAlgEx<f64>
 {
+    _ph_l: PhantomData<L>,
     typ: MatType,
     array: Vec<f64>,
 }
 
-impl MatBuild
+impl<L> MatBuild<L>
+where L: LinAlgEx<f64>
 {
     pub fn new(typ: MatType) -> Self
     {
         MatBuild {
+            _ph_l: PhantomData,
             typ,
             array: vec![0.; typ.len()],
         }
@@ -104,7 +108,7 @@ impl MatBuild
 
     pub fn set_scale(&mut self, alpha: f64)
     {
-        F64BLAS::scale(alpha, self.as_mut());
+        L::scale(alpha, self.as_mut());
     }
     pub fn scale(mut self, alpha: f64) -> Self
     {
@@ -121,11 +125,11 @@ impl MatBuild
                     let i = self.index((c, c));
                     let (_, spl) = self.as_mut().split_at_mut(i + 1);
                     let (spl, _) = spl.split_at_mut(nc);
-                    F64BLAS::scale(alpha, spl);
+                    L::scale(alpha, spl);
                 }
                 let i = self.index((n, n));
                 let (_, spl) = self.as_mut().split_at_mut(i + 1);
-                F64BLAS::scale(alpha, spl);
+                L::scale(alpha, spl);
             },
             MatType::SymPack(n) => {
                 for c in 0.. n - 1 {
@@ -133,7 +137,7 @@ impl MatBuild
                     let ii = self.index((c + 1, c + 1));
                     let (_, spl) = self.as_mut().split_at_mut(i + 1);
                     let (spl, _) = spl.split_at_mut(ii - i - 1);
-                    F64BLAS::scale(alpha, spl);
+                    L::scale(alpha, spl);
                 }
             },
         }
@@ -181,7 +185,8 @@ impl MatBuild
     }
 }
 
-impl Index<(usize, usize)> for MatBuild
+impl<L> Index<(usize, usize)> for MatBuild<L>
+where L: LinAlgEx<f64>
 {
     type Output = f64;
     fn index(&self, index: (usize, usize)) -> &f64
@@ -192,7 +197,8 @@ impl Index<(usize, usize)> for MatBuild
     }
 }
 
-impl IndexMut<(usize, usize)> for MatBuild
+impl<L> IndexMut<(usize, usize)> for MatBuild<L>
+where L: LinAlgEx<f64>
 {
     fn index_mut(&mut self, index: (usize, usize)) -> &mut f64
     {
@@ -202,7 +208,8 @@ impl IndexMut<(usize, usize)> for MatBuild
     }
 }
 
-impl AsRef<[f64]> for MatBuild
+impl<L> AsRef<[f64]> for MatBuild<L>
+where L: LinAlgEx<f64>
 {
     fn as_ref(&self) -> &[f64]
     {
@@ -210,7 +217,8 @@ impl AsRef<[f64]> for MatBuild
     }
 }
 
-impl AsMut<[f64]> for MatBuild
+impl<L> AsMut<[f64]> for MatBuild<L>
+where L: LinAlgEx<f64>
 {
     fn as_mut(&mut self) -> &mut[f64]
     {
@@ -218,9 +226,10 @@ impl AsMut<[f64]> for MatBuild
     }
 }
 
-impl<'a> From<&'a MatBuild> for MatOp<'a>
+impl<'a, L> From<&'a MatBuild<L>> for MatOp<'a, L>
+where L: LinAlgEx<f64>
 {
-    fn from(m: &'a MatBuild) -> Self
+    fn from(m: &'a MatBuild<L>) -> Self
     {
         MatOp::new(m.typ, m.as_ref())
     }
@@ -230,6 +239,9 @@ impl<'a> From<&'a MatBuild> for MatOp<'a>
 #[test]
 fn test_matbuild1() {
     use float_eq::assert_float_eq;
+    use crate::linalg::F64BLAS;
+
+    type AMatBuild = MatBuild<F64BLAS>;
 
     let ref_array = &[ // column-major, upper-triangle (seen as if transposed)
         1.,
@@ -246,7 +258,7 @@ fn test_matbuild1() {
        11., 12., 13., 14., 15.,
     ];
 
-    let m = MatBuild::new(MatType::SymPack(5))
+    let m = AMatBuild::new(MatType::SymPack(5))
             .iter_colmaj(array)
             .scale_nondiag(1.4);
 

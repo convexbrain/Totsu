@@ -1,5 +1,6 @@
 use crate::solver::Operator;
-use crate::linalg::{LinAlgEx, F64BLAS};
+use crate::linalg::LinAlgEx;
+use core::marker::PhantomData;
 
 //
 
@@ -32,19 +33,23 @@ impl MatType
 //
 
 #[derive(Debug, Clone)]
-pub struct MatOp<'a>
+pub struct MatOp<'a, L>
+where L: LinAlgEx<f64>
 {
+    _ph_l: PhantomData<L>,
     typ: MatType,
     array: &'a[f64]
 }
 
-impl<'a> MatOp<'a>
+impl<'a, L> MatOp<'a, L>
+where L: LinAlgEx<f64>
 {
     pub fn new(typ: MatType, array: &'a[f64]) -> Self
     {
         assert_eq!(typ.len(), array.len());
 
         MatOp {
+            _ph_l: PhantomData,
             typ, array,
         }
     }
@@ -54,19 +59,20 @@ impl<'a> MatOp<'a>
         match self.typ {
             MatType::General(nr, nc) => {
                 if nr > 0 && nc > 0 {
-                    F64BLAS::transform_ge(transpose, nr, nc, alpha, self.as_ref(), x, beta, y)
+                    L::transform_ge(transpose, nr, nc, alpha, self.as_ref(), x, beta, y)
                 }
             },
             MatType::SymPack(n) => {
                 if n > 0 {
-                    F64BLAS::transform_sp(n, alpha, self.as_ref(), x, beta, y)
+                    L::transform_sp(n, alpha, self.as_ref(), x, beta, y)
                 }
             },
         }
     }
 }
 
-impl<'a> Operator<f64> for MatOp<'a>
+impl<'a, L> Operator<f64> for MatOp<'a, L>
+where L: LinAlgEx<f64>
 {
     fn size(&self) -> (usize, usize)
     {
@@ -84,7 +90,8 @@ impl<'a> Operator<f64> for MatOp<'a>
     }
 }
 
-impl<'a> AsRef<[f64]> for MatOp<'a>
+impl<'a, L> AsRef<[f64]> for MatOp<'a, L>
+where L: LinAlgEx<f64>
 {
     fn as_ref(&self) -> &[f64]
     {
@@ -96,6 +103,9 @@ impl<'a> AsRef<[f64]> for MatOp<'a>
 #[test]
 fn test_matop1() {
     use float_eq::assert_float_eq;
+    use crate::linalg::F64BLAS;
+
+    type AMatOp<'a> = MatOp<'a, F64BLAS>;
 
     let array = &[ // column-major, upper-triangle (seen as if transposed)
         1.,
@@ -114,7 +124,7 @@ fn test_matop1() {
     let x = &mut[0.; 5];
     let y = &mut[0.; 5];
 
-    let m = MatOp::new(MatType::SymPack(5), array);
+    let m = AMatOp::new(MatType::SymPack(5), array);
 
     for i in 0.. x.len() {
         x[i] = 1.;

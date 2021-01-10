@@ -1,4 +1,4 @@
-use crate::solver::{Cone, SolverParam, SolverError};
+use crate::solver::{Cone, SolverError};
 use crate::linalg::LinAlgEx;
 use core::marker::PhantomData;
 
@@ -29,13 +29,13 @@ where L: LinAlgEx<f64>
 impl<'a, L> Cone<f64> for ConePSD<'a, L>
 where L: LinAlgEx<f64>
 {
-    fn proj(&mut self, par: &SolverParam<f64>, x: &mut[f64]) -> Result<(), SolverError>
+    fn proj(&mut self, eps_zero: f64, x: &mut[f64]) -> Result<(), SolverError>
     {
         if self.work.len() < L::proj_psd_worklen(x.len()) {
             return Err(SolverError::ConeFailure);
         }
 
-        L::proj_psd(x, par.eps_zero, self.work);
+        L::proj_psd(x, eps_zero, self.work);
 
         Ok(())
     }
@@ -45,7 +45,7 @@ pub struct ConeRPos;
 
 impl Cone<f64> for ConeRPos
 {
-    fn proj(&mut self, _par: &SolverParam<f64>, x: &mut[f64]) -> Result<(), SolverError>
+    fn proj(&mut self, _eps_zero: f64, x: &mut[f64]) -> Result<(), SolverError>
     {
         for e in x {
             *e = e.max(0.);
@@ -58,14 +58,14 @@ pub struct ConeZero;
 
 impl Cone<f64> for ConeZero
 {
-    fn proj(&mut self, _par: &SolverParam<f64>, x: &mut[f64]) -> Result<(), SolverError>
+    fn proj(&mut self, _eps_zero: f64, x: &mut[f64]) -> Result<(), SolverError>
     {
         for e in x {
             *e = 0.;
         }
         Ok(())
     }
-    fn dual_proj(&mut self, _par: &SolverParam<f64>, _x: &mut[f64]) -> Result<(), SolverError>
+    fn dual_proj(&mut self, _eps_zero: f64, _x: &mut[f64]) -> Result<(), SolverError>
     {
         Ok(())
     }
@@ -90,7 +90,6 @@ fn test_cone1() {
     assert_eq!(AConePSD::query_worklen(x.len()), 10);
     let w = &mut[0.; 10];
     let mut c = AConePSD::new(w);
-    let p = SolverParam::default();
-    c.proj(&p, x).unwrap();
+    c.proj(1e-12, x).unwrap();
     assert_float_eq!(ref_x, x, abs_all <= 1e-6);
 }

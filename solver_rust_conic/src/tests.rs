@@ -12,10 +12,11 @@ use crate::logger::*;
 fn test_smoke1() {
     use float_eq::assert_float_eq;
     
+    type AMatOp<'a> = MatOp<'a, F64BLAS>;
     type AConePSD<'a> = ConePSD<'a, F64BLAS>;
     type ASolver = Solver<F64BLAS, f64>;
 
-    let op_c = MatOp::new(MatType::General(1, 1), &[
+    let op_c = AMatOp::new(MatType::General(1, 1), &[
         1.,
     ]);
 
@@ -27,7 +28,7 @@ fn test_smoke1() {
                 .iter_rowmaj(array_a)
                 .scale_nondiag(2_f64.sqrt())
                 .reshape_colvec();
-    let op_a = MatOp::from(&mat_a);
+    let op_a = AMatOp::from(&mat_a);
 
     let array_b = &[
         1.,  0.,
@@ -37,7 +38,7 @@ fn test_smoke1() {
                 .iter_rowmaj(array_b)
                 .scale_nondiag(2_f64.sqrt())
                 .reshape_colvec();
-    let op_b = MatOp::from(&mat_b);
+    let op_b = AMatOp::from(&mat_b);
 
     let mut cone_w = vec![0.; AConePSD::query_worklen(op_a.size().0)];
     let cone = AConePSD::new(&mut cone_w);
