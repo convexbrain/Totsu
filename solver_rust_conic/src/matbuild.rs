@@ -1,28 +1,29 @@
 use crate::matop::{MatType, MatOp};
 use crate::linalgex::LinAlgEx;
-use core::ops::{Index, IndexMut};
+use core::ops::{Index, IndexMut, Deref};
 use core::marker::PhantomData;
+use num::Float;
 
 //
 
 #[derive(Debug, Clone)]
-pub struct MatBuild<L>
-where L: LinAlgEx<f64>
+pub struct MatBuild<L, F>
+where L: LinAlgEx<F>, F: Float
 {
     _ph_l: PhantomData<L>,
     typ: MatType,
-    array: Vec<f64>,
+    array: Vec<F>,
 }
 
-impl<L> MatBuild<L>
-where L: LinAlgEx<f64>
+impl<L, F> MatBuild<L, F>
+where L: LinAlgEx<F>, F: Float
 {
     pub fn new(typ: MatType) -> Self
     {
         MatBuild {
             _ph_l: PhantomData,
             typ,
-            array: vec![0.; typ.len()],
+            array: vec![F::zero(); typ.len()],
         }
     }
 
@@ -31,8 +32,8 @@ where L: LinAlgEx<f64>
         &self.typ
     }
 
-    pub fn set_by_fn<F>(&mut self, mut func: F)
-    where F: FnMut(usize, usize) -> f64
+    pub fn set_by_fn<M>(&mut self, mut func: M)
+    where M: FnMut(usize, usize) -> F
     {
         match self.typ {
             MatType::General(nr, nc) => {
@@ -51,15 +52,15 @@ where L: LinAlgEx<f64>
             },
         };
     }
-    pub fn by_fn<F>(mut self, func: F) -> Self
-    where F: FnMut(usize, usize) -> f64
+    pub fn by_fn<M>(mut self, func: M) -> Self
+    where M: FnMut(usize, usize) -> F
     {
         self.set_by_fn(func);
         self
     }
 
-    pub fn set_iter_colmaj<'a, T>(&mut self, iter: T)
-    where T: IntoIterator<Item=&'a f64>
+    pub fn set_iter_colmaj<T, I>(&mut self, iter: T)
+    where T: IntoIterator<Item=I>, I: Deref<Target=F>
     {
         let mut i = iter.into_iter();
         let (nr, nc) = self.typ.size();
@@ -75,15 +76,15 @@ where L: LinAlgEx<f64>
             }
         }
     }
-    pub fn iter_colmaj<'a, T>(mut self, iter: T) -> Self
-    where T: IntoIterator<Item=&'a f64>
+    pub fn iter_colmaj<T, I>(mut self, iter: T) -> Self
+    where T: IntoIterator<Item=I>, I: Deref<Target=F>
     {
         self.set_iter_colmaj(iter);
         self
     }
 
-    pub fn set_iter_rowmaj<'a, T>(&mut self, iter: T)
-    where T: IntoIterator<Item=&'a f64>
+    pub fn set_iter_rowmaj<T, I>(&mut self, iter: T)
+    where T: IntoIterator<Item=I>, I: Deref<Target=F>
     {
         let mut i = iter.into_iter();
         let (nr, nc) = self.typ.size();
@@ -99,24 +100,24 @@ where L: LinAlgEx<f64>
             }
         }
     }
-    pub fn iter_rowmaj<'a, T>(mut self, iter: T) -> Self
-    where T: IntoIterator<Item=&'a f64>
+    pub fn iter_rowmaj<T, I>(mut self, iter: T) -> Self
+    where T: IntoIterator<Item=I>, I: Deref<Target=F>
     {
         self.set_iter_rowmaj(iter);
         self
     }
 
-    pub fn set_scale(&mut self, alpha: f64)
+    pub fn set_scale(&mut self, alpha: F)
     {
         L::scale(alpha, self.as_mut());
     }
-    pub fn scale(mut self, alpha: f64) -> Self
+    pub fn scale(mut self, alpha: F) -> Self
     {
         self.set_scale(alpha);
         self
     }
 
-    pub fn set_scale_nondiag(&mut self, alpha: f64)
+    pub fn set_scale_nondiag(&mut self, alpha: F)
     {
         match self.typ {
             MatType::General(nr, nc) => {
@@ -142,7 +143,7 @@ where L: LinAlgEx<f64>
             },
         }
     }
-    pub fn scale_nondiag(mut self, alpha: f64) -> Self
+    pub fn scale_nondiag(mut self, alpha: F) -> Self
     {
         self.set_scale_nondiag(alpha);
         self
@@ -185,11 +186,11 @@ where L: LinAlgEx<f64>
     }
 }
 
-impl<L> Index<(usize, usize)> for MatBuild<L>
-where L: LinAlgEx<f64>
+impl<L, F> Index<(usize, usize)> for MatBuild<L, F>
+where L: LinAlgEx<F>, F: Float
 {
-    type Output = f64;
-    fn index(&self, index: (usize, usize)) -> &f64
+    type Output = F;
+    fn index(&self, index: (usize, usize)) -> &F
     {
         let i = self.index(index);
 
@@ -197,10 +198,10 @@ where L: LinAlgEx<f64>
     }
 }
 
-impl<L> IndexMut<(usize, usize)> for MatBuild<L>
-where L: LinAlgEx<f64>
+impl<L, F> IndexMut<(usize, usize)> for MatBuild<L, F>
+where L: LinAlgEx<F>, F: Float
 {
-    fn index_mut(&mut self, index: (usize, usize)) -> &mut f64
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut F
     {
         let i = self.index(index);
 
@@ -208,28 +209,28 @@ where L: LinAlgEx<f64>
     }
 }
 
-impl<L> AsRef<[f64]> for MatBuild<L>
-where L: LinAlgEx<f64>
+impl<L, F> AsRef<[F]> for MatBuild<L, F>
+where L: LinAlgEx<F>, F: Float
 {
-    fn as_ref(&self) -> &[f64]
+    fn as_ref(&self) -> &[F]
     {
         &self.array
     }
 }
 
-impl<L> AsMut<[f64]> for MatBuild<L>
-where L: LinAlgEx<f64>
+impl<L, F> AsMut<[F]> for MatBuild<L, F>
+where L: LinAlgEx<F>, F: Float
 {
-    fn as_mut(&mut self) -> &mut[f64]
+    fn as_mut(&mut self) -> &mut[F]
     {
         &mut self.array
     }
 }
 
-impl<'a, L> From<&'a MatBuild<L>> for MatOp<'a, L, f64>
-where L: LinAlgEx<f64>
+impl<'a, L, F> From<&'a MatBuild<L, F>> for MatOp<'a, L, F>
+where L: LinAlgEx<F>, F: Float
 {
-    fn from(m: &'a MatBuild<L>) -> Self
+    fn from(m: &'a MatBuild<L, F>) -> Self
     {
         MatOp::new(m.typ, m.as_ref())
     }
@@ -241,7 +242,7 @@ fn test_matbuild1() {
     use float_eq::assert_float_eq;
     use crate::f64_lapack::F64LAPACK;
 
-    type AMatBuild = MatBuild<F64LAPACK>;
+    type AMatBuild = MatBuild<F64LAPACK, f64>;
 
     let ref_array = &[ // column-major, upper-triangle (seen as if transposed)
         1.,

@@ -17,6 +17,7 @@ fn test_smoke1() {
     type AMatOp<'a> = MatOp<'a, F64LAPACK, f64>;
     type AConePSD<'a> = ConePSD<'a, F64LAPACK, f64>;
     type ASolver = Solver<F64LAPACK, f64>;
+    type AMatBuild = MatBuild<F64LAPACK, f64>;
 
     let op_c = AMatOp::new(MatType::General(1, 1), &[
         1.,
@@ -26,7 +27,7 @@ fn test_smoke1() {
          0., -1.,
         -1., -3.,
     ];
-    let mat_a = MatBuild::new(MatType::SymPack(2))
+    let mat_a = AMatBuild::new(MatType::SymPack(2))
                 .iter_rowmaj(array_a)
                 .scale_nondiag(2_f64.sqrt())
                 .reshape_colvec();
@@ -36,7 +37,7 @@ fn test_smoke1() {
         1.,  0.,
         0., 10.,
     ];
-    let mat_b = MatBuild::new(MatType::SymPack(2))
+    let mat_b = AMatBuild::new(MatType::SymPack(2))
                 .iter_rowmaj(array_b)
                 .scale_nondiag(2_f64.sqrt())
                 .reshape_colvec();

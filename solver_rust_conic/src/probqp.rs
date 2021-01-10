@@ -273,14 +273,14 @@ where L: LinAlgEx<f64>
 {
     _ph_l: PhantomData::<L>,
 
-    sym_p: MatBuild<L>,
-    vec_q: MatBuild<L>,
-    mat_g: MatBuild<L>,
-    vec_h: MatBuild<L>,
-    mat_a: MatBuild<L>,
-    vec_b: MatBuild<L>,
+    sym_p: MatBuild<L, f64>,
+    vec_q: MatBuild<L, f64>,
+    mat_g: MatBuild<L, f64>,
+    vec_h: MatBuild<L, f64>,
+    mat_a: MatBuild<L, f64>,
+    vec_b: MatBuild<L, f64>,
 
-    symvec_p: MatBuild<L>,
+    symvec_p: MatBuild<L, f64>,
 
     w_cone_psd: Vec<f64>,
     w_solver: Vec<f64>,
@@ -290,9 +290,9 @@ impl<L> ProbQP<L>
 where L: LinAlgEx<f64>
 {
     pub fn new(
-        sym_p: MatBuild<L>, vec_q: MatBuild<L>,
-        mat_g: MatBuild<L>, vec_h: MatBuild<L>,
-        mat_a: MatBuild<L>, vec_b: MatBuild<L>) -> Self
+        sym_p: MatBuild<L, f64>, vec_q: MatBuild<L, f64>,
+        mat_g: MatBuild<L, f64>, vec_h: MatBuild<L, f64>,
+        mat_a: MatBuild<L, f64>, vec_b: MatBuild<L, f64>) -> Self
     {
         let n = vec_q.typ().size().0;
         let m = vec_h.typ().size().0;
