@@ -8,12 +8,14 @@ use crate::f64_lapack::*;
 use crate::matbuild::*;
 use crate::logger::*;
 
+//
+
 #[test]
 fn test_smoke1() {
     use float_eq::assert_float_eq;
     
     type AMatOp<'a> = MatOp<'a, F64LAPACK>;
-    type AConePSD<'a> = ConePSD<'a, F64LAPACK>;
+    type AConePSD<'a> = ConePSD<'a, F64LAPACK, f64>;
     type ASolver = Solver<F64LAPACK, f64>;
 
     let op_c = AMatOp::new(MatType::General(1, 1), &[

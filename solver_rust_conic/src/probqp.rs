@@ -229,9 +229,9 @@ where L: LinAlgEx<f64>
     n: usize,
     m: usize,
     p: usize,
-    cone_psd: ConePSD<'a, L>,
-    cone_rpos: ConeRPos,
-    cone_zero: ConeZero,
+    cone_psd: ConePSD<'a, L, f64>,
+    cone_rpos: ConeRPos<f64>,
+    cone_zero: ConeZero<f64>,
 }
 
 impl<'a, L> Cone<f64> for ProbQPCone<'a, L>
@@ -348,12 +348,12 @@ where L: LinAlgEx<f64>
             vec_b: MatOp::from(&self.vec_b),
         };
 
-        self.w_cone_psd.resize(ConePSD::<L>::query_worklen(sn + n + 1), 0.);
+        self.w_cone_psd.resize(ConePSD::<L, _>::query_worklen(sn + n + 1), 0.);
         let cone = ProbQPCone {
             n, m, p,
             cone_psd: ConePSD::new(self.w_cone_psd.as_mut()),
-            cone_rpos: ConeRPos,
-            cone_zero: ConeZero,
+            cone_rpos: ConeRPos::new(),
+            cone_zero: ConeZero::new(),
         };
 
         self.w_solver.resize(Solver::<L, _>::query_worklen(op_a.size()), 0.);
@@ -362,6 +362,7 @@ where L: LinAlgEx<f64>
     }
 }
 
+//
 
 #[test]
 fn test_qp1() {
