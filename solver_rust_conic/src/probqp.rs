@@ -416,14 +416,10 @@ fn test_qp1() {
 
     let vec_b = AMatBuild::new(MatType::General(p, 1));
 
-    //let mut stdout = std::io::stdout();
-    //let log = IoLogger(&mut stdout);
-    let log = NullLogger;
-
     let s = ASolver::new();
     println!("{:?}", s.par);
     let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b);
-    let rslt = s.solve(qp.problem(), log).unwrap();
+    let rslt = s.solve(qp.problem(), PrintLogger).unwrap();
     println!("{:?}", rslt);
 
     assert_float_eq!(rslt.0[0..2], [2., 0.].as_ref(), abs_all <= 1e-3);

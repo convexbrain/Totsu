@@ -388,15 +388,64 @@ fn test_socp1()
 
     let vec_b = AMatBuild::new(MatType::General(p, 1));
 
-    //let mut stdout = std::io::stdout();
-    //let log = IoLogger(&mut stdout);
-    let log = NullLogger;
+    let s = ASolver::new();
+    println!("{:?}", s.par);
+    let mut socp = AProbSOCP::new(vec_f, mats_g, vecs_h, vecs_c, scls_d, mat_a, vec_b);
+    let rslt = s.solve(socp.problem(), PrintLogger).unwrap();
+    println!("{:?}", rslt);
+
+    assert_float_eq!(rslt.0, [-1., -1.].as_ref(), abs_all <= 1e-3);
+}
+
+#[test]
+fn test_socp2()
+{
+    use crate::logger::*;
+    use float_eq::assert_float_eq;
+    use crate::matop::MatType;
+    use crate::f64lapack::F64LAPACK;
+    
+    type ASolver = Solver<F64LAPACK, f64>;
+    type AProbSOCP = ProbSOCP<F64LAPACK, f64>;
+    type AMatBuild = MatBuild<F64LAPACK, f64>;
+
+    // minimize f
+    // 0 <= -f + 50
+    // |-x+2| <= f
+    // expected x=2, f=0
+
+    let n = 2;
+    let m = 2;
+    let p = 0;
+
+    let vec_f = AMatBuild::new(MatType::General(n, 1)).iter_colmaj(&[0., 1.]);
+
+    let mats_g = vec![
+        AMatBuild::new(MatType::General(0, n)),
+        AMatBuild::new(MatType::General(1, n)).iter_rowmaj(&[-1.0, 0.0]),
+    ];
+
+    let vecs_h = vec![
+        AMatBuild::new(MatType::General(0, 1)),
+        AMatBuild::new(MatType::General(1, 1)).iter_colmaj(&[2.]),
+    ];
+
+    let vecs_c = vec![
+        AMatBuild::new(MatType::General(m, 1)).iter_colmaj(&[0., -1.0]),
+        AMatBuild::new(MatType::General(m, 1)).iter_colmaj(&[0., 1.0]),
+    ];
+
+    let scls_d = vec![50., 0.];
+
+    let mat_a = AMatBuild::new(MatType::General(p, n));
+
+    let vec_b = AMatBuild::new(MatType::General(p, 1));
 
     let s = ASolver::new();
     println!("{:?}", s.par);
     let mut socp = AProbSOCP::new(vec_f, mats_g, vecs_h, vecs_c, scls_d, mat_a, vec_b);
-    let rslt = s.solve(socp.problem(), log).unwrap();
+    let rslt = s.solve(socp.problem(), PrintLogger).unwrap();
     println!("{:?}", rslt);
 
-    assert_float_eq!(rslt.0, [-1., -1.].as_ref(), abs_all <= 1e-3);
+    assert_float_eq!(rslt.0, [2., 0.].as_ref(), abs_all <= 1e-3);
 }

@@ -46,14 +46,10 @@ fn test_smoke1() {
     let mut cone_w = vec![0.; AConePSD::query_worklen(op_a.size().0)];
     let cone = AConePSD::new(&mut cone_w);
 
-    //let mut stdout = std::io::stdout();
-    //let log = IoLogger(&mut stdout);
-    let log = NullLogger;
-
     let s = ASolver::new();
     println!("{:?}", s.par);
     let mut solver_w = vec![0.; ASolver::query_worklen(op_a.size())];
-    let rslt = s.solve((op_c, op_a, op_b, cone, &mut solver_w), log).unwrap();
+    let rslt = s.solve((op_c, op_a, op_b, cone, &mut solver_w), PrintLogger).unwrap();
     println!("{:?}", rslt);
 
     assert_float_eq!(rslt.0[0], -2., abs_all <= 1e-3);
