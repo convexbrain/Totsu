@@ -28,9 +28,14 @@ where L: LinAlgEx<F>, F: Float
         }
     }
 
-    pub fn typ(&self) -> &MatType
+    pub fn is_sympack(&self) -> bool
     {
-        &self.typ
+        if let MatType::SymPack(_) = self.typ {
+            true
+        }
+        else {
+            false
+        }
     }
 
     pub fn set_by_fn<M>(&mut self, mut func: M)
@@ -242,7 +247,7 @@ where L: LinAlgEx<F>, F: Float
 {
     fn size(&self) -> (usize, usize)
     {
-        MatOp::from(self).size()
+        self.typ.size()
     }
 
     fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])

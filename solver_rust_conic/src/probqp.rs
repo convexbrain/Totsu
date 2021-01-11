@@ -1,4 +1,3 @@
-use crate::matop::MatType;
 use crate::matbuild::MatBuild;
 use crate::solver::{Operator, Cone, SolverError, Solver};
 use crate::linalgex::LinAlgEx;
@@ -298,17 +297,18 @@ where L: LinAlgEx<F>, F: Float
         mat_g: MatBuild<L, F>, vec_h: MatBuild<L, F>,
         mat_a: MatBuild<L, F>, vec_b: MatBuild<L, F>) -> Self
     {
-        let n = vec_q.typ().size().0;
-        let m = vec_h.typ().size().0;
-        let p = vec_b.typ().size().0;
+        let n = vec_q.size().0;
+        let m = vec_h.size().0;
+        let p = vec_b.size().0;
 
         // TODO: error
-        assert_eq!(sym_p.typ(), &MatType::SymPack(n));
-        assert_eq!(vec_q.typ().size(), (n, 1));
-        assert_eq!(mat_g.typ().size(), (m, n));
-        assert_eq!(vec_h.typ().size(), (m, 1));
-        assert_eq!(mat_a.typ().size(), (p, n));
-        assert_eq!(vec_b.typ().size(), (p, 1));
+        assert!(sym_p.is_sympack());
+        assert_eq!(sym_p.size(), (n, n));
+        assert_eq!(vec_q.size(), (n, 1));
+        assert_eq!(mat_g.size(), (m, n));
+        assert_eq!(vec_h.size(), (m, 1));
+        assert_eq!(mat_a.size(), (p, n));
+        assert_eq!(vec_b.size(), (p, 1));
 
         let f1 = F::one();
         let f2 = f1 + f1;
@@ -333,9 +333,9 @@ where L: LinAlgEx<F>, F: Float
 
     pub fn problem(&mut self) -> (ProbQPOpC<L, F>, ProbQPOpA<L, F>, ProbQPOpB<L, F>, ProbQPCone<'_, L, F>, &mut[F])
     {
-        let n = self.vec_q.typ().size().0;
-        let m = self.vec_h.typ().size().0;
-        let p = self.vec_b.typ().size().0;
+        let n = self.vec_q.size().0;
+        let m = self.vec_h.size().0;
+        let p = self.vec_b.size().0;
         let sn = n * (n + 1) / 2;
 
         let f0 = F::zero();
@@ -376,6 +376,7 @@ fn test_qp1() {
     use float_eq::assert_float_eq;
     use crate::stdlogger::PrintLogger;
     use crate::f64lapack::F64LAPACK;
+    use crate::matop::MatType;
     
     type ASolver = Solver<F64LAPACK, f64>;
     type AProbQP = ProbQP<F64LAPACK, f64>;

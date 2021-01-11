@@ -282,24 +282,24 @@ where L: LinAlgEx<F>, F: Float
         vecs_c: Vec<MatBuild<L, F>>, scls_d: Vec<F>,
         mat_a: MatBuild<L, F>, vec_b: MatBuild<L, F>) -> Self
     {
-        let n = vec_f.typ().size().0;
+        let n = vec_f.size().0;
         let m = mats_g.len();
-        let p = vec_b.typ().size().0;
+        let p = vec_b.size().0;
     
         // TODO: error
         assert_eq!(mats_g.len(), m);
         assert_eq!(vecs_h.len(), m);
         assert_eq!(vecs_c.len(), m);
         assert_eq!(scls_d.len(), m);
-        assert_eq!(vec_f.typ().size(), (n, 1));
+        assert_eq!(vec_f.size(), (n, 1));
         for i in 0.. m {
-            let ni = mats_g[i].typ().size().0;
-            assert_eq!(mats_g[i].typ().size(), (ni, n));
-            assert_eq!(vecs_h[i].typ().size(), (ni, 1));
-            assert_eq!(vecs_c[i].typ().size(), (n, 1));
+            let ni = mats_g[i].size().0;
+            assert_eq!(mats_g[i].size(), (ni, n));
+            assert_eq!(vecs_h[i].size(), (ni, 1));
+            assert_eq!(vecs_c[i].size(), (n, 1));
         }
-        assert_eq!(mat_a.typ().size(), (p, n));
-        assert_eq!(vec_b.typ().size(), (p, 1));
+        assert_eq!(mat_a.size(), (p, n));
+        assert_eq!(vec_b.size(), (p, 1));
 
         ProbSOCP {
             vec_f,
