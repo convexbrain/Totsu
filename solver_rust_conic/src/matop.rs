@@ -105,7 +105,7 @@ where L: LinAlgEx<F>, F: Float
 #[test]
 fn test_matop1() {
     use float_eq::assert_float_eq;
-    use crate::f64_lapack::F64LAPACK;
+    use crate::f64lapack::F64LAPACK;
 
     type AMatOp<'a> = MatOp<'a, F64LAPACK, f64>;
 

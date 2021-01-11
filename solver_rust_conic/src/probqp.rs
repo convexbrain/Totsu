@@ -307,7 +307,8 @@ where L: LinAlgEx<F>, F: Float
         let n = vec_q.typ().size().0;
         let m = vec_h.typ().size().0;
         let p = vec_b.typ().size().0;
-    
+
+        // TODO: error
         assert_eq!(sym_p.typ(), &MatType::SymPack(n));
         assert_eq!(vec_q.typ().size(), (n, 1));
         assert_eq!(mat_g.typ().size(), (m, n));
@@ -384,7 +385,7 @@ where L: LinAlgEx<F>, F: Float
 fn test_qp1() {
     use crate::logger::*;
     use float_eq::assert_float_eq;
-    use crate::f64_lapack::F64LAPACK;
+    use crate::f64lapack::F64LAPACK;
     
     type ASolver = Solver<F64LAPACK, f64>;
     type AProbQP = ProbQP<F64LAPACK, f64>;

@@ -4,7 +4,7 @@ mod tests;
 pub mod solver;
 
 pub mod linalgex;
-pub mod f64_lapack;
+pub mod f64lapack;
 
 pub mod matop;
 pub mod cone;
@@ -14,23 +14,25 @@ pub mod logger;
 
 // TODO: predef LP/QP/QCQP/SOCP/SDP
 pub mod probqp;
-pub mod probsocp;
+//pub mod probsocp;
 
 // TODO: pub use, mod layout
 /*
-  solver
+  solver     core, Float
 
-  linalgex    f64_lapack
+  linalgex   core, Float
+  f64lapack  core, f64,   lapack
 
-         cone
-         matop       matbuild
-                                   logger
-        
-              problp
-              probqp
-              probqcqp
-              probsocp
-              probsdp
+  cone       core, Float
+  matop      core, Float
+  matbuild   std,  Float
+  logger     std
+
+  problp     std,  Float
+  probqp     std,  Float
+  probqcqp   std,  Float
+  probsocp   std,  Float
+  probsdp    std,  Float
 */ 
 
 // TODO: doc

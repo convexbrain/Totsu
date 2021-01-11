@@ -4,7 +4,7 @@ extern crate intel_mkl_src;
 use crate::solver::*;
 use crate::matop::*;
 use crate::cone::*;
-use crate::f64_lapack::*;
+use crate::f64lapack::*;
 use crate::matbuild::*;
 use crate::logger::*;
 

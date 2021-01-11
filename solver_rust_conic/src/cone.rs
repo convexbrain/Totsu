@@ -163,7 +163,7 @@ where F: Float
 
 #[test]
 fn test_cone1() {
-    use crate::f64_lapack::F64LAPACK;
+    use crate::f64lapack::F64LAPACK;
     use float_eq::assert_float_eq;
     
     type AConePSD<'a> = ConePSD<'a, F64LAPACK, f64>;

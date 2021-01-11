@@ -1,5 +1,6 @@
 use crate::matop::{MatType, MatOp};
 use crate::linalgex::LinAlgEx;
+use crate::solver::Operator;
 use core::ops::{Index, IndexMut, Deref};
 use core::marker::PhantomData;
 use num::Float;
@@ -236,11 +237,29 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
+impl<L, F> Operator<F> for MatBuild<L, F>
+where L: LinAlgEx<F>, F: Float
+{
+    fn size(&self) -> (usize, usize)
+    {
+        MatOp::from(self).size()
+    }
+
+    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    {
+        MatOp::from(self).op(alpha, x, beta, y);
+    }
+
+    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    {
+        MatOp::from(self).trans_op(alpha, x, beta, y);
+    }
+}
 
 #[test]
 fn test_matbuild1() {
     use float_eq::assert_float_eq;
-    use crate::f64_lapack::F64LAPACK;
+    use crate::f64lapack::F64LAPACK;
 
     type AMatBuild = MatBuild<F64LAPACK, f64>;
 
