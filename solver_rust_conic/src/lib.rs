@@ -13,10 +13,12 @@ pub mod matbuild;   // std,  Float
 pub mod nulllogger; // core
 pub mod stdlogger;  // std
 
+// TODO: pub mod problp;     // std, Float
 pub mod probqp;     // std, Float
 pub mod probsocp;   // std, Float
+pub mod probqcqp;   // std, Float
+// TODO: pub mod probsdp;    // std, Float
 
-// TODO: predef LP/QP/QCQP/SOCP/SDP
 // TODO: pub use, mod layout
 // TODO: doc
 // TODO: thorough tests
