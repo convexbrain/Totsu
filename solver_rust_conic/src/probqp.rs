@@ -3,7 +3,6 @@ use crate::matbuild::MatBuild;
 use crate::solver::{Operator, Cone, SolverError, Solver};
 use crate::linalgex::LinAlgEx;
 use crate::cone::{ConePSD, ConeRPos, ConeZero};
-use core::marker::PhantomData;
 use num::Float;
 
 //
@@ -11,7 +10,6 @@ use num::Float;
 pub struct ProbQPOpC<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    _ph_l: PhantomData<L>,
     vec_q: &'a MatBuild<L, F>,
 }
 
@@ -65,7 +63,6 @@ where L: LinAlgEx<F>, F: Float
 pub struct ProbQPOpA<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    _ph_l: PhantomData<L>,
     sym_p: &'a MatBuild<L, F>,
     mat_g: &'a MatBuild<L, F>,
     mat_a: &'a MatBuild<L, F>,
@@ -159,7 +156,6 @@ where L: LinAlgEx<F>, F: Float
 pub struct ProbQPOpB<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    _ph_l: PhantomData<L>,
     n: usize,
     symvec_p: &'a MatBuild<L, F>,
     vec_h: &'a MatBuild<L, F>,
@@ -281,8 +277,6 @@ where L: LinAlgEx<F>, F: Float
 pub struct ProbQP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    _ph_l: PhantomData::<L>,
-
     sym_p: MatBuild<L, F>,
     vec_q: MatBuild<L, F>,
     mat_g: MatBuild<L, F>,
@@ -325,7 +319,6 @@ where L: LinAlgEx<F>, F: Float
                        .reshape_colvec();
 
         ProbQP {
-            _ph_l: PhantomData,
             sym_p,
             vec_q,
             mat_g,
@@ -348,17 +341,14 @@ where L: LinAlgEx<F>, F: Float
         let f0 = F::zero();
 
         let op_c = ProbQPOpC {
-            _ph_l: PhantomData,
             vec_q: &self.vec_q,
         };
         let op_a = ProbQPOpA {
-            _ph_l: PhantomData,
             sym_p: &self.sym_p,
             mat_g: &self.mat_g,
             mat_a: &self.mat_a,
         };
         let op_b = ProbQPOpB {
-            _ph_l: PhantomData,
             n,
             symvec_p: &self.symvec_p,
             vec_h: &self.vec_h,

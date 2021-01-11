@@ -379,7 +379,6 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp
 
         let core = SolverCore {
             par: self.par,
-            _ph_l: PhantomData,
             logger,
             op_l,
             cone,
@@ -398,7 +397,6 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
 {
     par: SolverParam<F>,
 
-    _ph_l: PhantomData<L>,
     logger: W,
 
     op_l: SelfDualEmbed<F, L, OC, OA, OB>,

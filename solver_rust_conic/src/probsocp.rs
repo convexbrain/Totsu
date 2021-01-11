@@ -2,7 +2,6 @@ use crate::matbuild::MatBuild;
 use crate::solver::{Operator, Cone, SolverError, Solver};
 use crate::linalgex::LinAlgEx;
 use crate::cone::{ConeSOC, ConeZero};
-use core::marker::PhantomData;
 use num::Float;
 
 //
@@ -10,7 +9,6 @@ use num::Float;
 pub struct ProbSOCPOpC<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    _ph_l: PhantomData<L>,
     vec_f: &'a MatBuild<L, F>,
 }
 
@@ -43,7 +41,6 @@ where L: LinAlgEx<F>, F: Float
 pub struct ProbSOCPOpA<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    _ph_l: PhantomData<L>,
     mats_g: &'a[MatBuild<L, F>],
     vecs_c: &'a[MatBuild<L, F>],
     mat_a: &'a MatBuild<L, F>,
@@ -130,7 +127,6 @@ where L: LinAlgEx<F>, F: Float
 pub struct ProbSOCPOpB<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    _ph_l: PhantomData<L>,
     vecs_h: &'a[MatBuild<L, F>],
     scls_d: &'a[F],
     vec_b: &'a MatBuild<L, F>,
@@ -266,8 +262,6 @@ where L: LinAlgEx<F>, F: Float
 pub struct ProbSOCP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    _ph_l: PhantomData::<L>,
-
     vec_f: MatBuild<L, F>,
     mats_g: Vec<MatBuild<L, F>>,
     vecs_h: Vec<MatBuild<L, F>>,
@@ -308,7 +302,6 @@ where L: LinAlgEx<F>, F: Float
         assert_eq!(vec_b.typ().size(), (p, 1));
 
         ProbSOCP {
-            _ph_l: PhantomData,
             vec_f,
             mats_g,
             vecs_h,
@@ -323,17 +316,14 @@ where L: LinAlgEx<F>, F: Float
     pub fn problem(&mut self) -> (ProbSOCPOpC<L, F>, ProbSOCPOpA<L, F>, ProbSOCPOpB<L, F>, ProbSOCPCone<'_, L, F>, &mut[F])
     {
         let op_c = ProbSOCPOpC {
-            _ph_l: PhantomData,
             vec_f: &self.vec_f,
         };
         let op_a = ProbSOCPOpA {
-            _ph_l: PhantomData,
             mats_g: &self.mats_g,
             vecs_c: &self.vecs_c,
             mat_a: &self.mat_a,
         };
         let op_b = ProbSOCPOpB {
-            _ph_l: PhantomData,
             vecs_h: &self.vecs_h,
             scls_d: &self.scls_d,
             vec_b: &self.vec_b,
