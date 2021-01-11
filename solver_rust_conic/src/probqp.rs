@@ -1,4 +1,4 @@
-use crate::matop::{MatOp, MatType};
+use crate::matop::MatType;
 use crate::matbuild::MatBuild;
 use crate::solver::{Operator, Cone, SolverError, Solver};
 use crate::linalgex::LinAlgEx;
@@ -12,7 +12,7 @@ pub struct ProbQPOpC<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
     _ph_l: PhantomData<L>,
-    vec_q: MatOp<'a, L, F>,
+    vec_q: &'a MatBuild<L, F>,
 }
 
 impl<'a, L, F> ProbQPOpC<'a, L, F>
@@ -66,9 +66,9 @@ pub struct ProbQPOpA<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
     _ph_l: PhantomData<L>,
-    sym_p: MatOp<'a, L, F>,
-    mat_g: MatOp<'a, L, F>,
-    mat_a: MatOp<'a, L, F>,
+    sym_p: &'a MatBuild<L, F>,
+    mat_g: &'a MatBuild<L, F>,
+    mat_a: &'a MatBuild<L, F>,
 }
 
 impl<'a, L, F> ProbQPOpA<'a, L, F>
@@ -161,9 +161,9 @@ where L: LinAlgEx<F>, F: Float
 {
     _ph_l: PhantomData<L>,
     n: usize,
-    symvec_p: MatOp<'a, L, F>,
-    vec_h: MatOp<'a, L, F>,
-    vec_b: MatOp<'a, L, F>,
+    symvec_p: &'a MatBuild<L, F>,
+    vec_h: &'a MatBuild<L, F>,
+    vec_b: &'a MatBuild<L, F>,
 }
 
 impl<'a, L, F> ProbQPOpB<'a, L, F>
@@ -349,20 +349,20 @@ where L: LinAlgEx<F>, F: Float
 
         let op_c = ProbQPOpC {
             _ph_l: PhantomData,
-            vec_q: MatOp::from(&self.vec_q),
+            vec_q: &self.vec_q,
         };
         let op_a = ProbQPOpA {
             _ph_l: PhantomData,
-            sym_p: MatOp::from(&self.sym_p),
-            mat_g: MatOp::from(&self.mat_g),
-            mat_a: MatOp::from(&self.mat_a),
+            sym_p: &self.sym_p,
+            mat_g: &self.mat_g,
+            mat_a: &self.mat_a,
         };
         let op_b = ProbQPOpB {
             _ph_l: PhantomData,
             n,
-            symvec_p: MatOp::from(&self.symvec_p),
-            vec_h: MatOp::from(&self.vec_h),
-            vec_b: MatOp::from(&self.vec_b),
+            symvec_p: &self.symvec_p,
+            vec_h: &self.vec_h,
+            vec_b: &self.vec_b,
         };
 
         self.w_cone_psd.resize(ConePSD::<L, _>::query_worklen(sn + n + 1), f0);
