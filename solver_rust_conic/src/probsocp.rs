@@ -1,4 +1,3 @@
-use crate::matop::{MatOp, MatType};
 use crate::matbuild::MatBuild;
 use crate::solver::{Operator, Cone, SolverError, Solver};
 use crate::linalgex::LinAlgEx;
@@ -12,7 +11,7 @@ pub struct ProbSOCPOpC<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
     _ph_l: PhantomData<L>,
-    vec_f: MatOp<'a, L, F>,
+    vec_f: &'a MatBuild<L, F>,
 }
 
 impl<'a, L, F> Operator<F> for ProbSOCPOpC<'a, L, F>
@@ -45,8 +44,9 @@ pub struct ProbSOCPOpA<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
     _ph_l: PhantomData<L>,
-    sli_mat_g_vec_c: &'a[(MatOp<'a, L, F>, MatOp<'a, L, F>)],
-    mat_a: MatOp<'a, L, F>,
+    mats_g: &'a[MatBuild<L, F>],
+    vecs_c: &'a[MatBuild<L, F>],
+    mat_a: &'a MatBuild<L, F>,
 }
 
 impl<'a, L, F> Operator<F> for ProbSOCPOpA<'a, L, F>
@@ -58,7 +58,7 @@ where L: LinAlgEx<F>, F: Float
 
         let mut ni1_sum = 0;
 
-        for (mat_g, vec_c) in self.sli_mat_g_vec_c {
+        for (mat_g, vec_c) in self.mats_g.iter().zip(self.vecs_c) {
             let (ni, n_) = mat_g.size();
             assert_eq!(n, n_);
             let (n_, one) = vec_c.size();
@@ -75,7 +75,7 @@ where L: LinAlgEx<F>, F: Float
     {
         let mut spl_y = y;
 
-        for (mat_g, vec_c) in self.sli_mat_g_vec_c {
+        for (mat_g, vec_c) in self.mats_g.iter().zip(self.vecs_c) {
             let (ni, _) = mat_g.size();
 
             let (y_ni, spl) = spl_y.split_at_mut(ni);
@@ -104,7 +104,7 @@ where L: LinAlgEx<F>, F: Float
         // y = b*y + ...
         L::scale(beta, y);
 
-        for (mat_g, vec_c) in self.sli_mat_g_vec_c {
+        for (mat_g, vec_c) in self.mats_g.iter().zip(self.vecs_c) {
             let (ni, _) = mat_g.size();
 
             let (x_ni, spl) = spl_x.split_at(ni);
@@ -131,8 +131,9 @@ pub struct ProbSOCPOpB<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
     _ph_l: PhantomData<L>,
-    sli_vec_h_scl_d: &'a[(MatOp<'a, L, F>, F)],
-    vec_b: MatOp<'a, L, F>,
+    vecs_h: &'a[MatBuild<L, F>],
+    scls_d: &'a[F],
+    vec_b: &'a MatBuild<L, F>,
 }
 
 impl<'a, L, F> Operator<F> for ProbSOCPOpB<'a, L, F>
@@ -145,7 +146,7 @@ where L: LinAlgEx<F>, F: Float
 
         let mut ni1_sum = 0;
 
-        for (vec_h, _) in self.sli_vec_h_scl_d {
+        for vec_h in self.vecs_h {
             let (ni, one) = vec_h.size();
             assert_eq!(one, 1);
 
@@ -159,7 +160,7 @@ where L: LinAlgEx<F>, F: Float
     {
         let mut spl_y = y;
 
-        for (vec_h, scl_d) in self.sli_vec_h_scl_d {
+        for (vec_h, scl_d) in self.vecs_h.iter().zip(self.scls_d) {
             let (ni, _) = vec_h.size();
 
             let (y_ni, spl) = spl_y.split_at_mut(ni);
@@ -189,7 +190,7 @@ where L: LinAlgEx<F>, F: Float
         // y = b*y + ...
         L::scale(beta, y);
 
-        for (vec_h, scl_d) in self.sli_vec_h_scl_d {
+        for (vec_h, scl_d) in self.vecs_h.iter().zip(self.scls_d) {
             let (ni, _) = vec_h.size();
 
             let (x_ni, spl) = spl_x.split_at(ni);
@@ -215,7 +216,7 @@ where L: LinAlgEx<F>, F: Float
 pub struct ProbSOCPCone<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    sli_ni: &'a[usize],
+    mats_g: &'a[MatBuild<L, F>],
     cone_soc: ConeSOC<L, F>,
     cone_zero: ConeZero<F>,
 }
@@ -227,7 +228,8 @@ where L: LinAlgEx<F>, F: Float
     {
         let mut spl_x = x;
 
-        for ni in self.sli_ni {
+        for mat_g in self.mats_g {
+            let ni = mat_g.size().0;
             let (x_ni1, spl) = spl_x.split_at_mut(ni + 1);
             spl_x = spl;
 
@@ -244,7 +246,8 @@ where L: LinAlgEx<F>, F: Float
     {
         let mut spl_x = x;
 
-        for ni in self.sli_ni {
+        for mat_g in self.mats_g {
+            let ni = mat_g.size().0;
             let (x_ni1, spl) = spl_x.split_at_mut(ni + 1);
             spl_x = spl;
 
@@ -260,4 +263,140 @@ where L: LinAlgEx<F>, F: Float
 
 //
 
-// TODO
+pub struct ProbSOCP<L, F>
+where L: LinAlgEx<F>, F: Float
+{
+    _ph_l: PhantomData::<L>,
+
+    vec_f: MatBuild<L, F>,
+    mats_g: Vec<MatBuild<L, F>>,
+    vecs_h: Vec<MatBuild<L, F>>,
+    vecs_c: Vec<MatBuild<L, F>>,
+    scls_d: Vec<F>,
+    mat_a: MatBuild<L, F>,
+    vec_b: MatBuild<L, F>,
+
+    w_solver: Vec<F>,
+}
+
+impl<L, F> ProbSOCP<L, F>
+where L: LinAlgEx<F>, F: Float
+{
+    pub fn new(
+        vec_f: MatBuild<L, F>,
+        mats_g: Vec<MatBuild<L, F>>, vecs_h: Vec<MatBuild<L, F>>,
+        vecs_c: Vec<MatBuild<L, F>>, scls_d: Vec<F>,
+        mat_a: MatBuild<L, F>, vec_b: MatBuild<L, F>) -> Self
+    {
+        let n = vec_f.typ().size().0;
+        let m = mats_g.len();
+        let p = vec_b.typ().size().0;
+    
+        // TODO: error
+        assert_eq!(mats_g.len(), m);
+        assert_eq!(vecs_h.len(), m);
+        assert_eq!(vecs_c.len(), m);
+        assert_eq!(scls_d.len(), m);
+        assert_eq!(vec_f.typ().size(), (n, 1));
+        for i in 0.. m {
+            let ni = mats_g[i].typ().size().0;
+            assert_eq!(mats_g[i].typ().size(), (ni, n));
+            assert_eq!(vecs_h[i].typ().size(), (ni, 1));
+            assert_eq!(vecs_c[i].typ().size(), (n, 1));
+        }
+        assert_eq!(mat_a.typ().size(), (p, n));
+        assert_eq!(vec_b.typ().size(), (p, 1));
+
+        ProbSOCP {
+            _ph_l: PhantomData,
+            vec_f,
+            mats_g,
+            vecs_h,
+            vecs_c,
+            scls_d,
+            mat_a,
+            vec_b,
+            w_solver: Vec::new(),
+        }
+    }
+    
+    pub fn problem(&mut self) -> (ProbSOCPOpC<L, F>, ProbSOCPOpA<L, F>, ProbSOCPOpB<L, F>, ProbSOCPCone<'_, L, F>, &mut[F])
+    {
+        let op_c = ProbSOCPOpC {
+            _ph_l: PhantomData,
+            vec_f: &self.vec_f,
+        };
+        let op_a = ProbSOCPOpA {
+            _ph_l: PhantomData,
+            mats_g: &self.mats_g,
+            vecs_c: &self.vecs_c,
+            mat_a: &self.mat_a,
+        };
+        let op_b = ProbSOCPOpB {
+            _ph_l: PhantomData,
+            vecs_h: &self.vecs_h,
+            scls_d: &self.scls_d,
+            vec_b: &self.vec_b,
+        };
+
+        let cone = ProbSOCPCone {
+            mats_g: &self.mats_g,
+            cone_soc: ConeSOC::new(),
+            cone_zero: ConeZero::new(),
+        };
+
+        self.w_solver.resize(Solver::<L, _>::query_worklen(op_a.size()), F::zero());
+
+        (op_c, op_a, op_b, cone, self.w_solver.as_mut())
+    }
+}
+
+//
+
+#[test]
+fn test_socp1()
+{
+    use crate::logger::*;
+    use float_eq::assert_float_eq;
+    use crate::matop::MatType;
+    use crate::f64lapack::F64LAPACK;
+    
+    type ASolver = Solver<F64LAPACK, f64>;
+    type AProbSOCP = ProbSOCP<F64LAPACK, f64>;
+    type AMatBuild = MatBuild<F64LAPACK, f64>;
+
+    let n = 2; // x0, x1
+    let m = 1;
+    let p = 0;
+    let ni = 2;
+
+    let mut vec_f = AMatBuild::new(MatType::General(n, 1));
+    vec_f.set_by_fn(|_, _| {1.});
+
+    let mut mats_g = vec![AMatBuild::new(MatType::General(ni, n)); m];
+    mats_g[0][(0, 0)] = 1.;
+    mats_g[0][(1, 1)] = 1.;
+
+    let vecs_h = vec![AMatBuild::new(MatType::General(ni, 1)); m];
+
+    let vecs_c = vec![AMatBuild::new(MatType::General(n, 1)); m];
+
+    let mut scls_d = vec![0.; m];
+    scls_d[0] = 2_f64.sqrt();
+
+    let mat_a = AMatBuild::new(MatType::General(p, n));
+
+    let vec_b = AMatBuild::new(MatType::General(p, 1));
+
+    //let mut stdout = std::io::stdout();
+    //let log = IoLogger(&mut stdout);
+    let log = NullLogger;
+
+    let s = ASolver::new();
+    println!("{:?}", s.par);
+    let mut socp = AProbSOCP::new(vec_f, mats_g, vecs_h, vecs_c, scls_d, mat_a, vec_b);
+    let rslt = s.solve(socp.problem(), log).unwrap();
+    println!("{:?}", rslt);
+
+    assert_float_eq!(rslt.0, [-1., -1.].as_ref(), abs_all <= 1e-3);
+}

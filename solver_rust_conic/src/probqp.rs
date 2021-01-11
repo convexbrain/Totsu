@@ -389,31 +389,32 @@ fn test_qp1() {
     
     type ASolver = Solver<F64LAPACK, f64>;
     type AProbQP = ProbQP<F64LAPACK, f64>;
+    type AMatBuild = MatBuild<F64LAPACK, f64>;
 
     let n = 2; // x0, x1
     let m = 1;
     let p = 0;
     
     // (1/2)(x - a)^2 + const
-    let mut sym_p = MatBuild::new(MatType::SymPack(n));
+    let mut sym_p = AMatBuild::new(MatType::SymPack(n));
     sym_p[(0, 0)] = 1.;
     sym_p[(1, 1)] = 1.;
 
-    let mut vec_q = MatBuild::new(MatType::General(n, 1));
+    let mut vec_q = AMatBuild::new(MatType::General(n, 1));
     vec_q[(0, 0)] = -(-1.); // -a0
     vec_q[(1, 0)] = -(-2.); // -a1
     
     // 1 - x0/b0 - x1/b1 <= 0
-    let mut mat_g = MatBuild::new(MatType::General(m, n));
+    let mut mat_g = AMatBuild::new(MatType::General(m, n));
     mat_g[(0, 0)] = -1. / 2.; // -1/b0
     mat_g[(0, 1)] = -1. / 3.; // -1/b1
     
-    let mut vec_h = MatBuild::new(MatType::General(m, 1));
+    let mut vec_h = AMatBuild::new(MatType::General(m, 1));
     vec_h[(0, 0)] = -1.;
 
-    let mat_a = MatBuild::new(MatType::General(p, n));
+    let mat_a = AMatBuild::new(MatType::General(p, n));
 
-    let vec_b = MatBuild::new(MatType::General(p, 1));
+    let vec_b = AMatBuild::new(MatType::General(p, 1));
 
     //let mut stdout = std::io::stdout();
     //let log = IoLogger(&mut stdout);
