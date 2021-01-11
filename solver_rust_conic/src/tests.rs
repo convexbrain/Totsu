@@ -6,7 +6,7 @@ use crate::matop::*;
 use crate::cone::*;
 use crate::f64lapack::*;
 use crate::matbuild::*;
-use crate::logger::*;
+use crate::stdlogger::*;
 
 //
 

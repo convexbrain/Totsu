@@ -383,8 +383,8 @@ where L: LinAlgEx<F>, F: Float
 
 #[test]
 fn test_qp1() {
-    use crate::logger::*;
     use float_eq::assert_float_eq;
+    use crate::stdlogger::PrintLogger;
     use crate::f64lapack::F64LAPACK;
     
     type ASolver = Solver<F64LAPACK, f64>;

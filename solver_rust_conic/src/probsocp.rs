@@ -356,8 +356,8 @@ where L: LinAlgEx<F>, F: Float
 #[test]
 fn test_socp1()
 {
-    use crate::logger::*;
     use float_eq::assert_float_eq;
+    use crate::stdlogger::PrintLogger;
     use crate::matop::MatType;
     use crate::f64lapack::F64LAPACK;
     
@@ -400,8 +400,8 @@ fn test_socp1()
 #[test]
 fn test_socp2()
 {
-    use crate::logger::*;
     use float_eq::assert_float_eq;
+    use crate::stdlogger::PrintLogger;
     use crate::matop::MatType;
     use crate::f64lapack::F64LAPACK;
     
