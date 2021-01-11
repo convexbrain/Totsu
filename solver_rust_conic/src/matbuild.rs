@@ -11,7 +11,7 @@ use num::Float;
 pub struct MatBuild<L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    _ph_l: PhantomData<L>,
+    ph_l: PhantomData<L>,
     typ: MatType,
     array: Vec<F>,
 }
@@ -22,7 +22,7 @@ where L: LinAlgEx<F>, F: Float
     pub fn new(typ: MatType) -> Self
     {
         MatBuild {
-            _ph_l: PhantomData,
+            ph_l: PhantomData,
             typ,
             array: vec![F::zero(); typ.len()],
         }

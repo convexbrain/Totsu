@@ -135,8 +135,8 @@ fn split_tup6_mut<T>(
 
 struct SelfDualEmbed<F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>>
 {
-    _ph_f: PhantomData<F>,
-    _ph_l: PhantomData<L>,
+    ph_f: PhantomData<F>,
+    ph_l: PhantomData<L>,
     c: OC,
     a: OA,
     b: OB,
@@ -331,7 +331,7 @@ pub struct Solver<L: LinAlg<F>, F: Float>
 {
     pub par: SolverParam<F>,
 
-    _ph_l: PhantomData<L>,
+    ph_l: PhantomData<L>,
 }
 
 impl<L, F> Solver<L, F>
@@ -351,7 +351,7 @@ where L: LinAlg<F>, F: Float
     {
         Solver {
             par: SolverParam::default(),
-            _ph_l: PhantomData,
+            ph_l: PhantomData,
         }
     }
 }
@@ -372,8 +372,8 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp
         }
     
         let op_l = SelfDualEmbed {
-            _ph_f: PhantomData::<F>,
-            _ph_l: PhantomData::<L>,
+            ph_f: PhantomData::<F>,
+            ph_l: PhantomData::<L>,
             c: op_c, a: op_a, b: op_b
         };
 

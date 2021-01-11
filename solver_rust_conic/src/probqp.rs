@@ -110,7 +110,7 @@ where L: LinAlgEx<F>, F: Float
         // y_sn = 0*x_n + 0*x_1 + b*y_sn
         L::scale(beta, y_sn);
 
-        // y_n = a*-sqrt(2)*sym_p*x_n + b*y_n
+        // y_n = a*-sqrt(2)*sym_p*x_n + 0*x_1 + b*y_n
         self.sym_p.op(-alpha * fsqrt2, x_n, beta, y_n);
 
         // y_1 = 0*x_n + a*-2*x_1 + b*y_1

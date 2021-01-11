@@ -37,7 +37,7 @@ impl MatType
 pub struct MatOp<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    _ph_l: PhantomData<L>,
+    ph_l: PhantomData<L>,
     typ: MatType,
     array: &'a[F]
 }
@@ -50,7 +50,7 @@ where L: LinAlgEx<F>, F: Float
         assert_eq!(typ.len(), array.len());
 
         MatOp {
-            _ph_l: PhantomData,
+            ph_l: PhantomData,
             typ, array,
         }
     }

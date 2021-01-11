@@ -8,7 +8,7 @@ use num::Float;
 pub struct ConePSD<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    _ph_l: PhantomData<L>,
+    ph_l: PhantomData<L>,
     work: &'a mut[F],
 }
 
@@ -23,7 +23,7 @@ where L: LinAlgEx<F>, F: Float
     pub fn new(work: &'a mut[F]) -> Self
     {
         ConePSD {
-            _ph_l: PhantomData::<L>,
+            ph_l: PhantomData::<L>,
             work,
         }
     }
@@ -49,8 +49,8 @@ where L: LinAlgEx<F>, F: Float
 pub struct ConeSOC<L, F>
 where L: LinAlg<F>, F: Float
 {
-    _ph_l: PhantomData<L>,
-    _ph_f: PhantomData<F>,
+    ph_l: PhantomData<L>,
+    ph_f: PhantomData<F>,
 }
 
 impl<L, F> ConeSOC<L, F>
@@ -59,8 +59,8 @@ where L: LinAlg<F>, F: Float
     pub fn new() -> Self
     {
         ConeSOC {
-            _ph_l: PhantomData,
-            _ph_f: PhantomData,
+            ph_l: PhantomData,
+            ph_f: PhantomData,
         }
     }
 }
@@ -101,7 +101,7 @@ where L: LinAlg<F>, F: Float
 
 pub struct ConeRPos<F>
 {
-    _ph_f: PhantomData<F>,
+    ph_f: PhantomData<F>,
 }
 
 impl<F> ConeRPos<F>
@@ -109,7 +109,7 @@ impl<F> ConeRPos<F>
     pub fn new() -> Self
     {
         ConeRPos {
-            _ph_f: PhantomData,
+            ph_f: PhantomData,
         }
     }
 }
@@ -130,7 +130,7 @@ where F: Float
 
 pub struct ConeZero<F>
 {
-    _ph_f: PhantomData<F>,
+    ph_f: PhantomData<F>,
 }
 
 impl<F> ConeZero<F>
@@ -138,7 +138,7 @@ impl<F> ConeZero<F>
     pub fn new() -> Self
     {
         ConeZero {
-            _ph_f: PhantomData,
+            ph_f: PhantomData,
         }
     }
 }
