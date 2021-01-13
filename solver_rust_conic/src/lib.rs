@@ -17,8 +17,8 @@ pub mod stdlogger;  // std
 pub mod probqp;     // std, Float
 pub mod probsocp;   // std, Float
 pub mod probqcqp;   // std, Float
-// TODO: pub mod probsdp;    // std, Float
+pub mod probsdp;    // std, Float
 
 // TODO: pub use, mod layout
+// TODO: examples
 // TODO: doc
-// TODO: thorough tests

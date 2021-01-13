@@ -8,6 +8,8 @@ use crate::f64lapack::*;
 use crate::matbuild::*;
 use crate::stdlogger::*;
 
+// TODO: more tests
+
 //
 
 #[test]

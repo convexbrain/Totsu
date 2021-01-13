@@ -434,6 +434,8 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
+//
+
 #[test]
 fn test_qcqp1()
 {

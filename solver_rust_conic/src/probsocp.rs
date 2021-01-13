@@ -387,6 +387,8 @@ fn test_socp1()
     assert_float_eq!(rslt.0, [-1., -1.].as_ref(), abs_all <= 1e-3);
 }
 
+//
+
 #[test]
 fn test_socp2()
 {

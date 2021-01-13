@@ -155,14 +155,14 @@ where L: LinAlgEx<F>, F: Float
         self
     }
 
-    pub fn set_reshape_vec(&mut self)
+    pub fn set_reshape_colvec(&mut self)
     {
         let sz = self.as_ref().len();
         self.typ = MatType::General(sz, 1);
     }
     pub fn reshape_colvec(mut self) -> Self
     {
-        self.set_reshape_vec();
+        self.set_reshape_colvec();
         self
     }
 
