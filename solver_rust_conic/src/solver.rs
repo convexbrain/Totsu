@@ -40,7 +40,7 @@ pub trait Cone<F: Float>
 
 //
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SolverError
 {
     Unbounded,
@@ -56,7 +56,7 @@ pub enum SolverError
 
 //
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SolverParam<F: Float>
 {
     pub max_iter: Option<usize>,
