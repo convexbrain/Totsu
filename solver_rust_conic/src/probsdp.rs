@@ -219,7 +219,6 @@ where L: LinAlgEx<F>, F: Float
         let n = vec_c.size().0;
         let p = vec_b.size().0;
 
-        // TODO: error
         assert_eq!(vec_c.size(), (n, 1));
         assert_eq!(syms_f.len(), n + 1);
         let k = syms_f[0].size().0;

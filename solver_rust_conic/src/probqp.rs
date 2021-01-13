@@ -301,7 +301,6 @@ where L: LinAlgEx<F>, F: Float
         let m = vec_h.size().0;
         let p = vec_b.size().0;
 
-        // TODO: error
         assert!(sym_p.is_sympack());
         assert_eq!(sym_p.size(), (n, n));
         assert_eq!(vec_q.size(), (n, 1));

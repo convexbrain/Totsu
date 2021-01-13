@@ -360,7 +360,6 @@ where L: LinAlgEx<F>, F: Float
         let (p, n) = mat_a.size();
         let m1 = syms_p.len();
     
-        // TODO: error
         assert_eq!(syms_p.len(), m1);
         assert_eq!(vecs_q.len(), m1);
         assert_eq!(scls_r.len(), m1);

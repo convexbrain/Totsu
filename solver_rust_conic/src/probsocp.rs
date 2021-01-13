@@ -286,7 +286,6 @@ where L: LinAlgEx<F>, F: Float
         let m = mats_g.len();
         let p = vec_b.size().0;
     
-        // TODO: error
         assert_eq!(mats_g.len(), m);
         assert_eq!(vecs_h.len(), m);
         assert_eq!(vecs_c.len(), m);
