@@ -283,7 +283,7 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
 
     fn proj_psd_worklen(sn: usize) -> usize
     {
-        let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
+        let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
         assert_eq!(n * (n + 1) / 2, sn);
 
         let len_w = n;
@@ -300,7 +300,7 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
         let fsqrt2 = f2.sqrt();
 
         let sn = x.len();
-        let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
+        let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
 
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
