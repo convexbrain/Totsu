@@ -273,10 +273,13 @@ fn test_lp1()
     use crate::stdlogger::PrintLogger;
     use crate::matop::MatType;
     use crate::f64lapack::F64LAPACK;
+    use crate::floatgeneric::FloatGeneric;
     
-    type ASolver = Solver<F64LAPACK, f64>;
-    type AProbLP = ProbLP<F64LAPACK, f64>;
-    type AMatBuild = MatBuild<F64LAPACK, f64>;
+    type _LA = F64LAPACK;
+    type LA = FloatGeneric<f64>;
+    type ASolver = Solver<LA, f64>;
+    type AProbLP = ProbLP<LA, f64>;
+    type AMatBuild = MatBuild<LA, f64>;
 
     let n = 1;
     let m = 2;
