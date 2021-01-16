@@ -1,12 +1,5 @@
-// TODO: dual linalgex tests
-// TODO: more tests
-
 use float_eq::assert_float_eq;
-use totsu::solver::Solver;
-use totsu::linalg::FloatGeneric;
-use totsu::operator::{Operator, MatType, MatOp, MatBuild};
-use totsu::cone::ConePSD;
-use totsu::logger::NullLogger;
+use totsu::prelude::*;
 
 //
 
