@@ -16,6 +16,6 @@ pub mod prelude // core, Float
 }
 
 // TODO: no-std
-// TODO: examples
-// TODO: doc
+// MUST TODO: examples
+// MUST TODO: doc, readme
 // TODO: more tests
