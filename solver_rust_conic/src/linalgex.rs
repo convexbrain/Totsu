@@ -1,5 +1,3 @@
-// TODO: generic LinAlgEx
-
 use num::Float;
 use crate::solver::LinAlg;
 

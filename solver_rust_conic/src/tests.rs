@@ -5,6 +5,7 @@ use crate::solver::*;
 use crate::matop::*;
 use crate::cone::*;
 use crate::f64lapack::*;
+use crate::floatgeneric::*;
 use crate::matbuild::*;
 use crate::stdlogger::*;
 
@@ -15,11 +16,13 @@ use crate::stdlogger::*;
 #[test]
 fn test_smoke1() {
     use float_eq::assert_float_eq;
-    
-    type AMatOp<'a> = MatOp<'a, F64LAPACK, f64>;
-    type AConePSD<'a> = ConePSD<'a, F64LAPACK, f64>;
-    type ASolver = Solver<F64LAPACK, f64>;
-    type AMatBuild = MatBuild<F64LAPACK, f64>;
+
+    type _LA = F64LAPACK;
+    type LA = FloatGeneric<f64>;
+    type AMatOp<'a> = MatOp<'a, LA, f64>;
+    type AConePSD<'a> = ConePSD<'a, LA, f64>;
+    type ASolver = Solver<LA, f64>;
+    type AMatBuild = MatBuild<LA, f64>;
 
     let op_c = AMatOp::new(MatType::General(1, 1), &[
         1.,

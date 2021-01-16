@@ -109,6 +109,13 @@ impl<'a, F: Float> MatIdxMut<'a, F>
 
         v
     }
+
+    fn clear(&mut self)
+    {
+        for a in self.mat.iter_mut() {
+            *a = F::zero();
+        }
+    }
 }
 
 impl<'a, F: Float> Index<(usize, usize)> for MatIdxMut<'a, F>
@@ -233,6 +240,61 @@ impl<'a, F: Float> IndexMut<(usize, usize)> for SpMatIdxMut<'a, F>
 
 //
 
+fn jacobi_eig<F: Float>(spmat_x: &mut SpMatIdxMut<F>, mat_z: &mut MatIdxMut<F>, eps: F)
+{
+    let n = spmat_x.n;
+    let tol = eps * eps;
+    let f0 = F::zero();
+    let f1 = F::one();
+    let f2 = f1 + f1;
+
+    let mut conv = false;
+
+    while !conv {
+        conv = true;
+
+        for i in 0.. n {
+            for j in i + 1.. n {
+                let a = spmat_x[(i, i)];
+                let b = spmat_x[(j, j)];
+                let d = spmat_x[(i, j)];
+
+                if (d * d > tol * a * b) && (d * d > tol) {
+                    conv = false;
+
+                    let zeta = (b - a) / (f2 * d);
+                    let t = if zeta > f0 {
+                        f1 / (zeta + (f1 + zeta * zeta).sqrt())
+                    }
+                    else {
+                        -f1 / (-zeta + (f1 + zeta * zeta).sqrt())
+                    };
+                    let c = (f1 + t * t).sqrt().recip();
+                    let s = c * t;
+
+                    for k in 0.. n {
+                        let xi = spmat_x[(k, i)];
+                        let xj = spmat_x[(k, j)];
+                        spmat_x[(k, i)] = c * xi - s * xj;
+                        spmat_x[(k, j)] = s * xi + c * xj;
+
+                        let zi = mat_z[(k, i)];
+                        let zj = mat_z[(k, j)];
+                        mat_z[(k, i)] = c * zi - s * zj;
+                        mat_z[(k, j)] = s * zi + c * zj;
+                    }
+
+                    spmat_x[(i, i)] = c * c * a + s * s * b - f2 * c * s * d;
+                    spmat_x[(j, j)] = s * s * a + c * c * b + f2 * c * s * d;
+                    spmat_x[(i, j)] = f0;
+                }
+            }
+        }
+    }
+}
+
+//
+
 impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
 {
     // y = a*mat*x + b*y
@@ -292,7 +354,7 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
         len_w + len_z
     }
 
-    fn proj_psd(x: &mut[F], _eps_zero: F, work: &mut[F])
+    fn proj_psd(x: &mut[F], eps_zero: F, work: &mut[F])
     {
         let f0 = F::zero();
         let f1 = F::one();
@@ -310,7 +372,6 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
 
         let (w, spl_work) = work.split_at_mut(n);
         let (z, _) = spl_work.split_at_mut(n * n);
-        Self::scale(f0, z);
 
         let mut mat_z = MatIdxMut {
             n_row: n, n_col: n, mat: z, transpose: false,
@@ -321,18 +382,18 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
             spmat_x[(i, i)] = spmat_x[(i, i)] * fsqrt2;
         }
 
+        mat_z.clear();
         for i in 0.. n {
             mat_z[(i, i)] = f1;
         }
 
-        // jacobi
-        assert!(false);
+        jacobi_eig(&mut spmat_x, &mut mat_z, eps_zero);
 
         for i in 0.. n {
             w[i] = spmat_x[(i, i)];
         }
-        spmat_x.clear();
 
+        spmat_x.clear();
         for i in 0.. n {
             if w[i] > f0 {
                 let zcol = mat_z.col_vec(i);

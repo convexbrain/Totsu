@@ -440,12 +440,15 @@ fn test_qcqp1()
 {
     use float_eq::assert_float_eq;
     use crate::stdlogger::PrintLogger;
-    use crate::f64lapack::F64LAPACK;
     use crate::matop::MatType;
+    use crate::f64lapack::F64LAPACK;
+    use crate::floatgeneric::FloatGeneric;
     
-    type ASolver = Solver<F64LAPACK, f64>;
-    type AProbQCQP = ProbQCQP<F64LAPACK, f64>;
-    type AMatBuild = MatBuild<F64LAPACK, f64>;
+    type _LA = F64LAPACK;
+    type LA = FloatGeneric<f64>;
+    type ASolver = Solver<LA, f64>;
+    type AProbQCQP = ProbQCQP<LA, f64>;
+    type AMatBuild = MatBuild<LA, f64>;
 
     let n = 2; // x0, x1
     let m = 1;
