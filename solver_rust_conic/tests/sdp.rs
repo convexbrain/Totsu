@@ -9,24 +9,17 @@ use totsu::problem::ProbSDP;
 
 //
 
-#[test]
-fn test_sdp1()
+fn subtest_sdp1<L: LinAlgEx<f64>>()
 {
-    type _LA = F64LAPACK;
-    type LA = FloatGeneric<f64>;
-    type ASolver = Solver<LA, f64>;
-    type AProbSDP = ProbSDP<LA, f64>;
-    type AMatBuild = MatBuild<LA, f64>;
-
     let n = 2;
     let p = 0;
     let k = 2;
 
-    let vec_c = AMatBuild::new(MatType::General(n, 1)).iter_colmaj(&[
+    let vec_c = MatBuild::new(MatType::General(n, 1)).iter_colmaj(&[
         1., 1.,
     ]);
 
-    let mut syms_f = vec![AMatBuild::new(MatType::SymPack(k)); n + 1];
+    let mut syms_f = vec![MatBuild::new(MatType::SymPack(k)); n + 1];
 
     syms_f[0].set_iter_rowmaj(&[
         -1., 0.,
@@ -41,16 +34,28 @@ fn test_sdp1()
         0., 4.,
     ]);
 
-    let mat_a = AMatBuild::new(MatType::General(p, n));
+    let mat_a = MatBuild::new(MatType::General(p, n));
 
-    let vec_b = AMatBuild::new(MatType::General(p, 1));
+    let vec_b = MatBuild::new(MatType::General(p, 1));
 
 
-    let s = ASolver::new();
+    let s = Solver::<L, _>::new();
     println!("{:?}", s.par);
-    let mut sdp = AProbSDP::new(vec_c, syms_f, mat_a, vec_b);
+    let mut sdp = ProbSDP::<L, _>::new(vec_c, syms_f, mat_a, vec_b);
     let rslt = s.solve(sdp.problem(), PrintLogger).unwrap();
     println!("{:?}", rslt);
 
     assert_float_eq!(rslt.0, [3., 4.].as_ref(), abs_all <= 1e-3);
+}
+
+#[test]
+fn test_sdp1_1()
+{
+    subtest_sdp1::<FloatGeneric<f64>>();
+}
+
+#[test]
+fn test_sdp1_2()
+{
+    subtest_sdp1::<F64LAPACK>();
 }
