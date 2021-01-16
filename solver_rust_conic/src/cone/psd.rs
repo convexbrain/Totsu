@@ -47,13 +47,11 @@ where L: LinAlgEx<F>, F: Float
 
 //
 
-#[test]
-fn test_cone_psd1() {
-    use crate::linalg::F64LAPACK;
+#[cfg(test)]
+fn subtest_cone_psd1<L: LinAlgEx<f64>>()
+{
     use float_eq::assert_float_eq;
     
-    type AConePSD<'a> = ConePSD<'a, F64LAPACK, f64>;
-
     let ref_x = &[ // column-major, upper-triangle (seen as if transposed)
         5.,
         0., 0.,
@@ -62,9 +60,17 @@ fn test_cone_psd1() {
         5.,
         0., -5.,
     ];
-    assert_eq!(AConePSD::query_worklen(x.len()), 10);
+    assert!(ConePSD::<L, _>::query_worklen(x.len()) <= 10);
     let w = &mut[0.; 10];
-    let mut c = AConePSD::new(w);
+    let mut c = ConePSD::<L, _>::new(w);
     c.proj(1e-12, x).unwrap();
     assert_float_eq!(ref_x, x, abs_all <= 1e-6);
+}
+
+#[test]
+fn test_cone_psd1()
+{
+    use crate::linalg::{FloatGeneric, F64LAPACK};
+    subtest_cone_psd1::<FloatGeneric<f64>>();
+    subtest_cone_psd1::<F64LAPACK>();
 }

@@ -1,10 +1,9 @@
-extern crate intel_mkl_src;
-
 // TODO: dual linalgex tests
 // TODO: more tests
 
 #[test]
-fn test_smoke1() {
+fn test_smoke1()
+{
     use float_eq::assert_float_eq;
     use crate::solver::Solver;
     use crate::linalg::{FloatGeneric, F64LAPACK};

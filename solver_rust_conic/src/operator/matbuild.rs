@@ -260,12 +260,10 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-#[test]
-fn test_matbuild1() {
+#[cfg(test)]
+fn subtest_matbuild1<L: LinAlgEx<f64>>()
+{
     use float_eq::assert_float_eq;
-    use crate::linalg::F64LAPACK;
-
-    type AMatBuild = MatBuild<F64LAPACK, f64>;
 
     let ref_array = &[ // column-major, upper-triangle (seen as if transposed)
         1.,
@@ -282,9 +280,18 @@ fn test_matbuild1() {
        11., 12., 13., 14., 15.,
     ];
 
-    let m = AMatBuild::new(MatType::SymPack(5))
+    let m = MatBuild::<L, _>::new(MatType::SymPack(5))
             .iter_colmaj(array)
             .scale_nondiag(1.4);
 
     assert_float_eq!(m.as_ref(), ref_array.as_ref(), abs_all <= 1e-3);
+}
+
+
+#[test]
+fn test_matbuild1()
+{
+    use crate::linalg::{FloatGeneric, F64LAPACK};
+    subtest_matbuild1::<FloatGeneric<f64>>();
+    subtest_matbuild1::<F64LAPACK>();
 }

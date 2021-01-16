@@ -371,7 +371,8 @@ where L: LinAlgEx<F>, F: Float
 //
 
 #[test]
-fn test_qp1() {
+fn test_qp1()
+{
     use float_eq::assert_float_eq;
     use crate::logger::PrintLogger;
     use crate::operator::MatType;

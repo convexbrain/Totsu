@@ -200,7 +200,8 @@ fn mat_to_vec(m: &mut[f64], v: &mut[f64])
 
 
 #[test]
-fn test_f64lapack1() {
+fn test_f64lapack1()
+{
     use float_eq::assert_float_eq;
 
     let ref_v = &[ // column-major, upper-triangle (seen as if transposed)
