@@ -1,5 +1,13 @@
 use num::Float;
-use crate::solver::LinAlg;
+
+pub trait LinAlg<F: Float>
+{
+    fn norm(x: &[F]) -> F;
+    fn inner_prod(x: &[F], y: &[F]) -> F;
+    fn copy(x: &[F], y: &mut[F]);
+    fn scale(alpha: F, x: &mut[F]);
+    fn add(alpha: F, x: &[F], y: &mut[F]);
+}
 
 pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
 {
@@ -10,3 +18,11 @@ pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
     fn proj_psd_worklen(sn: usize) -> usize;
     fn proj_psd(x: &mut[F], eps_zero: F, work: &mut[F]);
 }
+
+//
+
+mod floatgeneric; // core, Float
+mod f64lapack;    // core, f64(cblas/lapacke)
+
+pub use floatgeneric::*;
+pub use f64lapack::*;

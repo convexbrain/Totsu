@@ -1,8 +1,8 @@
-use crate::matbuild::MatBuild;
-use crate::solver::{Operator, Cone, SolverError, Solver};
-use crate::linalgex::LinAlgEx;
-use crate::cone::{ConeRPos, ConeZero};
 use num::Float;
+use crate::solver::{SolverError, Solver};
+use crate::linalg::LinAlgEx;
+use crate::operator::{Operator, MatBuild};
+use crate::cone::{Cone, ConeRPos, ConeZero};
 
 //
 
@@ -270,10 +270,10 @@ where L: LinAlgEx<F>, F: Float
 #[test]
 fn test_lp1()
 {
-    use crate::stdlogger::PrintLogger;
-    use crate::matop::MatType;
-    use crate::f64lapack::F64LAPACK;
-    use crate::floatgeneric::FloatGeneric;
+    use crate::logger::PrintLogger;
+    use crate::operator::MatType;
+    use crate::linalg::F64LAPACK;
+    use crate::linalg::FloatGeneric;
     
     type _LA = F64LAPACK;
     type LA = FloatGeneric<f64>;

@@ -1,8 +1,8 @@
-use crate::matbuild::MatBuild;
-use crate::solver::{Operator, Cone, SolverError, Solver};
-use crate::linalgex::LinAlgEx;
-use crate::cone::{ConeSOC, ConeZero};
 use num::Float;
+use crate::solver::{SolverError, Solver};
+use crate::linalg::LinAlgEx;
+use crate::operator::{Operator, MatBuild};
+use crate::cone::{Cone, ConeSOC, ConeZero};
 
 //
 
@@ -346,10 +346,10 @@ where L: LinAlgEx<F>, F: Float
 fn test_socp1()
 {
     use float_eq::assert_float_eq;
-    use crate::stdlogger::PrintLogger;
-    use crate::matop::MatType;
-    use crate::f64lapack::F64LAPACK;
-    use crate::floatgeneric::FloatGeneric;
+    use crate::logger::PrintLogger;
+    use crate::operator::MatType;
+    use crate::linalg::F64LAPACK;
+    use crate::linalg::FloatGeneric;
     
     type _LA = F64LAPACK;
     type LA = FloatGeneric<f64>;
@@ -395,10 +395,10 @@ fn test_socp1()
 fn test_socp2()
 {
     use float_eq::assert_float_eq;
-    use crate::stdlogger::PrintLogger;
-    use crate::matop::MatType;
-    use crate::f64lapack::F64LAPACK;
-    use crate::floatgeneric::FloatGeneric;
+    use crate::logger::PrintLogger;
+    use crate::operator::MatType;
+    use crate::linalg::F64LAPACK;
+    use crate::linalg::FloatGeneric;
     
     type _LA = F64LAPACK;
     type LA = FloatGeneric<f64>;

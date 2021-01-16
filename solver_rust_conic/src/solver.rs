@@ -1,42 +1,9 @@
-// TODO: no-std
-
 use num::Float;
 use core::marker::PhantomData;
 use core::fmt::{Debug, LowerExp};
-
-pub trait LinAlg<F: Float>
-{
-    fn norm(x: &[F]) -> F;
-    fn inner_prod(x: &[F], y: &[F]) -> F;
-    fn copy(x: &[F], y: &mut[F]);
-    fn scale(alpha: F, x: &mut[F]);
-    fn add(alpha: F, x: &[F], y: &mut[F]);
-}
-
-pub trait Operator<F: Float>
-{
-    fn size(&self) -> (usize, usize);
-
-    // y = alpha * Op * x + beta * y
-    // x.len() shall be size().1
-    // y.len() shall be size().0
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]);
-
-    // y = alpha * Op^T * x + beta * y
-    // x.len() shall be size().0
-    // y.len() shall be size().1
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]);
-}
-
-pub trait Cone<F: Float>
-{
-    // x.len() shall be op_a.size().0
-    fn proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>;
-    fn dual_proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
-    {
-        self.proj(eps_zero, x) // Self-dual cone
-    }
-}
+use crate::linalg::LinAlg;
+use crate::operator::Operator;
+use crate::cone::Cone;
 
 //
 

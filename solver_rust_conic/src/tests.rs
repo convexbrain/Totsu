@@ -1,21 +1,16 @@
 extern crate intel_mkl_src;
 
-// TODO: pub use, mod layout
-use crate::solver::*;
-use crate::matop::*;
-use crate::cone::*;
-use crate::f64lapack::*;
-use crate::floatgeneric::*;
-use crate::matbuild::*;
-use crate::stdlogger::*;
-
+// TODO: dual linalgex tests
 // TODO: more tests
-
-//
 
 #[test]
 fn test_smoke1() {
     use float_eq::assert_float_eq;
+    use crate::solver::Solver;
+    use crate::linalg::{FloatGeneric, F64LAPACK};
+    use crate::operator::{Operator, MatType, MatOp, MatBuild};
+    use crate::cone::ConePSD;
+    use crate::logger::PrintLogger;
 
     type _LA = F64LAPACK;
     type LA = FloatGeneric<f64>;

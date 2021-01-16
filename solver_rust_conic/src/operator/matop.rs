@@ -1,7 +1,7 @@
-use crate::solver::Operator;
-use crate::linalgex::LinAlgEx;
-use core::marker::PhantomData;
 use num::Float;
+use core::marker::PhantomData;
+use crate::linalg::LinAlgEx;
+use super::Operator;
 
 //
 
@@ -105,7 +105,7 @@ where L: LinAlgEx<F>, F: Float
 #[test]
 fn test_matop1() {
     use float_eq::assert_float_eq;
-    use crate::f64lapack::F64LAPACK;
+    use crate::linalg::F64LAPACK;
 
     type AMatOp<'a> = MatOp<'a, F64LAPACK, f64>;
 

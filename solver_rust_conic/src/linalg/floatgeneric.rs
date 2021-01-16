@@ -1,8 +1,9 @@
-use crate::solver::LinAlg;
-use crate::linalgex::LinAlgEx;
 use num::Float;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
+use super::{LinAlg, LinAlgEx};
+
+//
 
 #[derive(Clone)]
 pub struct FloatGeneric<F>

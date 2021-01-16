@@ -1,5 +1,6 @@
-use crate::solver::LinAlg;
-use crate::linalgex::LinAlgEx;
+use super::{LinAlg, LinAlgEx};
+
+//
 
 #[derive(Clone)]
 pub struct F64LAPACK;
