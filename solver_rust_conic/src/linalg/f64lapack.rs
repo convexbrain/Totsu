@@ -198,6 +198,10 @@ fn mat_to_vec(m: &mut[f64], v: &mut[f64])
     assert!(ref_v.is_empty());
 }
 
+//
+
+#[cfg(test)]
+extern crate intel_mkl_src;
 
 #[test]
 fn test_f64lapack1()

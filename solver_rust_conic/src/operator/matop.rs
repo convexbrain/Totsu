@@ -102,10 +102,13 @@ where L: LinAlgEx<F>, F: Float
 
 //
 
-#[cfg(test)]
-fn subtest_matop1<L: LinAlgEx<f64>>()
+#[test]
+fn test_matop1()
 {
     use float_eq::assert_float_eq;
+    use crate::linalg::FloatGeneric;
+
+    type L = FloatGeneric<f64>;
 
     let array = &[ // column-major, upper-triangle (seen as if transposed)
         1.,
@@ -132,12 +135,4 @@ fn subtest_matop1<L: LinAlgEx<f64>>()
         assert_float_eq!(y.as_ref(), ref_array[i * 5 .. i * 5 + 5].as_ref(), abs_all <= 1e-3);
         x[i] = 0.;
     }
-}
-
-#[test]
-fn test_matop1()
-{
-    use crate::linalg::{FloatGeneric, F64LAPACK};
-    subtest_matop1::<FloatGeneric<f64>>();
-    subtest_matop1::<F64LAPACK>();
 }

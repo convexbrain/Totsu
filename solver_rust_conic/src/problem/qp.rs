@@ -370,6 +370,9 @@ where L: LinAlgEx<F>, F: Float
 
 //
 
+#[cfg(test)]
+extern crate intel_mkl_src;
+
 #[test]
 fn test_qp1()
 {
