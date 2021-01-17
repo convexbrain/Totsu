@@ -109,8 +109,7 @@ fn main() -> std::io::Result<()> {
 
     //----- solve LP
 
-    let mut s = ASolver::new();
-    s.par.eps_acc = 1e-3;
+    let s = ASolver::new();
     let mut lp = AProbLP::new(vec_c, mat_g, vec_h, mat_a, vec_b);
     let rslt = s.solve(lp.problem(), PrintLogger).unwrap();
     //println!("{:?}", rslt);
