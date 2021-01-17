@@ -121,6 +121,7 @@ fn main() -> std::io::Result<()> {
     let (bias, _) = spl.split_at(1);
 
     //----- file output for graph plot
+    // TODO: use some plotting crate
 
     let mut dat_point = BufWriter::new(File::create("dat_point")?);
 
