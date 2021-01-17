@@ -95,7 +95,7 @@ fn main() -> std::io::Result<()> {
 
     //----- solve QP
 
-    let mut s = ASolver::new();
+    let mut s = ASolver::new(); // TODO
     s.par.eps_acc = 1e-3;
     s.par.log_period = 1000;
     let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b);
