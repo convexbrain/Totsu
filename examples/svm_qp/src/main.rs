@@ -2,7 +2,7 @@ use totsu::prelude::*;
 use totsu::operator::MatBuild;
 use totsu::linalg::F64LAPACK;
 use totsu::logger::PrintLogger;
-use totsu::problem::ProbLP;
+use totsu::problem::ProbQP;
 
 use std::io::prelude::*;
 use std::io::BufWriter;
@@ -11,7 +11,7 @@ use std::fs::File;
 extern crate intel_mkl_src;
 
 type AMatBuild = MatBuild<F64LAPACK, f64>;
-type AProbLP = ProbLP<F64LAPACK, f64>;
+type AProbQP = ProbQP<F64LAPACK, f64>;
 type ASolver = Solver<F64LAPACK, f64>;
 
 /// gaussian kernel
@@ -31,14 +31,14 @@ fn kernel(xi: &AMatBuild, ci: usize, xj: &AMatBuild, cj: usize) -> f64
 }
 
 /// kerneled w*x
-fn wx(x: &AMatBuild, alpha: &[f64], xi: &AMatBuild) -> f64
+fn wx(x: &AMatBuild, y: &AMatBuild, alpha: &[f64], xj: &AMatBuild, cj: usize) -> f64
 {
-    assert_eq!(x.size().1, alpha.len());
-    assert_eq!(xi.size().1, 1);
+    assert_eq!(y.size().0, alpha.len());
+    assert_eq!(y.size().1, 1);
 
     let mut f = 0.;
     for i in 0 .. alpha.len() {
-        f += alpha[i] * kernel(x, i, xi, 0);
+        f += alpha[i] * y[(i, 0)] * kernel(x, i, xj, cj);
     }
     f
 }
@@ -48,76 +48,73 @@ fn main() -> std::io::Result<()> {
 
     //----- make sample points for training
 
-    let l = 20; // # of samples
+    let l = 20; // TODO 50; // # of samples
     let x = AMatBuild::new(MatType::General(2, l))
             .by_fn(|_, _| rand::random()); // random 2-dimensional points
     let y = AMatBuild::new(MatType::General(l, 1))
             .by_fn(|smp, _| {
-                let x0 = (5. * x[(0, smp)]).cos();
-                let x1 = (7. * x[(1, smp)]).cos();
-                x0 * x1 // wavy-shaped points
+                let (d0, d1) = (x[(0, smp)] - 0.5, x[(1, smp)] - 0.5);
+                let r2 = d0 * d0 + d1 * d1;
+                let r = r2.sqrt();
+                if (r > 0.25) && (r < 0.4) {1.} else {-1.} // ring shape, 1 inside, -1 outside and hole
             });
     //println!("{}", x);
     //println!("{}", y);
 
-    //----- formulate L1-regularized L1-error regression as LP
+    //----- formulate dual of hard-margin SVM as QP
 
-    let n = l * 3 + 1; // z, alpha, beta, bias
-    let m = l * 4;
-    let p = 0;
+    let n = l;
+    let m = l;
+    let p = 1;
 
-    let lambda = 0.2; // L1-regularization strength
+    let sym_p = AMatBuild::new(MatType::SymPack(n))
+                .by_fn(|r, c| {
+                    y[(r, 0)] * y[(c, 0)] * kernel(&x, r, &x, c)
+                });
+    //println!("{}", sym_p);
 
-    let mut vec_c = AMatBuild::new(MatType::General(n, 1));
-    for i in 0.. l {
-        vec_c[(i, 0)] = 1.; // for z, L1-norm error
-        vec_c[(l * 2 + i, 0)] = lambda; // for beta, L1-regularization
-    }
-    //println!("{}", vec_c);
+    let vec_q = AMatBuild::new(MatType::General(n, 1))
+                .by_fn(|_, _| -1.);
+    //println!("{}", vec_q);
 
     let mut mat_g = AMatBuild::new(MatType::General(m, n));
-    for i in 0.. l {
+    for i in 0.. m.min(n) {
         mat_g[(i, i)] = -1.;
-        mat_g[(l + i, i)] = -1.;
-
-        mat_g[(l * 2 + i, l + i)] = 1.;
-        mat_g[(l * 3 + i, l + i)] = -1.;
-
-        mat_g[(l * 2 + i, l * 2 + i)] = -1.;
-        mat_g[(l * 3 + i, l * 2 + i)] = -1.;
-
-        mat_g[(i, l * 3)] = 1.;
-        mat_g[(l + i, l * 3)] = -1.;
-    }
-    for (r, c) in itertools::iproduct!(0.. l, 0.. l) {
-        mat_g[(r, l + c)] = kernel(&x, r, &x, c);
-        mat_g[(l + r, l + c)] = -kernel(&x, r, &x, c);
     }
     //println!("{}", mat_g);
 
-    let mut vec_h = AMatBuild::new(MatType::General(m, 1));
-    for i in 0.. l {
-        vec_h[(i, 0)] = y[(i, 0)];
-        vec_h[(l + i, 0)] = -y[(i, 0)];
-    }
+    let vec_h = AMatBuild::new(MatType::General(m, 1));
     //println!("{}", vec_h);
-        
-    let mat_a = AMatBuild::new(MatType::General(p, n));
-    let vec_b = AMatBuild::new(MatType::General(p, 1));
+
+    let mat_a = AMatBuild::new(MatType::General(p, n))
+                    .by_fn(|_, c| y[(c, 0)]);
     //println!("{}", mat_a);
+
+    let vec_b = AMatBuild::new(MatType::General(p, 1));
     //println!("{}", vec_b);
 
-    //----- solve LP
+    //----- solve QP
 
-    let s = ASolver::new();
-    let mut lp = AProbLP::new(vec_c, mat_g, vec_h, mat_a, vec_b);
-    let rslt = s.solve(lp.problem(), PrintLogger).unwrap();
+    let mut s = ASolver::new();
+    s.par.eps_acc = 1e-3;
+    s.par.log_period = 1000;
+    let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b);
+    let rslt = s.solve(qp.problem(), PrintLogger).unwrap();
     //println!("{:?}", rslt);
 
-    let (_z, spl) = rslt.0.split_at(l);
-    let (alpha, spl) = spl.split_at(l);
-    let (_beta, spl) = spl.split_at(l);
-    let (bias, _) = spl.split_at(1);
+    let (alpha, _) = rslt.0.split_at(l);
+
+    //----- calculate bias term
+
+    let mut bias = 0.;
+    let mut cnt = 0;
+    for i in 0 .. l {
+        if rslt.0[i] > 1e-4 {
+            bias += y[(i, 0)] - wx(&x, &y, alpha, &x, i);
+            cnt += 1;
+        }
+    }
+    bias = bias / cnt as f64;
 
     //----- file output for graph plot
     // TODO: use some plotting crate
@@ -139,7 +136,7 @@ fn main() -> std::io::Result<()> {
                          iy as f64 / (grid - 1) as f64
                      ]);
 
-            let f = wx(&x, alpha, &xi) + bias[0];
+            let f = wx(&x, &y, alpha, &xi, 0) + bias;
 
             write!(dat_grid, " {}", f)?;
         }
