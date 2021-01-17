@@ -41,7 +41,7 @@ impl<F: Float> Default for SolverParam<F>
         let ten = F::from(10).unwrap();
 
         SolverParam {
-            max_iter: Some(50_000),
+            max_iter: None,
             eps_acc: ten.powi(-6),
             eps_inf: ten.powi(-6),
             eps_zero: ten.powi(-12),

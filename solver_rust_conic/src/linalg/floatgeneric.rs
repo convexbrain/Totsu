@@ -1,11 +1,12 @@
 use num::Float;
+use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use super::{LinAlg, LinAlgEx};
 
 //
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct FloatGeneric<F>
 {
     ph_f: PhantomData<F>,

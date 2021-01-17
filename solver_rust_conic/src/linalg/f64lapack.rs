@@ -1,8 +1,9 @@
 use super::{LinAlg, LinAlgEx};
+use core::fmt::Debug;
 
 //
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct F64LAPACK;
 
 impl LinAlg<f64> for F64LAPACK
