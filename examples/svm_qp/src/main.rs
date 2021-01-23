@@ -4,6 +4,9 @@ use totsu::linalg::F64LAPACK;
 use totsu::logger::PrintLogger;
 use totsu::problem::ProbQP;
 
+use rand::prelude::*;
+use rand_xoshiro::rand_core::SeedableRng;
+use rand_xoshiro::Xoshiro256StarStar;
 use std::io::prelude::*;
 use std::io::BufWriter;
 use std::fs::File;
@@ -48,9 +51,10 @@ fn main() -> std::io::Result<()> {
 
     //----- make sample points for training
 
-    let l = 20; // TODO 50; // # of samples
+    let mut rng = Xoshiro256StarStar::seed_from_u64(10);
+    let l = 10; // TODO 50; // # of samples
     let x = AMatBuild::new(MatType::General(2, l))
-            .by_fn(|_, _| rand::random()); // random 2-dimensional points
+            .by_fn(|_, _| rng.gen()); // random 2-dimensional points
     let y = AMatBuild::new(MatType::General(l, 1))
             .by_fn(|smp, _| {
                 let (d0, d1) = (x[(0, smp)] - 0.5, x[(1, smp)] - 0.5);
@@ -96,7 +100,7 @@ fn main() -> std::io::Result<()> {
     //----- solve QP
 
     let mut s = ASolver::new(); // TODO
-    s.par.eps_acc = 1e-3;
+    //s.par.eps_acc = 1e-3;
     s.par.log_period = 1000;
     let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b);
     let rslt = s.solve(qp.problem(), PrintLogger).unwrap();
