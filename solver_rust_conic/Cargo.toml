@@ -30,5 +30,3 @@ float_eq = "0.5.0"
 default-features = false
 version = "0.6.0+mkl2020.1"
 features = ["mkl-static-lp64-seq"]
-#path = "../../../others/intel-mkl-src/intel-mkl-src"
-#features = ["mkl-static-lp64-iomp"]

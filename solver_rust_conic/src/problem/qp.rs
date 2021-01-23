@@ -1,4 +1,5 @@
 use num::Float;
+use core::marker::PhantomData;
 use crate::solver::{SolverError, Solver};
 use crate::linalg::LinAlgEx;
 use crate::operator::{Operator, MatBuild};
@@ -6,40 +7,31 @@ use crate::cone::{Cone, ConePSD, ConeRPos, ConeZero};
 
 //
 
-pub struct ProbQPOpC<'a, L, F>
+pub struct ProbQPOpC<L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    vec_q: &'a MatBuild<L, F>,
+    ph_l: PhantomData<L>,
+    ph_f: PhantomData<F>,
+    n: usize,
 }
 
-impl<'a, L, F> ProbQPOpC<'a, L, F>
-where L: LinAlgEx<F>, F: Float
-{
-    fn dim(&self) -> usize
-    {
-        let (n, one) = self.vec_q.size();
-        assert_eq!(one, 1);
-        n
-    }
-}
-
-impl<'a, L, F> Operator<F> for ProbQPOpC<'a, L, F>
+impl<L, F> Operator<F> for ProbQPOpC<L, F>
 where L: LinAlgEx<F>, F: Float
 {
     fn size(&self) -> (usize, usize)
     {
-        let n = self.dim();
+        let n = self.n;
 
         (n + 1, 1)
     }
 
     fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
-        let n = self.dim();
+        let n = self.n;
         let (y_n, y_1) = y.split_at_mut(n);
 
-        // y_n = a*vec_q*x + b*y_n;
-        self.vec_q.op(alpha, x, beta, y_n);
+        // y_n = 0*x + b*y_n;
+        L::scale(beta, y_n);
 
         // y_1 = a*1*x + b*y_1;
         L::scale(beta, y_1);
@@ -48,11 +40,11 @@ where L: LinAlgEx<F>, F: Float
 
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
-        let n = self.dim();
-        let (x_n, x_1) = x.split_at(n);
+        let n = self.n;
+        let (_x_n, x_1) = x.split_at(n);
 
-        // y = a*vec_q^T*x_n + a*1*x_1 + b*y;
-        self.vec_q.trans_op(alpha, x_n, beta, y);
+        // y = 0*x_n + a*1*x_1 + b*y;
+        L::scale(beta, y);
         L::add(alpha, x_1, y);
     }
 }
@@ -63,6 +55,7 @@ pub struct ProbQPOpA<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
     sym_p: &'a MatBuild<L, F>,
+    vec_q: &'a MatBuild<L, F>,
     mat_g: &'a MatBuild<L, F>,
     mat_a: &'a MatBuild<L, F>,
 }
@@ -113,8 +106,8 @@ where L: LinAlgEx<F>, F: Float
         // y_n = a*-sqrt(2)*sym_p*x_n + 0*x_1 + b*y_n
         self.sym_p.op(-alpha * fsqrt2, x_n, beta, y_n);
 
-        // y_1 = 0*x_n + a*-2*x_1 + b*y_1
-        L::scale(beta, y_1);
+        // y_1 = a*2*vec_q^T*x_n + a*-2*x_1 + b*y_1
+        self.vec_q.trans_op(f2 * alpha, x_n, beta, y_1);
         L::add(-f2 * alpha, x_1, y_1);
 
         // y_m = a*mat_g*x_n + 0*x_1 + b*y_m
@@ -139,8 +132,9 @@ where L: LinAlgEx<F>, F: Float
         let f2 = f1 + f1;
         let fsqrt2 = f2.sqrt();
         
-        // y_n = 0*x_sn + a*-sqrt(2)*sym_p*x_n + 0*x_1 + a*mat_g^T*x_m + a*mat_a^T*x_p + b*y_n
+        // y_n = 0*x_sn + a*-sqrt(2)*sym_p*x_n + a*2*vec_q*x_1 + a*mat_g^T*x_m + a*mat_a^T*x_p + b*y_n
         self.sym_p.trans_op(-alpha * fsqrt2, x_n, beta, y_n);
+        self.vec_q.op(f2 * alpha, x_1, f1, y_n);
         self.mat_g.trans_op(alpha, x_m, f1, y_n);
         self.mat_a.trans_op(alpha, x_p, f1, y_n);
 
@@ -340,10 +334,13 @@ where L: LinAlgEx<F>, F: Float
         let f0 = F::zero();
 
         let op_c = ProbQPOpC {
-            vec_q: &self.vec_q,
+            ph_l: PhantomData,
+            ph_f: PhantomData,
+            n,
         };
         let op_a = ProbQPOpA {
             sym_p: &self.sym_p,
+            vec_q: &self.vec_q,
             mat_g: &self.mat_g,
             mat_a: &self.mat_a,
         };
