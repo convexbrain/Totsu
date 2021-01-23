@@ -28,7 +28,7 @@ where L: LinAlg<F>, F: Float
 impl<L, F> Cone<F> for ConeSOC<L, F>
 where L: LinAlg<F>, F: Float
 {
-    fn proj(&mut self, _eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, _dual_cone: bool, _eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
     {
         let f0 = F::zero();
         let f1 = F::one();

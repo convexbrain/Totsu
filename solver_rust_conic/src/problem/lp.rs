@@ -169,25 +169,14 @@ where F: Float
 impl<F> Cone<F> for ProbLPCone<F>
 where F: Float
 {
-    fn proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
     {
         let (m, p) = (self.m, self.p);
         let (x_m, x) = x.split_at_mut(m);
         let (x_p, _) = x.split_at_mut(p);
 
-        self.cone_rpos.proj(eps_zero, x_m)?;
-        self.cone_zero.proj(eps_zero, x_p)?;
-        Ok(())
-    }
-
-    fn dual_proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
-    {
-        let (m, p) = (self.m, self.p);
-        let (x_m, x) = x.split_at_mut(m);
-        let (x_p, _) = x.split_at_mut(p);
-
-        self.cone_rpos.dual_proj(eps_zero, x_m)?;
-        self.cone_zero.dual_proj(eps_zero, x_p)?;
+        self.cone_rpos.proj(dual_cone, eps_zero, x_m)?;
+        self.cone_zero.proj(dual_cone, eps_zero, x_p)?;
         Ok(())
     }
 }

@@ -220,7 +220,7 @@ where L: LinAlgEx<F>, F: Float
 impl<'a, L, F> Cone<F> for ProbSOCPCone<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    fn proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
     {
         let mut spl_x = x;
 
@@ -229,30 +229,12 @@ where L: LinAlgEx<F>, F: Float
             let (x_ni1, spl) = spl_x.split_at_mut(ni + 1);
             spl_x = spl;
 
-            self.cone_soc.proj(eps_zero, x_ni1)?;
+            self.cone_soc.proj(dual_cone, eps_zero, x_ni1)?;
         }
 
         let x_p = spl_x;
 
-        self.cone_zero.proj(eps_zero, x_p)?;
-        Ok(())
-    }
-
-    fn dual_proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
-    {
-        let mut spl_x = x;
-
-        for mat_g in self.mats_g {
-            let ni = mat_g.size().0;
-            let (x_ni1, spl) = spl_x.split_at_mut(ni + 1);
-            spl_x = spl;
-
-            self.cone_soc.dual_proj(eps_zero, x_ni1)?;
-        }
-
-        let x_p = spl_x;
-
-        self.cone_zero.dual_proj(eps_zero, x_p)?;
+        self.cone_zero.proj(dual_cone, eps_zero, x_p)?;
         Ok(())
     }
 }

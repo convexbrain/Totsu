@@ -565,9 +565,9 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         { // Projection
             let (_, u_y, u_tau, v_s, v_kappa, _) = split_tup6_mut(x, (n, m, 1, m, 1, 0)).unwrap();
 
-            self.cone.dual_proj(self.par.eps_zero, u_y)?;
+            self.cone.proj(true, self.par.eps_zero, u_y)?;
             u_tau[0] = u_tau[0].max(f0);
-            self.cone.proj(self.par.eps_zero, v_s)?;
+            self.cone.proj(false, self.par.eps_zero, v_s)?;
             v_kappa[0] = v_kappa[0].max(f0);
 
             ret_u_tau = u_tau[0];

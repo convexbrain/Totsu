@@ -292,7 +292,7 @@ where L: LinAlgEx<F>, F: Float
 impl<'a, L, F> Cone<F> for ProbQCQPCone<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    fn proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
     {
         let n = self.n;
         let m1 = self.m1;
@@ -303,32 +303,12 @@ where L: LinAlgEx<F>, F: Float
             let (x_sn_n1_n_1_1, spl) = spl_x.split_at_mut(sn + (n + 1) + n + 1 + 1);
             spl_x = spl;
 
-            self.cone_psd.proj(eps_zero, x_sn_n1_n_1_1)?;
+            self.cone_psd.proj(dual_cone, eps_zero, x_sn_n1_n_1_1)?;
         }
 
         let x_p = spl_x;
 
-        self.cone_zero.proj(eps_zero, x_p)?;
-        Ok(())
-    }
-
-    fn dual_proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
-    {
-        let n = self.n;
-        let m1 = self.m1;
-        let sn = n * (n + 1) / 2;
-
-        let mut spl_x = x;
-        for _ in 0.. m1 {
-            let (x_sn_n1_n_1_1, spl) = spl_x.split_at_mut(sn + (n + 1) + n + 1 + 1);
-            spl_x = spl;
-
-            self.cone_psd.dual_proj(eps_zero, x_sn_n1_n_1_1)?;
-        }
-
-        let x_p = spl_x;
-
-        self.cone_zero.dual_proj(eps_zero, x_p)?;
+        self.cone_zero.proj(dual_cone, eps_zero, x_p)?;
         Ok(())
     }
 }

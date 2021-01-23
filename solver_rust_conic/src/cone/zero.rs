@@ -23,15 +23,13 @@ impl<F> ConeZero<F>
 impl<F> Cone<F> for ConeZero<F>
 where F: Float
 {
-    fn proj(&mut self, _eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, dual_cone: bool, _eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
     {
-        for e in x {
-            *e = F::zero();
+        if !dual_cone {
+            for e in x {
+                *e = F::zero();
+            }
         }
-        Ok(())
-    }
-    fn dual_proj(&mut self, _eps_zero: F, _x: &mut[F]) -> Result<(), SolverError>
-    {
         Ok(())
     }
 }

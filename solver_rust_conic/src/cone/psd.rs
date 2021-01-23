@@ -33,7 +33,7 @@ where L: LinAlgEx<F>, F: Float
 impl<'a, L, F> Cone<F> for ConePSD<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    fn proj(&mut self, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, _dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
     {
         if self.work.len() < L::proj_psd_worklen(x.len()) {
             return Err(SolverError::ConeFailure);
@@ -66,6 +66,6 @@ fn test_cone_psd1()
     assert!(ConePSD::<L, _>::query_worklen(x.len()) <= 10);
     let w = &mut[0.; 10];
     let mut c = ConePSD::<L, _>::new(w);
-    c.proj(1e-12, x).unwrap();
+    c.proj(false, 1e-12, x).unwrap();
     assert_float_eq!(ref_x, x, abs_all <= 1e-6);
 }
