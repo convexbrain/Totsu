@@ -4,6 +4,9 @@ use totsu::linalg::F64LAPACK;
 use totsu::logger::PrintLogger;
 use totsu::problem::ProbLP;
 
+use rand::prelude::*;
+use rand_xoshiro::rand_core::SeedableRng;
+use rand_xoshiro::Xoshiro256StarStar;
 use std::io::prelude::*;
 use std::io::BufWriter;
 use std::fs::File;
@@ -48,9 +51,10 @@ fn main() -> std::io::Result<()> {
 
     //----- make sample points for training
 
+    let mut rng = Xoshiro256StarStar::seed_from_u64(0);
     let l = 20; // # of samples
     let x = AMatBuild::new(MatType::General(2, l))
-            .by_fn(|_, _| rand::random()); // random 2-dimensional points
+            .by_fn(|_, _| rng.gen()); // random 2-dimensional points
     let y = AMatBuild::new(MatType::General(l, 1))
             .by_fn(|smp, _| {
                 let x0 = (5. * x[(0, smp)]).cos();
