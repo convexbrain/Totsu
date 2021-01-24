@@ -225,18 +225,20 @@ where L: LinAlg<F>, F: Float
     {
         let (m, n) = op_a_size;
     
-        let len_norms = n.max(m);
         let len_iteration =
             n + (m + 1) * 2 +  // x
             n + m + 1 +        // y
             n + (m + 1) * 2 +  // dp_tau
             n + m + 1 +        // dp_sigma
-            n + (m + 1) * 2 +  // tmpw xx
-            n + m + 1;         // tmpw yy
-            //m                // tmpw p (share with xx)
-            //n                // tmpw d (share with yy)
+            n + (m + 1) * 2 +  // tmpw rx
+            n + (m + 1) * 2;   // tmpw tx
+            //n + m + 1        // tmpw ty (share with tx)
+            //m                // tmpw p (share with rx)
+            //n                // tmpw d (share with rx)
         
-        len_norms.max(len_iteration)
+        // len_norms = n.max(m) share with x
+        
+        len_iteration
     }
 
     pub fn new() -> Self
@@ -319,7 +321,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         let (x, y, dp_tau, dp_sigma, tmpw) = self.init_vecs(work)?;
 
         // Calculate diagonal preconditioning
-        self.calc_precond(dp_tau, dp_sigma, tmpw)?;
+        self.calc_precond(dp_tau, dp_sigma, tmpw);
 
         // Iteration
         let mut i = 0;
@@ -450,7 +452,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
             n + m + 1,
             n + (m + 1) * 2,
             n + m + 1,
-            (n + (m + 1) * 2) + (n + m + 1),
+            (n + (m + 1) * 2) * 2,
         ))?;
 
         let f0 = F::zero();
@@ -469,10 +471,9 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
     }
 
     fn calc_precond(&self, dp_tau: &mut[F], dp_sigma: &mut[F], tmpw: &mut[F])
-    -> Result<(), SolverError>
     {
         let (m, n) = self.op_l.a().size();
-        let (wx, wy) = split2_mut(tmpw, (dp_tau.len(), dp_sigma.len()))?;
+        let (wx, wy) = split2_mut(tmpw, (dp_tau.len(), dp_sigma.len())).unwrap();
 
         let f0 = F::zero();
         let f1 = F::one();
@@ -481,34 +482,22 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         for (i, tau) in dp_tau.iter_mut().enumerate() {
             wx[i] = f1;
             self.op_l.op(f1, wx, f0, wy);
-            let asum = { // TODO: dasum
-                let mut sum = F::zero();
-                for e in wy.iter() {
-                    sum = sum + e.abs();
-                }
-                sum
-            };
-            *tau = if asum > self.par.eps_zero {asum.recip()} else {F::one()};
-            wx[i] = F::zero();
+            let asum = L::abssum(wy);
+            *tau = asum.max(self.par.eps_zero).recip();
+            wx[i] = f0;
         }
 
         L::scale(f0, wy);
         for (i, sigma) in dp_sigma.iter_mut().enumerate() {
-            wy[i] = F::one();
-            self.op_l.trans_op(F::one(), wy, F::zero(), wx);
-            let asum = { // TODO: dasum
-                let mut sum = F::zero();
-                for e in wx.iter() {
-                    sum = sum + e.abs();
-                }
-                sum
-            };
-            *sigma = if asum > self.par.eps_zero {asum.recip()} else {F::one()};
-            wy[i] = F::zero();
+            wy[i] = f1;
+            self.op_l.trans_op(f1, wy, f0, wx);
+            let asum = L::abssum(wx);
+            *sigma = asum.max(self.par.eps_zero).recip();
+            wy[i] = f0;
         }
 
         // TODO: grouping dependent on cone
-        let (_, dpt_dual_cone, _, dpt_cone, _) = split5_mut(dp_tau, (n, m, 1, m, 1))?;
+        let (_, dpt_dual_cone, _, dpt_cone, _) = split5_mut(dp_tau, (n, m, 1, m, 1)).unwrap();
         let mut min_t = dpt_dual_cone[0];
         for t in dpt_dual_cone.iter() {
             min_t = min_t.min(*t);
@@ -523,8 +512,6 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         for t in dpt_cone.iter_mut() {
             *t = min_t;
         }
-
-        Ok(())
     }
 
     fn update_vecs(&mut self, x: &mut[F], y: &mut[F], dp_tau: &[F], dp_sigma: &[F], tmpw: &mut[F])
@@ -532,23 +519,18 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
     {
         let (m, n) = self.op_l.a().size();
 
-        let (xx, yy) = split2_mut(tmpw, (x.len(), y.len()))?;
+        let (rx, tx) = split2_mut(tmpw, (x.len(), x.len())).unwrap();
 
         let ret_u_tau;
 
         let f0 = F::zero();
         let f1 = F::one();
     
-        L::copy(x, xx); // xx := x_k
+        L::copy(x, rx); // rx := x_k
 
-        { // Update x
-            self.op_l.trans_op(-f1, y, f0, x);
-            { // TODO: dsbmv
-                for (ex, etau) in x.iter_mut().zip(dp_tau) {
-                    *ex = *ex * *etau;
-                }
-            }
-            L::add(f1, xx, x); // x := x_{k+1} before projection
+        { // Update x := x_{k+1} before projection
+            self.op_l.trans_op(-f1, y, f0, tx);
+            L::transform_di(f1, dp_tau, tx, f1, x);
         }
 
         { // Projection x
@@ -562,16 +544,13 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
             ret_u_tau = u_tau[0];
         }
 
-        L::add(-f1-f1, x, xx); // xx := x_k - 2 * x_{k+1}
+        L::add(-f1-f1, x, rx); // rx := x_k - 2 * x_{k+1}
 
-        { // Update y
-            self.op_l.op(-f1, xx, f0, yy);
-            { // TODO: dsbmv
-                for (eyy, esigma) in yy.iter_mut().zip(dp_sigma) {
-                    *eyy = *eyy * *esigma;
-                }
-            }
-            L::add(f1, yy, y); // y := y_{k+1}
+        { // Update y := y_{k+1}
+            let ty = split1_mut(tx, y.len()).unwrap();
+            
+            self.op_l.op(-f1, rx, f0, ty);
+            L::transform_di(f1, dp_sigma, ty, f1, y);
         }
 
         Ok(ret_u_tau)

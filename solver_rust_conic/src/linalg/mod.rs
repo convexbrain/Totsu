@@ -5,7 +5,11 @@ pub trait LinAlg<F: Float>
     fn norm(x: &[F]) -> F;
     fn copy(x: &[F], y: &mut[F]);
     fn scale(alpha: F, x: &mut[F]);
+    // y = a*x + y
     fn add(alpha: F, x: &[F], y: &mut[F]);
+    fn abssum(x: &[F]) -> F;
+    // y = a*mat*x + b*y
+    fn transform_di(alpha: F, mat: &[F], x: &[F], beta: F, y: &mut[F]);
 }
 
 pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone

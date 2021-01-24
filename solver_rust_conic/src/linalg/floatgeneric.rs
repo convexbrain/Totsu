@@ -47,6 +47,25 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
             *v = *v + alpha * *u;
         }
     }
+
+    fn abssum(x: &[F]) -> F
+    {
+        let mut sum = F::zero();
+        for u in x.iter() {
+            sum = sum + u.abs();
+        }
+        sum
+    }
+
+    fn transform_di(alpha: F, mat: &[F], x: &[F], beta: F, y: &mut[F])
+    {
+        assert_eq!(mat.len(), x.len());
+        assert_eq!(mat.len(), y.len());
+
+        for (i, v) in y.iter_mut().enumerate() {
+            *v = alpha * mat[i] * x[i] + beta * *v;
+        }
+    }
 }
 
 //

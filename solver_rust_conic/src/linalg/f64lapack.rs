@@ -31,6 +31,25 @@ impl LinAlg<f64> for F64LAPACK
     
         unsafe { cblas::daxpy(x.len() as i32, alpha, x, 1, y, 1) }
     }
+
+    fn abssum(x: &[f64]) -> f64
+    {
+        unsafe { cblas::dasum(x.len() as i32, x, 1) }
+    }
+
+    fn transform_di(alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64])
+    {
+        assert_eq!(mat.len(), x.len());
+        assert_eq!(mat.len(), y.len());
+
+        unsafe { cblas::dsbmv(
+            cblas::Layout::ColumnMajor, cblas::Part::Upper,
+            mat.len() as i32, 0,
+            alpha, mat, 1,
+            x, 1,
+            beta, y, 1
+        ) }
+    }
 }
 
 impl LinAlgEx<f64> for F64LAPACK
