@@ -317,53 +317,11 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
 
         // Initialize vectors
         let (x, y, dp_tau, dp_sigma, tmpw) = self.init_vecs(work)?;
-        { // TODO: WIP
-            let mut work1 = vec![F::zero(); dp_tau.len()];
-            let mut work2 = vec![F::zero(); dp_sigma.len()];
-            for i in 0.. dp_tau.len() {
-                work1[i] = F::one();
-                self.op_l.op(F::one(), work1.as_ref(), F::zero(), work2.as_mut());
-                let asum = { // dasum
-                    let mut sum = F::zero();
-                    for e in &work2 {
-                        sum = sum + e.abs();
-                    }
-                    sum
-                };
-                dp_tau[i] = if asum > self.par.eps_zero {asum.recip()} else {F::one()};
-                work1[i] = F::zero();
-            }
-            let mut work2 = vec![F::zero(); dp_sigma.len()];
-            for i in 0.. dp_sigma.len() {
-                work2[i] = F::one();
-                self.op_l.trans_op(F::one(), work2.as_ref(), F::zero(), work1.as_mut());
-                let asum = { // dasum
-                    let mut sum = F::zero();
-                    for e in &work1 {
-                        sum = sum + e.abs();
-                    }
-                    sum
-                };
-                dp_sigma[i] = if asum > self.par.eps_zero {asum.recip()} else {F::one()};
-                work2[i] = F::zero();
-            }
-            let (_, dpt_dual_cone, _, dpt_cone, _) = split5_mut(dp_tau, (n, m, 1, m, 1))?;
-            let mut min_t = dpt_dual_cone[0];
-            for t in dpt_dual_cone.iter() {
-                min_t = min_t.min(*t);
-            }
-            for t in dpt_dual_cone.iter_mut() {
-                *t = min_t;
-            }
-            let mut min_t = dpt_cone[0];
-            for t in dpt_cone.iter() {
-                min_t = min_t.min(*t);
-            }
-            for t in dpt_cone.iter_mut() {
-                *t = min_t;
-            }
-        }
 
+        // Calculate diagonal preconditioning
+        self.calc_precond(dp_tau, dp_sigma, tmpw)?;
+
+        // Iteration
         let mut i = 0;
         loop {
             let over_iter = if let Some(max_iter) = self.par.max_iter {
@@ -510,6 +468,65 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         Ok((x, y, dp_tau, dp_sigma, tmpw))
     }
 
+    fn calc_precond(&self, dp_tau: &mut[F], dp_sigma: &mut[F], tmpw: &mut[F])
+    -> Result<(), SolverError>
+    {
+        let (m, n) = self.op_l.a().size();
+        let (wx, wy) = split2_mut(tmpw, (dp_tau.len(), dp_sigma.len()))?;
+
+        let f0 = F::zero();
+        let f1 = F::one();
+
+        L::scale(f0, wx);
+        for (i, tau) in dp_tau.iter_mut().enumerate() {
+            wx[i] = f1;
+            self.op_l.op(f1, wx, f0, wy);
+            let asum = { // TODO: dasum
+                let mut sum = F::zero();
+                for e in wy.iter() {
+                    sum = sum + e.abs();
+                }
+                sum
+            };
+            *tau = if asum > self.par.eps_zero {asum.recip()} else {F::one()};
+            wx[i] = F::zero();
+        }
+
+        L::scale(f0, wy);
+        for (i, sigma) in dp_sigma.iter_mut().enumerate() {
+            wy[i] = F::one();
+            self.op_l.trans_op(F::one(), wy, F::zero(), wx);
+            let asum = { // TODO: dasum
+                let mut sum = F::zero();
+                for e in wx.iter() {
+                    sum = sum + e.abs();
+                }
+                sum
+            };
+            *sigma = if asum > self.par.eps_zero {asum.recip()} else {F::one()};
+            wy[i] = F::zero();
+        }
+
+        // TODO: grouping dependent on cone
+        let (_, dpt_dual_cone, _, dpt_cone, _) = split5_mut(dp_tau, (n, m, 1, m, 1))?;
+        let mut min_t = dpt_dual_cone[0];
+        for t in dpt_dual_cone.iter() {
+            min_t = min_t.min(*t);
+        }
+        for t in dpt_dual_cone.iter_mut() {
+            *t = min_t;
+        }
+        let mut min_t = dpt_cone[0];
+        for t in dpt_cone.iter() {
+            min_t = min_t.min(*t);
+        }
+        for t in dpt_cone.iter_mut() {
+            *t = min_t;
+        }
+
+        Ok(())
+    }
+
     fn update_vecs(&mut self, x: &mut[F], y: &mut[F], dp_tau: &[F], dp_sigma: &[F], tmpw: &mut[F])
     -> Result<F, SolverError>
     {
@@ -522,20 +539,19 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         let f0 = F::zero();
         let f1 = F::one();
     
-        L::copy(x, xx);
+        L::copy(x, xx); // xx := x_k
 
-        // TODO: WIP
-        {
+        { // Update x
             self.op_l.trans_op(-f1, y, f0, x);
-            { // dsbmv
+            { // TODO: dsbmv
                 for (ex, etau) in x.iter_mut().zip(dp_tau) {
                     *ex = *ex * *etau;
                 }
             }
-            L::add(f1, xx.as_ref(), x);
+            L::add(f1, xx, x); // x := x_{k+1} before projection
         }
 
-        { // Projection
+        { // Projection x
             let (_, u_y, u_tau, v_s, v_kappa) = split5_mut(x, (n, m, 1, m, 1)).unwrap();
 
             self.cone.proj(true, self.par.eps_zero, u_y)?;
@@ -546,16 +562,16 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
             ret_u_tau = u_tau[0];
         }
 
-        L::add(-f1-f1, x, xx);
-        // TODO: WIP
-        {
+        L::add(-f1-f1, x, xx); // xx := x_k - 2 * x_{k+1}
+
+        { // Update y
             self.op_l.op(-f1, xx, f0, yy);
-            { // dsbmv
+            { // TODO: dsbmv
                 for (eyy, esigma) in yy.iter_mut().zip(dp_sigma) {
                     *eyy = *eyy * *esigma;
                 }
             }
-            L::add(f1, yy, y);
+            L::add(f1, yy, y); // y := y_{k+1}
         }
 
         Ok(ret_u_tau)
