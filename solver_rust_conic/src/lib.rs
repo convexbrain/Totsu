@@ -1,4 +1,5 @@
 pub mod solver; // core, Float
+mod utils;
 
 pub mod linalg;
 pub mod operator;
