@@ -38,8 +38,7 @@ fn subtest_sdp1<L: LinAlgEx<f64>>()
 
     let vec_b = MatBuild::new(MatType::General(p, 1));
 
-
-    let s = Solver::<L, _>::new();
+    let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
     println!("{:?}", s.par);
     let mut sdp = ProbSDP::<L, _>::new(vec_c, syms_f, mat_a, vec_b);
     let rslt = s.solve(sdp.problem(), PrintLogger).unwrap();

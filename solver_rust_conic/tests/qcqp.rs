@@ -35,7 +35,7 @@ fn subtest_qcqp1<L: LinAlgEx<f64>>()
 
     let vec_b = MatBuild::new(MatType::General(p, 1));
 
-    let s = Solver::<L, _>::new();
+    let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
     println!("{:?}", s.par);
     let mut qp = ProbQCQP::<L, _>::new(syms_p, vecs_q, scls_r, mat_a, vec_b);
     let rslt = s.solve(qp.problem(), PrintLogger).unwrap();
