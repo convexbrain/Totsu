@@ -3,7 +3,6 @@ use num::Float;
 pub trait LinAlg<F: Float>
 {
     fn norm(x: &[F]) -> F;
-    fn inner_prod(x: &[F], y: &[F]) -> F;
     fn copy(x: &[F], y: &mut[F]);
     fn scale(alpha: F, x: &mut[F]);
     fn add(alpha: F, x: &[F], y: &mut[F]);

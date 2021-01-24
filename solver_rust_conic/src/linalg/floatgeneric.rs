@@ -16,18 +16,11 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
 {
     fn norm(x: &[F]) -> F
     {
-        Self::inner_prod(x, x).sqrt()
-    }
-    
-    fn inner_prod(x: &[F], y: &[F]) -> F
-    {
-        assert_eq!(x.len(), y.len());
-
         let mut sum = F::zero();
-        for (u, v) in x.iter().zip(y) {
-            sum = sum + *u * *v;
+        for u in x {
+            sum = sum + *u * *u;
         }
-        sum
+        sum.sqrt()
     }
     
     fn copy(x: &[F], y: &mut[F])

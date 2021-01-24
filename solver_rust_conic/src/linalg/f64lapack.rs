@@ -13,13 +13,6 @@ impl LinAlg<f64> for F64LAPACK
         unsafe { cblas::dnrm2(x.len() as i32, x, 1) }
     }
     
-    fn inner_prod(x: &[f64], y: &[f64]) -> f64
-    {
-        assert_eq!(x.len(), y.len());
-    
-        unsafe { cblas::ddot(x.len() as i32, x, 1, y, 1) }
-    }
-    
     fn copy(x: &[f64], y: &mut[f64])
     {
         assert_eq!(x.len(), y.len());
