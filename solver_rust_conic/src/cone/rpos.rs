@@ -1,6 +1,5 @@
 use num::Float;
 use core::marker::PhantomData;
-use crate::solver::SolverError;
 use super::Cone;
 
 //
@@ -23,7 +22,7 @@ impl<F> ConeRPos<F>
 impl<F> Cone<F> for ConeRPos<F>
 where F: Float
 {
-    fn proj(&mut self, _dual_cone: bool, _eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, _dual_cone: bool, _eps_zero: F, x: &mut[F]) -> Result<(), ()>
     {
         for e in x {
             *e = e.max(F::zero());

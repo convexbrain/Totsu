@@ -535,9 +535,9 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         { // Projection x
             let (_, u_y, u_tau, v_s, v_kappa) = split5_mut(x, (n, m, 1, m, 1)).unwrap();
 
-            self.cone.proj(true, self.par.eps_zero, u_y)?;
+            self.cone.proj(true, self.par.eps_zero, u_y).or(Err(SolverError::ConeFailure))?;
             u_tau[0] = u_tau[0].max(f0);
-            self.cone.proj(false, self.par.eps_zero, v_s)?;
+            self.cone.proj(false, self.par.eps_zero, v_s).or(Err(SolverError::ConeFailure))?;
             v_kappa[0] = v_kappa[0].max(f0);
 
             ret_u_tau = u_tau[0];

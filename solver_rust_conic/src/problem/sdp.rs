@@ -1,5 +1,5 @@
 use num::Float;
-use crate::solver::{SolverError, Solver};
+use crate::solver::Solver;
 use crate::linalg::LinAlgEx;
 use crate::operator::{Operator, MatType, MatBuild};
 use crate::cone::{Cone, ConePSD, ConeZero};
@@ -168,7 +168,7 @@ where L: LinAlgEx<F>, F: Float
 impl<'a, L, F> Cone<F> for ProbSDPCone<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>
     {
         let (sk, p) = (self.sk, self.p);
         let (x_sk, x) = x.split_at_mut(sk);

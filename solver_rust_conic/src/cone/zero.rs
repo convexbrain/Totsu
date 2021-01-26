@@ -1,6 +1,5 @@
 use num::Float;
 use core::marker::PhantomData;
-use crate::solver::SolverError;
 use super::Cone;
 
 //
@@ -23,7 +22,7 @@ impl<F> ConeZero<F>
 impl<F> Cone<F> for ConeZero<F>
 where F: Float
 {
-    fn proj(&mut self, dual_cone: bool, _eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, dual_cone: bool, _eps_zero: F, x: &mut[F]) -> Result<(), ()>
     {
         if !dual_cone {
             for e in x {

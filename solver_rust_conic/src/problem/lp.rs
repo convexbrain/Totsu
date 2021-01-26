@@ -1,5 +1,5 @@
 use num::Float;
-use crate::solver::{SolverError, Solver};
+use crate::solver::Solver;
 use crate::linalg::LinAlgEx;
 use crate::operator::{Operator, MatBuild};
 use crate::cone::{Cone, ConeRPos, ConeZero};
@@ -169,7 +169,7 @@ where F: Float
 impl<F> Cone<F> for ProbLPCone<F>
 where F: Float
 {
-    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>
     {
         let (m, p) = (self.m, self.p);
         let (x_m, x) = x.split_at_mut(m);

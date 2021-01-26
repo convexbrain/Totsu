@@ -1,6 +1,5 @@
 use num::Float;
 use core::marker::PhantomData;
-use crate::solver::SolverError;
 use crate::linalg::LinAlg;
 use super::Cone;
 
@@ -28,7 +27,7 @@ where L: LinAlg<F>, F: Float
 impl<L, F> Cone<F> for ConeSOC<L, F>
 where L: LinAlg<F>, F: Float
 {
-    fn proj(&mut self, _dual_cone: bool, _eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, _dual_cone: bool, _eps_zero: F, x: &mut[F]) -> Result<(), ()>
     {
         let f0 = F::zero();
         let f1 = F::one();

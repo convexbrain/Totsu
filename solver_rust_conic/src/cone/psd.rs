@@ -1,6 +1,5 @@
 use num::Float;
 use core::marker::PhantomData;
-use crate::solver::SolverError;
 use crate::linalg::LinAlgEx;
 use super::Cone;
 
@@ -33,10 +32,10 @@ where L: LinAlgEx<F>, F: Float
 impl<'a, L, F> Cone<F> for ConePSD<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    fn proj(&mut self, _dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, _dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>
     {
         if self.work.len() < L::proj_psd_worklen(x.len()) {
-            return Err(SolverError::ConeFailure);
+            return Err(());
         }
 
         L::proj_psd(x, eps_zero, self.work);

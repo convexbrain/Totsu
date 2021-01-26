@@ -1,6 +1,6 @@
 use num::Float;
 use core::marker::PhantomData;
-use crate::solver::{SolverError, Solver};
+use crate::solver::Solver;
 use crate::linalg::LinAlgEx;
 use crate::operator::{Operator, MatBuild};
 use crate::cone::{Cone, ConePSD, ConeZero};
@@ -292,7 +292,7 @@ where L: LinAlgEx<F>, F: Float
 impl<'a, L, F> Cone<F> for ProbQCQPCone<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), SolverError>
+    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>
     {
         let n = self.n;
         let m1 = self.m1;
