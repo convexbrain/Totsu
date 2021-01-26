@@ -427,14 +427,14 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         
         let norm_b = {
             let (m, _) = self.op_l.b().size();
-            let t = split1_mut(work, m)?;
+            let t = split1_mut(work, m).ok_or(SolverError::WorkShortage)?;
     
             self.op_l.norm_b(work_one, t)
         };
     
         let norm_c = {
             let (n, _) = self.op_l.c().size();
-            let t = split1_mut(work, n)?;
+            let t = split1_mut(work, n).ok_or(SolverError::WorkShortage)?;
     
             self.op_l.norm_c(work_one, t)
         };
@@ -453,7 +453,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
             n + (m + 1) * 2,
             n + m + 1,
             (n + (m + 1) * 2) * 2,
-        ))?;
+        )).ok_or(SolverError::WorkShortage)?;
 
         let f0 = F::zero();
         let f1 = F::one();
