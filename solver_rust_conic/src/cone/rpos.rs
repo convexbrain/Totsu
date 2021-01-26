@@ -30,4 +30,9 @@ where F: Float
         }
         Ok(())
     }
+
+    fn product_group(&self, _dp_tau: &mut[F], _group: fn(&mut[F]))
+    {
+        // do nothing
+    }
 }

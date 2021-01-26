@@ -496,22 +496,21 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
             wy[i] = f0;
         }
 
-        // TODO: grouping dependent on cone
+        // grouping dependent on cone
+        let group = |tau_group: &mut[F]| {
+            if tau_group.len() > 0 {
+                let mut min_t = tau_group[0];
+                for t in tau_group.iter() {
+                    min_t = min_t.min(*t);
+                }
+                for t in tau_group.iter_mut() {
+                    *t = min_t;
+                }
+            }
+        };
         let (_, dpt_dual_cone, _, dpt_cone, _) = split5_mut(dp_tau, (n, m, 1, m, 1)).unwrap();
-        let mut min_t = dpt_dual_cone[0];
-        for t in dpt_dual_cone.iter() {
-            min_t = min_t.min(*t);
-        }
-        for t in dpt_dual_cone.iter_mut() {
-            *t = min_t;
-        }
-        let mut min_t = dpt_cone[0];
-        for t in dpt_cone.iter() {
-            min_t = min_t.min(*t);
-        }
-        for t in dpt_cone.iter_mut() {
-            *t = min_t;
-        }
+        self.cone.product_group(dpt_dual_cone, group);
+        self.cone.product_group(dpt_cone, group);
     }
 
     fn update_vecs(&mut self, x: &mut[F], y: &mut[F], dp_tau: &[F], dp_sigma: &[F], tmpw: &mut[F])

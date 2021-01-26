@@ -237,6 +237,23 @@ where L: LinAlgEx<F>, F: Float
         self.cone_zero.proj(dual_cone, eps_zero, x_p)?;
         Ok(())
     }
+
+    fn product_group(&self, dp_tau: &mut[F], group: fn(&mut[F]))
+    {
+        let mut spl_t = dp_tau;
+
+        for mat_g in self.mats_g {
+            let ni = mat_g.size().0;
+            let (t_ni1, spl) = spl_t.split_at_mut(ni + 1);
+            spl_t = spl;
+
+            self.cone_soc.product_group(t_ni1, group);
+        }
+
+        let t_p = spl_t;
+
+        self.cone_zero.product_group(t_p, group);
+    }
 }
 
 //

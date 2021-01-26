@@ -179,6 +179,16 @@ where F: Float
         self.cone_zero.proj(dual_cone, eps_zero, x_p)?;
         Ok(())
     }
+
+    fn product_group(&self, dp_tau: &mut[F], group: fn(&mut[F]))
+    {
+        let (m, p) = (self.m, self.p);
+        let (t_m, t) = dp_tau.split_at_mut(m);
+        let (t_p, _) = t.split_at_mut(p);
+
+        self.cone_rpos.product_group(t_m, group);
+        self.cone_zero.product_group(t_p, group);
+    }
 }
 
 //
