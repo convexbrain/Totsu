@@ -4,6 +4,7 @@ use crate::solver::Solver;
 use crate::linalg::LinAlgEx;
 use crate::operator::{Operator, MatBuild};
 use crate::cone::{Cone, ConePSD, ConeZero};
+use crate::utils::*;
 
 //
 
@@ -26,7 +27,7 @@ where L: LinAlgEx<F>, F: Float
     fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let n = self.n;
-        let (y_n, y_1) = y.split_at_mut(n);
+        let (y_n, y_1) = y.split2(n, 1).unwrap();
 
         // y_n = a*0*x + b*y_n;
         L::scale(beta, y_n);
@@ -39,7 +40,7 @@ where L: LinAlgEx<F>, F: Float
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let n = self.n;
-        let (_x_n, x_1) = x.split_at(n);
+        let (_x_n, x_1) = x.split2(n, 1).unwrap();
 
         // y = a*0*x_n + a*1*x_1 + b*y;
         L::scale(beta, y);
@@ -84,8 +85,7 @@ where L: LinAlgEx<F>, F: Float
     {
         let (n, sn, _m1, _p) = self.dim();
 
-        let (x_n, x) = x.split_at(n);
-        let (x_1, _) = x.split_at(1);
+        let (x_n, x_1) = x.split2(n, 1).unwrap();
 
         let f2 = F::one() + F::one();
         let fsqrt2 = f2.sqrt();
@@ -128,8 +128,7 @@ where L: LinAlgEx<F>, F: Float
     {
         let (n, sn, _m1, _p) = self.dim();
 
-        let (y_n, y) = y.split_at_mut(n);
-        let (y_1, _) = y.split_at_mut(1);
+        let (y_n, y_1) = y.split2(n, 1).unwrap();
 
         let f1 = F::one();
         let f2 = f1 + f1;

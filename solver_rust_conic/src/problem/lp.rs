@@ -3,6 +3,7 @@ use crate::solver::Solver;
 use crate::linalg::LinAlgEx;
 use crate::operator::{Operator, MatBuild};
 use crate::cone::{Cone, ConeRPos, ConeZero};
+use crate::utils::*;
 
 //
 
@@ -72,8 +73,7 @@ where L: LinAlgEx<F>, F: Float
     {
         let (_n, m, p) = self.dim();
 
-        let (y_m, y) = y.split_at_mut(m);
-        let (y_p, _) = y.split_at_mut(p);
+        let (y_m, y_p) = y.split2(m, p).unwrap();
 
         // y_m = a*mat_g*x + b*y_m
         self.mat_g.op(alpha, x, beta, y_m);
@@ -86,8 +86,7 @@ where L: LinAlgEx<F>, F: Float
     {
         let (_n, m, p) = self.dim();
 
-        let (x_m, x) = x.split_at(m);
-        let (x_p, _) = x.split_at(p);
+        let (x_m, x_p) = x.split2(m,p).unwrap();
 
         // y = a*mat_g^T*x_m + a*mat_a^T*x_p + b*y
         self.mat_g.trans_op(alpha, x_m, beta, y);
@@ -132,8 +131,7 @@ where L: LinAlgEx<F>, F: Float
     {
         let (m, p) = self.dim();
 
-        let (y_m, y) = y.split_at_mut(m);
-        let (y_p, _) = y.split_at_mut(p);
+        let (y_m, y_p) = y.split2(m, p).unwrap();
 
         // y_m = a*vec_h*x + b*y_m
         self.vec_h.op(alpha, x, beta, y_m);
@@ -146,8 +144,7 @@ where L: LinAlgEx<F>, F: Float
     {
         let (m, p) = self.dim();
 
-        let (x_m, x) = x.split_at(m);
-        let (x_p, _) = x.split_at(p);
+        let (x_m, x_p) = x.split2(m, p).unwrap();
 
         // y = a*vec_h^T*x_m + a*vec_b^T*x_p + b*y
         self.vec_h.trans_op(alpha, x_m, beta, y);
@@ -172,8 +169,7 @@ where F: Float
     fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>
     {
         let (m, p) = (self.m, self.p);
-        let (x_m, x) = x.split_at_mut(m);
-        let (x_p, _) = x.split_at_mut(p);
+        let (x_m, x_p) = x.split2(m, p).unwrap();
 
         self.cone_rpos.proj(dual_cone, eps_zero, x_m)?;
         self.cone_zero.proj(dual_cone, eps_zero, x_p)?;
@@ -183,8 +179,7 @@ where F: Float
     fn product_group(&self, dp_tau: &mut[F], group: fn(&mut[F]))
     {
         let (m, p) = (self.m, self.p);
-        let (t_m, t) = dp_tau.split_at_mut(m);
-        let (t_p, _) = t.split_at_mut(p);
+        let (t_m, t_p) = dp_tau.split2(m, p).unwrap();
 
         self.cone_rpos.product_group(t_m, group);
         self.cone_zero.product_group(t_p, group);

@@ -1,4 +1,4 @@
-pub(crate) trait SplitN
+pub trait SplitN
 where Self: core::marker::Sized
 {
     fn split1(self, p0: usize)

@@ -1,5 +1,6 @@
 use super::{LinAlg, LinAlgEx};
 use core::fmt::Debug;
+use crate::utils::*;
 
 //
 
@@ -117,9 +118,7 @@ impl LinAlgEx<f64> for F64LAPACK
         assert_eq!(n * (n + 1) / 2, sn);
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
-        let (a, spl_work) = work.split_at_mut(n * n);
-        let (mut w, spl_work) = spl_work.split_at_mut(n);
-        let (mut z, _) = spl_work.split_at_mut(n * n);
+        let (a, w, z) = work.split3(n * n, n, n * n).unwrap();
         let mut m = 0;
     
         vec_to_mat(x, a);
@@ -129,8 +128,8 @@ impl LinAlgEx<f64> for F64LAPACK
                 lapacke::Layout::ColumnMajor, b'V', b'V',
                 b'U', n as i32, a, n as i32,
                 0., f64::INFINITY, 0, 0, eps_zero,
-                &mut m, &mut w,
-                &mut z, n as i32, &mut []);
+                &mut m, w,
+                z, n as i32, &mut []);
         }
     
         for e in a.iter_mut() {

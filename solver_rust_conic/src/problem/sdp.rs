@@ -3,6 +3,7 @@ use crate::solver::Solver;
 use crate::linalg::LinAlgEx;
 use crate::operator::{Operator, MatType, MatBuild};
 use crate::cone::{Cone, ConePSD, ConeZero};
+use crate::utils::*;
 
 //
 
@@ -72,8 +73,7 @@ where L: LinAlgEx<F>, F: Float
     {
         let (_n, sk, p) = self.dim();
 
-        let (y_sk, y) = y.split_at_mut(sk);
-        let (y_p, _) = y.split_at_mut(p);
+        let (y_sk, y_p) = y.split2(sk, p).unwrap();
 
         // y_sk = a*symmat_f*x + b*y_sk
         self.symmat_f.op(alpha, x, beta, y_sk);
@@ -86,8 +86,7 @@ where L: LinAlgEx<F>, F: Float
     {
         let (_n, sk, p) = self.dim();
 
-        let (x_sk, x) = x.split_at(sk);
-        let (x_p, _) = x.split_at(p);
+        let (x_sk, x_p) = x.split2(sk, p).unwrap();
 
         // y = a*symmat_f^T*x_sk + a*mat_a^T*x_p + b*y
         self.symmat_f.trans_op(alpha, x_sk, beta, y);
@@ -131,8 +130,7 @@ where L: LinAlgEx<F>, F: Float
     {
         let (_n, sk, p) = self.dim();
 
-        let (y_sk, y) = y.split_at_mut(sk);
-        let (y_p, _) = y.split_at_mut(p);
+        let (y_sk, y_p) = y.split2(sk, p).unwrap();
 
         // y_sk = a*-symmat_f*x + b*y_sk
         self.symvec_f_n.op(-alpha, x, beta, y_sk);
@@ -145,8 +143,7 @@ where L: LinAlgEx<F>, F: Float
     {
         let (_n, sk, p) = self.dim();
 
-        let (x_sk, x) = x.split_at(sk);
-        let (x_p, _) = x.split_at(p);
+        let (x_sk, x_p) = x.split2(sk, p).unwrap();
 
         // y = a*-symvec_f_n^T*x_sk + a*vec_b^T*x_p + b*y
         self.symvec_f_n.trans_op(-alpha, x_sk, beta, y);
@@ -171,8 +168,7 @@ where L: LinAlgEx<F>, F: Float
     fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>
     {
         let (sk, p) = (self.sk, self.p);
-        let (x_sk, x) = x.split_at_mut(sk);
-        let (x_p, _) = x.split_at_mut(p);
+        let (x_sk, x_p) = x.split2(sk, p).unwrap();
 
         self.cone_psd.proj(dual_cone, eps_zero, x_sk)?;
         self.cone_zero.proj(dual_cone, eps_zero, x_p)?;
@@ -182,8 +178,7 @@ where L: LinAlgEx<F>, F: Float
     fn product_group(&self, dp_tau: &mut[F], group: fn(&mut[F]))
     {
         let (sk, p) = (self.sk, self.p);
-        let (t_sk, t) = dp_tau.split_at_mut(sk);
-        let (t_p, _) = t.split_at_mut(p);
+        let (t_sk, t_p) = dp_tau.split2(sk, p).unwrap();
 
         self.cone_psd.product_group(t_sk, group);
         self.cone_zero.product_group(t_p, group);
