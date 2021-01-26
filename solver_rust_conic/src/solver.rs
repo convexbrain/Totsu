@@ -144,9 +144,9 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         };
         assert_eq!(y.len(), n + m + 1);
 
-        let (u_x, u_y, u_tau, v_r, v_s, v_kappa) = split6(x, (n, m, 1, if full_x {n} else {0}, m, 1)).unwrap();
+        let (u_x, u_y, u_tau, v_r, v_s, v_kappa) = x.split6(n, m, 1, if full_x {n} else {0}, m, 1).unwrap();
 
-        let (w_n, w_m, w_1) = split3_mut(y, (n, m, 1)).unwrap();
+        let (w_n, w_m, w_1) = y.split3(n, m, 1).unwrap();
 
         let f1 = F::one();
 
@@ -181,9 +181,9 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
             false
         };
 
-        let (w_n, w_m, w_1) = split3(x, (n, m, 1)).unwrap();
+        let (w_n, w_m, w_1) = x.split3(n, m, 1).unwrap();
 
-        let (u_x, u_y, u_tau, v_r, v_s, v_kappa) = split6_mut(y, (n, m, 1, if full_y {n} else {0}, m, 1)).unwrap();
+        let (u_x, u_y, u_tau, v_r, v_s, v_kappa) = y.split6(n, m, 1, if full_y {n} else {0}, m, 1).unwrap();
 
         let f1 = F::one();
 
@@ -357,7 +357,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                 }
 
                 if over_iter || term_conv {
-                    let (u_x_ast, u_y_ast) = split2_mut(x, (n, m)).unwrap();
+                    let (u_x_ast, u_y_ast) = x.split2(n, m).unwrap();
                     L::scale(u_tau.recip(), u_x_ast);
                     L::scale(u_tau.recip(), u_y_ast);
 
@@ -390,7 +390,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                 }
 
                 if over_iter || term_unbdd || term_infeas {
-                    let (u_x_cert, u_y_cert) = split2(x, (n, m)).unwrap();
+                    let (u_x_cert, u_y_cert) = x.split2(n, m).unwrap();
 
                     if self.par.log_verbose {
                         writeln_or!(self.logger, "{}: x {:?}", i, u_x_cert)?;
@@ -427,14 +427,14 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         
         let norm_b = {
             let (m, _) = self.op_l.b().size();
-            let t = split1_mut(work, m).ok_or(SolverError::WorkShortage)?;
+            let t = work.split1(m).ok_or(SolverError::WorkShortage)?;
     
             self.op_l.norm_b(work_one, t)
         };
     
         let norm_c = {
             let (n, _) = self.op_l.c().size();
-            let t = split1_mut(work, n).ok_or(SolverError::WorkShortage)?;
+            let t = work.split1(n).ok_or(SolverError::WorkShortage)?;
     
             self.op_l.norm_c(work_one, t)
         };
@@ -447,13 +447,13 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
     {
         let (m, n) = self.op_l.a().size();
 
-        let (x, y, dp_tau, dp_sigma, tmpw) = split5_mut(work, (
+        let (x, y, dp_tau, dp_sigma, tmpw) = work.split5(
             n + (m + 1) * 2,
             n + m + 1,
             n + (m + 1) * 2,
             n + m + 1,
             (n + (m + 1) * 2) * 2,
-        )).ok_or(SolverError::WorkShortage)?;
+        ).ok_or(SolverError::WorkShortage)?;
 
         let f0 = F::zero();
         let f1 = F::one();
@@ -473,7 +473,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
     fn calc_precond(&self, dp_tau: &mut[F], dp_sigma: &mut[F], tmpw: &mut[F])
     {
         let (m, n) = self.op_l.a().size();
-        let (wx, wy) = split2_mut(tmpw, (dp_tau.len(), dp_sigma.len())).unwrap();
+        let (wx, wy) = tmpw.split2(dp_tau.len(), dp_sigma.len()).unwrap();
 
         let f0 = F::zero();
         let f1 = F::one();
@@ -508,7 +508,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                 }
             }
         };
-        let (_, dpt_dual_cone, _, dpt_cone, _) = split5_mut(dp_tau, (n, m, 1, m, 1)).unwrap();
+        let (_, dpt_dual_cone, _, dpt_cone, _) = dp_tau.split5(n, m, 1, m, 1).unwrap();
         self.cone.product_group(dpt_dual_cone, group);
         self.cone.product_group(dpt_cone, group);
     }
@@ -518,7 +518,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
     {
         let (m, n) = self.op_l.a().size();
 
-        let (rx, tx) = split2_mut(tmpw, (x.len(), x.len())).unwrap();
+        let (rx, tx) = tmpw.split2(x.len(), x.len()).unwrap();
 
         let ret_u_tau;
 
@@ -533,7 +533,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         }
 
         { // Projection x
-            let (_, u_y, u_tau, v_s, v_kappa) = split5_mut(x, (n, m, 1, m, 1)).unwrap();
+            let (_, u_y, u_tau, v_s, v_kappa) = x.split5(n, m, 1, m, 1).unwrap();
 
             self.cone.proj(true, self.par.eps_zero, u_y).or(Err(SolverError::ConeFailure))?;
             u_tau[0] = u_tau[0].max(f0);
@@ -546,7 +546,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         L::add(-f1-f1, x, rx); // rx := x_k - 2 * x_{k+1}
 
         { // Update y := y_{k+1}
-            let ty = split1_mut(tx, y.len()).unwrap();
+            let ty = tx.split1(y.len()).unwrap();
             
             self.op_l.op(-f1, rx, f0, ty);
             L::transform_di(f1, dp_sigma, ty, f1, y);
@@ -560,8 +560,8 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
     {
         let (m, n) = self.op_l.a().size();
 
-        let (u_x, u_y, u_tau, v_s) = split4(x, (n, m, 1, m)).unwrap();
-        let (p, d) = split2_mut(tmpw, (m, n)).unwrap();
+        let (u_x, u_y, u_tau, v_s) = x.split4(n, m, 1, m).unwrap();
+        let (p, d) = tmpw.split2(m, n).unwrap();
     
         let f0 = F::zero();
         let f1 = F::one();
@@ -600,8 +600,8 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
     {
         let (m, n) = self.op_l.a().size();
 
-        let (u_x, u_y, _, v_s) = split4(x, (n, m, 1, m)).unwrap();
-        let (p, d) = split2_mut(tmpw, (m, n)).unwrap();
+        let (u_x, u_y, _, v_s) = x.split4(n, m, 1, m).unwrap();
+        let (p, d) = tmpw.split2(m, n).unwrap();
 
         let f0 = F::zero();
         let f1 = F::one();
