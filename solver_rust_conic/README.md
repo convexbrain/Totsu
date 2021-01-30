@@ -10,7 +10,7 @@ A common target problem is continuous scalar **convex optimization** such as LP,
 
 ## Algorithm and design concepts
 
-The author combines the two papers [1][2] so that the homogeneous self-dual embedding matrix in [1] is formed as a linear composite term in [2]'s algorithm.
+The author combines the two papers [1][2] so that the homogeneous self-dual embedding matrix in [1] is formed as a linear operator in [2].
 
 `Solver` has a core method `solve` which takes the following arguments:
 * objective and constraint linear operators that implement `Operator` trait and
@@ -33,8 +33,6 @@ You can use a pre-defined implementations (see `problem`), as well as construct 
 ## References
 
 1. O’donoghue, Brendan, et al. "Conic optimization via operator splitting and homogeneous self-dual embedding." Journal of Optimization Theory and Applications 169.3 (2016): 1042-1068.
-1. Condat, Laurent. "A primal–dual splitting method for convex optimization involving Lipschitzian, proximable and linear composite terms." Journal of Optimization Theory and Applications 158.2 (2013): 460-479.
-1. Chambolle, Antonin, and Thomas Pock. "A first-order primal-dual algorithm for convex problems with applications to imaging." Journal of mathematical imaging and vision 40.1 (2011): 120-145.
 1. Pock, Thomas, and Antonin Chambolle. "Diagonal preconditioning for first order primal-dual algorithms in convex optimization." 2011 International Conference on Computer Vision. IEEE, 2011.
 1. Parikh, Neal, and Stephen Boyd. "Proximal algorithms." Foundations and Trends in optimization 1.3 (2014): 127-239.
 1. Andersen, Martin, et al. "Interior-point methods for large-scale cone programming." Optimization for machine learning 5583 (2011).
