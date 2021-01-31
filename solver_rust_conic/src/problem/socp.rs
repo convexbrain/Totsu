@@ -56,13 +56,13 @@ where L: LinAlgEx<F>, F: Float
         let mut ni1_sum = 0;
 
         for (mat_g, vec_c) in self.mats_g.iter().zip(self.vecs_c) {
-            let (ni, n_) = mat_g.size();
-            assert_eq!(n, n_);
             let (n_, one) = vec_c.size();
             assert_eq!(one, 1);
             assert_eq!(n, n_);
+            let (ni, n_) = mat_g.size();
+            assert_eq!(n, n_);
 
-            ni1_sum += ni + 1;
+            ni1_sum += 1 + ni;
         }
 
         (ni1_sum + p, n)
@@ -75,15 +75,15 @@ where L: LinAlgEx<F>, F: Float
         for (mat_g, vec_c) in self.mats_g.iter().zip(self.vecs_c) {
             let (ni, _) = mat_g.size();
 
-            let (y_ni, spl) = spl_y.split_at_mut(ni);
-            let (y_1, spl) = spl.split_at_mut(1);
+            let (y_1, spl) = spl_y.split_at_mut(1);
+            let (y_ni, spl) = spl.split_at_mut(ni);
             spl_y = spl;
-
-            // y_ni = a*-mat_g*x + b*y_ni
-            mat_g.op(-alpha, x, beta, y_ni);
 
             // y_1 = a*-vec_c^T*x + b*y_1
             vec_c.trans_op(-alpha, x, beta, y_1);
+
+            // y_ni = a*-mat_g*x + b*y_ni
+            mat_g.op(-alpha, x, beta, y_ni);
         }
 
         let y_p = spl_y;
@@ -104,15 +104,15 @@ where L: LinAlgEx<F>, F: Float
         for (mat_g, vec_c) in self.mats_g.iter().zip(self.vecs_c) {
             let (ni, _) = mat_g.size();
 
-            let (x_ni, spl) = spl_x.split_at(ni);
-            let (x_1, spl) = spl.split_at(1);
+            let (x_1, spl) = spl_x.split_at(1);
+            let (x_ni, spl) = spl.split_at(ni);
             spl_x = spl;
-
-            // y = ... + a*-mat_gc^T*x_ni + ...
-            mat_g.trans_op(-alpha, x_ni, f1, y);
 
             // y = ... + a*-vec_c*x_1 + ...
             vec_c.op(-alpha, x_1, f1, y);
+
+            // y = ... + a*-mat_gc^T*x_ni + ...
+            mat_g.trans_op(-alpha, x_ni, f1, y);
         }
 
         let x_p = spl_x;
@@ -146,7 +146,7 @@ where L: LinAlgEx<F>, F: Float
             let (ni, one) = vec_h.size();
             assert_eq!(one, 1);
 
-            ni1_sum += ni + 1;
+            ni1_sum += 1 + ni;
         }
 
         (ni1_sum + p, 1)
@@ -159,16 +159,16 @@ where L: LinAlgEx<F>, F: Float
         for (vec_h, scl_d) in self.vecs_h.iter().zip(self.scls_d) {
             let (ni, _) = vec_h.size();
 
-            let (y_ni, spl) = spl_y.split_at_mut(ni);
-            let (y_1, spl) = spl.split_at_mut(1);
+            let (y_1, spl) = spl_y.split_at_mut(1);
+            let (y_ni, spl) = spl.split_at_mut(ni);
             spl_y = spl;
-
-            // y_ni = a*vec_h*x + b*y_ni
-            vec_h.op(alpha, x, beta, y_ni);
 
             // y_1 = a*scl_d*x + b*y_1
             L::scale(beta, y_1);
             L::add(alpha * *scl_d, x, y_1);
+
+            // y_ni = a*vec_h*x + b*y_ni
+            vec_h.op(alpha, x, beta, y_ni);
         }
 
         let y_p = spl_y;
@@ -189,15 +189,15 @@ where L: LinAlgEx<F>, F: Float
         for (vec_h, scl_d) in self.vecs_h.iter().zip(self.scls_d) {
             let (ni, _) = vec_h.size();
 
-            let (x_ni, spl) = spl_x.split_at(ni);
-            let (x_1, spl) = spl.split_at(1);
+            let (x_1, spl) = spl_x.split_at(1);
+            let (x_ni, spl) = spl.split_at(ni);
             spl_x = spl;
-
-            // y = ... + a*vec_h^T*x_ni + ...
-            vec_h.trans_op(alpha, x_ni, f1, y);
 
             // y = ... + a*scl_d*x_1 + ...
             L::add(alpha * *scl_d, x_1, y);
+
+            // y = ... + a*vec_h^T*x_ni + ...
+            vec_h.trans_op(alpha, x_ni, f1, y);
         }
 
         let x_p = spl_x;
@@ -226,7 +226,7 @@ where L: LinAlgEx<F>, F: Float
 
         for mat_g in self.mats_g {
             let ni = mat_g.size().0;
-            let (x_ni1, spl) = spl_x.split_at_mut(ni + 1);
+            let (x_ni1, spl) = spl_x.split_at_mut(1 + ni);
             spl_x = spl;
 
             self.cone_soc.proj(dual_cone, eps_zero, x_ni1)?;
@@ -244,7 +244,7 @@ where L: LinAlgEx<F>, F: Float
 
         for mat_g in self.mats_g {
             let ni = mat_g.size().0;
-            let (t_ni1, spl) = spl_t.split_at_mut(ni + 1);
+            let (t_ni1, spl) = spl_t.split_at_mut(1 + ni);
             spl_t = spl;
 
             self.cone_soc.product_group(t_ni1, group);

@@ -9,12 +9,14 @@ pub trait Cone<F: Float>
 
 //
 
-mod zero; // core, Float
-mod rpos; // core, Float
-mod soc;  // core, Float
-mod psd;  // core, Float
+mod zero;    // core, Float
+mod rpos;    // core, Float
+mod soc;     // core, Float
+mod rotsoc;  // core, Float
+mod psd;     // core, Float
 
 pub use zero::*;
 pub use rpos::*;
 pub use soc::*;
+pub use rotsoc::*;
 pub use psd::*;

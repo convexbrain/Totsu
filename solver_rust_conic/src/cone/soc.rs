@@ -33,7 +33,7 @@ where L: LinAlg<F>, F: Float
         let f1 = F::one();
         let f2 = f1 + f1;
 
-        if let Some((s, v)) = x.split_last_mut() {
+        if let Some((s, v)) = x.split_first_mut() {
             let norm_v = L::norm(v);
 
             if norm_v <= -*s {
