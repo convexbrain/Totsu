@@ -165,6 +165,24 @@ where L: LinAlgEx<F>, F: Float
         self
     }
 
+    pub fn set_sqrt(&mut self, eps_zero: F)
+    {
+        match self.typ {
+            MatType::General(_, _) => {
+                unimplemented!()
+            },
+            MatType::SymPack(n) => {
+                let mut work = vec![F::zero(); L::sqrt_spmat_worklen(n)];
+                L::sqrt_spmat(self.as_mut(), eps_zero, &mut work);
+            }
+        }
+    }
+    pub fn sqrt(mut self, eps_zero: F) -> Self
+    {
+        self.set_sqrt(eps_zero);
+        self
+    }
+
     fn index(&self, (r, c): (usize, usize)) -> usize
     {
         let i = match self.typ {
