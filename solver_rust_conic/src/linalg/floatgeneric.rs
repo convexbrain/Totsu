@@ -443,11 +443,8 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
         }
     }
 
-    fn sqrt_spmat_worklen(sn: usize) -> usize
+    fn sqrt_spmat_worklen(n: usize) -> usize
     {
-        let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
-        assert_eq!(n * (n + 1) / 2, sn);
-
         eig_func_worklen(n)
     }
 

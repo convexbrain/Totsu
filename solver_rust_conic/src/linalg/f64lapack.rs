@@ -176,11 +176,8 @@ impl LinAlgEx<f64> for F64LAPACK
         mat_to_vec(a, x, true);
     }
 
-    fn sqrt_spmat_worklen(sn: usize) -> usize
+    fn sqrt_spmat_worklen(n: usize) -> usize
     {
-        let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
-        assert_eq!(n * (n + 1) / 2, sn);
-
         let len_a = n * n;
 
         len_a + eig_func_worklen(n)

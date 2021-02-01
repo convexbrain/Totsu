@@ -36,17 +36,17 @@ where L: LinAlg<F>, F: Float
                 x[0] = x[0].max(f0);
             }
             else {
-                let t = x[0];
+                let r = x[0];
                 let s = x[1];
-                x[0] = (t + s) / fsqrt2;
-                x[1] = (t - s) / fsqrt2;
+                x[0] = (r + s) / fsqrt2;
+                x[1] = (r - s) / fsqrt2;
 
                 self.soc.proj(dual_cone, eps_zero, x)?;
 
-                let t = x[0];
+                let r = x[0];
                 let s = x[1];
-                x[0] = (t + s) / fsqrt2;
-                x[1] = (t - s) / fsqrt2;
+                x[0] = (r + s) / fsqrt2;
+                x[1] = (r - s) / fsqrt2;
             }
         }
         Ok(())

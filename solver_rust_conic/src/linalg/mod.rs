@@ -20,7 +20,7 @@ pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
     fn transform_sp(n: usize, alpha: F, mat: &[F], x: &[F], beta: F, y: &mut[F]);
     fn proj_psd_worklen(sn: usize) -> usize;
     fn proj_psd(x: &mut[F], eps_zero: F, work: &mut[F]);
-    fn sqrt_spmat_worklen(sn: usize) -> usize;
+    fn sqrt_spmat_worklen(n: usize) -> usize;
     fn sqrt_spmat(x: &mut[F], eps_zero: F, work: &mut[F]);
 }
 
