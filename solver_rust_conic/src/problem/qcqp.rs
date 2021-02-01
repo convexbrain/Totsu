@@ -311,7 +311,7 @@ where L: LinAlgEx<F>, F: Float
         Ok(())
     }
 
-    fn product_group(&self, dp_tau: &mut[F], group: fn(&mut[F]))
+    fn product_group<G: Fn(&mut[F]) + Copy>(&self, dp_tau: &mut[F], group: G)
     {
         let n = self.n;
         let m1 = self.m1;

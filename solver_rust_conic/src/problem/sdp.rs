@@ -175,7 +175,7 @@ where L: LinAlgEx<F>, F: Float
         Ok(())
     }
 
-    fn product_group(&self, dp_tau: &mut[F], group: fn(&mut[F]))
+    fn product_group<G: Fn(&mut[F]) + Copy>(&self, dp_tau: &mut[F], group: G)
     {
         let (sk, p) = (self.sk, self.p);
         let (t_sk, t_p) = dp_tau.split2(sk, p).unwrap();

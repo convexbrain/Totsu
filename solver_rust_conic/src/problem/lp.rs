@@ -176,7 +176,7 @@ where F: Float
         Ok(())
     }
 
-    fn product_group(&self, dp_tau: &mut[F], group: fn(&mut[F]))
+    fn product_group<G: Fn(&mut[F]) + Copy>(&self, dp_tau: &mut[F], group: G)
     {
         let (m, p) = (self.m, self.p);
         let (t_m, t_p) = dp_tau.split2(m, p).unwrap();

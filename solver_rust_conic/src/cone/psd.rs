@@ -43,7 +43,7 @@ where L: LinAlgEx<F>, F: Float
         Ok(())
     }
 
-    fn product_group(&self, dp_tau: &mut[F], group: fn(&mut[F]))
+    fn product_group<G: Fn(&mut[F]) + Copy>(&self, dp_tau: &mut[F], group: G)
     {
         group(dp_tau);
     }
