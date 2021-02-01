@@ -53,6 +53,50 @@ impl LinAlg<f64> for F64LAPACK
     }
 }
 
+//
+
+fn eig_func<E>(a: &mut[f64], n: usize, eps_zero: f64, wz: &mut[f64], func: E)
+where E: Fn(f64)->Option<f64>
+{
+    let (w, z) = wz.split2(n, n * n).unwrap();
+    let mut m = 0;
+
+    unsafe {
+        lapacke::dsyevr(
+            lapacke::Layout::ColumnMajor, b'V', b'V',
+            b'U', n as i32, a, n as i32,
+            0., f64::INFINITY, 0, 0, eps_zero,
+            &mut m, w,
+            z, n as i32, &mut []);
+    }
+
+    for e in a.iter_mut() {
+        *e = 0.;
+    }
+    for i in 0.. m as usize {
+        if let Some(e) = func(w[i]) {
+            let (_, ref_z) = z.split_at(i * n);
+            unsafe {
+                cblas::dsyr(
+                    cblas::Layout::ColumnMajor, cblas::Part::Upper,
+                    n as i32, e,
+                    ref_z, 1,
+                    a, n as i32);
+            }
+        }
+    }
+}
+
+fn eig_func_worklen(n: usize) -> usize
+{
+    let len_w = n;
+    let len_z = n * n;
+
+    len_w + len_z
+}
+
+//
+
 impl LinAlgEx<f64> for F64LAPACK
 {
     // y = a*mat*x + b*y
@@ -104,10 +148,8 @@ impl LinAlgEx<f64> for F64LAPACK
         assert_eq!(n * (n + 1) / 2, sn);
 
         let len_a = n * n;
-        let len_w = n;
-        let len_z = n * n;
 
-        len_a + len_w + len_z
+        len_a + eig_func_worklen(n)
     }
 
     fn proj_psd(x: &mut[f64], eps_zero: f64, work: &mut[f64])
@@ -118,41 +160,58 @@ impl LinAlgEx<f64> for F64LAPACK
         assert_eq!(n * (n + 1) / 2, sn);
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
-        let (a, w, z) = work.split3(n * n, n, n * n).unwrap();
-        let mut m = 0;
+        let (a, wz) = work.split2(n * n, n + n * n).unwrap();
+
+        vec_to_mat(x, a, true);
     
-        vec_to_mat(x, a);
-    
-        unsafe {
-            lapacke::dsyevr(
-                lapacke::Layout::ColumnMajor, b'V', b'V',
-                b'U', n as i32, a, n as i32,
-                0., f64::INFINITY, 0, 0, eps_zero,
-                &mut m, w,
-                z, n as i32, &mut []);
-        }
-    
-        for e in a.iter_mut() {
-            *e = 0.;
-        }
-        for i in 0.. m as usize {
-            let e = w[i];
-            let (_, ref_z) = z.split_at(i * n);
-            unsafe {
-                cblas::dsyr(
-                    cblas::Layout::ColumnMajor, cblas::Part::Upper,
-                    n as i32, e,
-                    ref_z, 1,
-                    a, n as i32);
+        eig_func(a, n, eps_zero, wz, |e| {
+            if e > 0. {
+                Some(e)
             }
+            else {
+                None
+            }
+        });
+
+        mat_to_vec(a, x, true);
+    }
+
+    fn sqrt_spmat_worklen(sn: usize) -> usize
+    {
+        let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
+        assert_eq!(n * (n + 1) / 2, sn);
+
+        let len_a = n * n;
+
+        len_a + eig_func_worklen(n)
+    }
+
+    fn sqrt_spmat(x: &mut[f64], eps_zero: f64, work: &mut[f64])
+    {
+        let sn = x.len();
+
+        let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
+        assert_eq!(n * (n + 1) / 2, sn);
+        assert!(work.len() >= Self::proj_psd_worklen(sn));
+
+        let (a, wz) = work.split2(n * n, n + n * n).unwrap();
+
+        vec_to_mat(x, a, false);
     
-        }
-    
-        mat_to_vec(a, x);
+        eig_func(a, n, eps_zero, wz, |e| {
+            if e > 0. {
+                Some(e.sqrt())
+            }
+            else {
+                None
+            }
+        });
+
+        mat_to_vec(a, x, false);
     }
 }
 
-fn vec_to_mat(v: &[f64], m: &mut[f64])
+fn vec_to_mat(v: &[f64], m: &mut[f64], scale: bool)
 {
     let l = v.len();
     let n = (m.len() as f64).sqrt() as usize;
@@ -177,11 +236,13 @@ fn vec_to_mat(v: &[f64], m: &mut[f64])
     assert!(ref_m.is_empty());
     assert!(ref_v.is_empty());
 
-    // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
-    unsafe { cblas::dscal(n as i32, 2_f64.sqrt(), m, (n + 1) as i32) }
+    if scale {
+        // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
+        unsafe { cblas::dscal(n as i32, 2_f64.sqrt(), m, (n + 1) as i32) }
+    }
 }
 
-fn mat_to_vec(m: &mut[f64], v: &mut[f64])
+fn mat_to_vec(m: &mut[f64], v: &mut[f64], scale: bool)
 {
     let l = v.len();
     let n = (m.len() as f64).sqrt() as usize;
@@ -189,8 +250,10 @@ fn mat_to_vec(m: &mut[f64], v: &mut[f64])
     assert_eq!(m.len(), n * n);
     assert_eq!(n * (n + 1) / 2, l);
 
-    // scale diagonals to match the resulted vector norm with the matrix norm multiplied by 0.5
-    unsafe { cblas::dscal(n as i32, 0.5_f64.sqrt(), m, (n + 1) as i32) }
+    if scale {
+        // scale diagonals to match the resulted vector norm with the matrix norm multiplied by 0.5
+        unsafe { cblas::dscal(n as i32, 0.5_f64.sqrt(), m, (n + 1) as i32) }
+    }
 
     let (_, mut ref_m) = m.split_at(0);
     let mut ref_v = v;
@@ -236,8 +299,8 @@ fn test_f64lapack1()
     ];
     let mut v = ref_v.clone();
     let m = &mut[0.; 25];
-    vec_to_mat(&mut v, m);
+    vec_to_mat(&mut v, m, true);
     assert_float_eq!(ref_m, m, abs_all <= 0.5);
-    mat_to_vec(m, &mut v);
+    mat_to_vec(m, &mut v, true);
     assert_float_eq!(ref_v, &v, abs_all <= 1e-6);
 }

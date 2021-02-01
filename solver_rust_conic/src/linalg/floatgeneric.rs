@@ -3,6 +3,7 @@ use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use super::{LinAlg, LinAlgEx};
+use crate::utils::*;
 
 //
 
@@ -307,6 +308,47 @@ fn jacobi_eig<F: Float>(spmat_x: &mut SpMatIdxMut<F>, mat_z: &mut MatIdxMut<F>, 
     }
 }
 
+fn eig_func<F: Float, E>(spmat_x: &mut SpMatIdxMut<F>, eps_zero: F, work: &mut[F], func: E)
+where E: Fn(F)->Option<F>
+{
+    let f1 = F::one();
+
+    let n = spmat_x.n;
+
+    let (w, z) = work.split2(n, n * n).unwrap();
+
+    let mut mat_z = MatIdxMut {
+        n_row: n, n_col: n, mat: z, transpose: false,
+    };
+
+    mat_z.clear();
+    for i in 0.. n {
+        mat_z[(i, i)] = f1;
+    }
+
+    jacobi_eig(spmat_x, &mut mat_z, eps_zero);
+
+    for i in 0.. n {
+        w[i] = spmat_x[(i, i)];
+    }
+
+    spmat_x.clear();
+    for i in 0.. n {
+        if let Some(e) = func(w[i]) {
+            let zcol = mat_z.col_vec(i);
+            spmat_x.rank1op(e, zcol);
+        }
+    }
+}
+
+fn eig_func_worklen(n: usize) -> usize
+{
+    let len_w = n;
+    let len_z = n * n;
+
+    len_w + len_z
+}
+
 //
 
 impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
@@ -362,10 +404,7 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
         let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
         assert_eq!(n * (n + 1) / 2, sn);
 
-        let len_w = n;
-        let len_z = n * n;
-
-        len_w + len_z
+        eig_func_worklen(n)
     }
 
     fn proj_psd(x: &mut[F], eps_zero: F, work: &mut[F])
@@ -384,40 +423,54 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
             n, mat: x,
         };
 
-        let (w, spl_work) = work.split_at_mut(n);
-        let (z, _) = spl_work.split_at_mut(n * n);
-
-        let mut mat_z = MatIdxMut {
-            n_row: n, n_col: n, mat: z, transpose: false,
-        };
-
         // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
         for i in 0.. n {
             spmat_x[(i, i)] = spmat_x[(i, i)] * fsqrt2;
         }
 
-        mat_z.clear();
-        for i in 0.. n {
-            mat_z[(i, i)] = f1;
-        }
-
-        jacobi_eig(&mut spmat_x, &mut mat_z, eps_zero);
-
-        for i in 0.. n {
-            w[i] = spmat_x[(i, i)];
-        }
-
-        spmat_x.clear();
-        for i in 0.. n {
-            if w[i] > f0 {
-                let zcol = mat_z.col_vec(i);
-                spmat_x.rank1op(w[i], zcol);
+        eig_func(&mut spmat_x, eps_zero, work, |e| {
+            if e > f0 {
+                Some(e)
             }
-        }
+            else {
+                None
+            }
+        });
 
         // scale diagonals to match the resulted vector norm with the matrix norm multiplied by 0.5
         for i in 0.. n {
             spmat_x[(i, i)] = spmat_x[(i, i)] * fsqrt2.recip();
         }
+    }
+
+    fn sqrt_spmat_worklen(sn: usize) -> usize
+    {
+        let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
+        assert_eq!(n * (n + 1) / 2, sn);
+
+        eig_func_worklen(n)
+    }
+
+    fn sqrt_spmat(x: &mut[F], eps_zero: F, work: &mut[F])
+    {
+        let f0 = F::zero();
+
+        let sn = x.len();
+        let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
+
+        assert!(work.len() >= Self::proj_psd_worklen(sn));
+
+        let mut spmat_x = SpMatIdxMut {
+            n, mat: x,
+        };
+
+        eig_func(&mut spmat_x, eps_zero, work, |e| {
+            if e > f0 {
+                Some(e.sqrt())
+            }
+            else {
+                None
+            }
+        });
     }
 }
