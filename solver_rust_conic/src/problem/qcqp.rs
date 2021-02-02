@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use crate::solver::Solver;
 use crate::linalg::LinAlgEx;
 use crate::operator::{Operator, MatBuild};
-use crate::cone::{Cone, ConePSD, ConeZero};
+use crate::cone::{Cone, ConeRotSOC, ConeZero};
 use crate::utils::*;
 
 //
@@ -21,30 +21,35 @@ where L: LinAlgEx<F>, F: Float
 {
     fn size(&self) -> (usize, usize)
     {
-        (self.n + 1, 1)
+        let n = self.n;
+
+        (n + 2, 1)
     }
 
     fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let n = self.n;
-        let (y_n, y_1) = y.split2(n, 1).unwrap();
+        let (y_n, y_t, y_1) = y.split3(n, 1, 1).unwrap();
 
-        // y_n = a*0*x + b*y_n;
+        // y_n = 0*x + b*y_n;
         L::scale(beta, y_n);
 
-        // y_1 = a*1*x + b*y_1;
+        // y_t = a*1*x + b*y_t;
+        L::scale(beta, y_t);
+        L::add(alpha, x, y_t);
+
+        // y_1 = a*0*x + b*y_1;
         L::scale(beta, y_1);
-        L::add(alpha, x, y_1);
     }
 
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let n = self.n;
-        let (_x_n, x_1) = x.split2(n, 1).unwrap();
+        let (_x_n, x_t, _x_1) = x.split3(n, 1, 1).unwrap();
 
-        // y = a*0*x_n + a*1*x_1 + b*y;
+        // y = 0*x_n + a*1*x_t + 0*x_1 + b*y;
         L::scale(beta, y);
-        L::add(alpha, x_1, y);
+        L::add(alpha, x_t, y);
     }
 }
 
@@ -53,7 +58,7 @@ where L: LinAlgEx<F>, F: Float
 pub struct ProbQCQPOpA<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    syms_p: &'a[MatBuild<L, F>],
+    syms_p_sqrt: &'a[MatBuild<L, F>],
     vecs_q: &'a[MatBuild<L, F>],
     mat_a: &'a MatBuild<L, F>,
 }
@@ -61,13 +66,12 @@ where L: LinAlgEx<F>, F: Float
 impl<'a, L, F> ProbQCQPOpA<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    fn dim(&self) -> (usize, usize, usize, usize)
+    fn dim(&self) -> (usize, usize, usize)
     {
-        let m1 = self.syms_p.len();
+        let m1 = self.syms_p_sqrt.len();
         let (p, n) = self.mat_a.size();
-        let sn = n * (n + 1) / 2;
 
-        (n, sn, m1, p)
+        (n, m1, p)
     }
 }
 
@@ -76,104 +80,98 @@ where L: LinAlgEx<F>, F: Float
 {
     fn size(&self) -> (usize, usize)
     {
-        let (n, sn, m1, p) = self.dim();
+        let (n, m1, p) = self.dim();
 
-        (m1 * (sn + (n + 1) + n + 1 + 1) + p, n + 1)
+        (m1 * (2 + n) + p + 1, n + 2)
     }
 
     fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
-        let (n, sn, _m1, _p) = self.dim();
-
-        let (x_n, x_1) = x.split2(n, 1).unwrap();
-
-        let f2 = F::one() + F::one();
-        let fsqrt2 = f2.sqrt();
+        let (n, _m1, p) = self.dim();
+        let (x_n, x_t, x_1) = x.split3(n, 1, 1).unwrap();
 
         let mut i = 0;
         let mut spl_y = y;
-        for (sym_p, vec_q) in self.syms_p.iter().zip(self.vecs_q) {
-            let (y_sn_n1, spl) = spl_y.split_at_mut(sn + (n + 1));
+        for (sym_p_sqrt, vec_q) in self.syms_p_sqrt.iter().zip(self.vecs_q) {
+            let (y_r, spl) = spl_y.split_at_mut(1);
+            let (y_s, spl) = spl.split_at_mut(1);
             let (y_n, spl) = spl.split_at_mut(n);
-            let (y_1, spl) = spl.split_at_mut(1);
-            let (y_o1, spl) = spl.split_at_mut(1);
             spl_y = spl;
 
-            // y_sn_n1 = 0*x_n + 0*x_1 + b*y_sn_n1
-            L::scale(beta, y_sn_n1);
+            // y_r = 0*x_n + 0*x_t + a*-1*x_1 + b*y_r
+            L::scale(beta, y_r);
+            L::add(-alpha, x_1, y_r);
 
-            // y_n = a*-sqrt(2)*sym_p*x_n + 0*x_1 + b*y_n
-            sym_p.op(-alpha * fsqrt2, x_n, beta, y_n);
-
-            // y_1 = 0*x_n + 0*x_1 + b*y_1
-            L::scale(beta, y_1);
-
-            // y_o1 = a*2*vec_q^T*x_n + a*-2*x_1 + b*y_o1  (i = 0)
-            //      = a*2*vec_q^T*x_n +    0*x_1 + b*y_o1  (i > 0)
-            vec_q.trans_op(f2 * alpha, x_n, beta, y_o1);
+            // y_s = a*vec_q^T*x_n * a*-1*x_t + 0*x_1 + b*y_s  (i = 0)
+            //     = a*vec_q^T*x_n *    0*x_t + 0*x_1 + b*y_s  (i > 0)
+            vec_q.trans_op(alpha, x_n, beta, y_s);
             if i == 0 {
-                L::add(-f2 * alpha, x_1, y_o1)
+                L::add(-alpha, x_t, y_s);
             }
+
+            // y_n = a*-sym_p_sqrt*x_n + 0*x_t + 0*x_1 + b*y_n
+            sym_p_sqrt.op(-alpha, x_n, beta, y_n);
 
             i += 1;
         }
 
-        let y_p = spl_y;
+        let (y_p, y_1) = spl_y.split2(p, 1).unwrap();
 
-        // y_p = a*mat_a*x_n + 0*x_1 + b*y_p
+        // y_p = a*mat_a*x_n + 0*x_t + 0*x_1 + b*y_p
         self.mat_a.op(alpha, x_n, beta, y_p);
+
+        // y_1 = 0*x_n + 0*x_t + a*1*x_1 + b*y_1
+        L::scale(beta, y_1);
+        L::add(alpha, x_1, y_1);
     }
 
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
-        let (n, sn, _m1, _p) = self.dim();
-
-        let (y_n, y_1) = y.split2(n, 1).unwrap();
+        let (n, _m1, p) = self.dim();
+        let (y_n, y_t, y_1) = y.split3(n, 1, 1).unwrap();
 
         let f1 = F::one();
-        let f2 = f1 + f1;
-        let fsqrt2 = f2.sqrt();
 
         // y_n = b*y_n + ...
+        // y_t = b*y_t + ...
         // y_1 = b*y_1 + ...
         L::scale(beta, y_n);
+        L::scale(beta, y_t);
         L::scale(beta, y_1);
 
         let mut i = 0;
         let mut spl_x = x;
-        for (sym_p, vec_q) in self.syms_p.iter().zip(self.vecs_q) {
-            let (_x_sn_n1, spl) = spl_x.split_at(sn + (n + 1));
+        for (sym_p_sqrt, vec_q) in self.syms_p_sqrt.iter().zip(self.vecs_q) {
+            let (x_r, spl) = spl_x.split_at(1);
+            let (x_s, spl) = spl.split_at(1);
             let (x_n, spl) = spl.split_at(n);
-            let (_x_1, spl) = spl.split_at(1);
-            let (x_o1, spl) = spl.split_at(1);
             spl_x = spl;
 
-            // y_n = ... + 0*x_sn_n1 + ...
-            // y_1 = ... + 0*x_sn_n1 + ...
+            // y_n = ... + 0*x_r * a*vec_q*x_s + a*-sym_p_sqrt*x_n + ...
+            vec_q.op(alpha, x_s, f1, y_n);
+            sym_p_sqrt.op(-alpha, x_n, f1, y_n);
 
-            // y_n = ... + a*-sqrt(2)*sym_p*x_n + ...
-            // y_1 = ... + 0*x_n + ...
-            sym_p.op(-alpha * fsqrt2, x_n, f1, y_n);
-
-            // y_n = ... + 0*x_1 + ...
-            // y_1 = ... + 0*x_1 + ...
-
-            // y_n = ... + a*2*vec_q*x_o1 + ...
-            // y_1 = ... + a*-2*x_o1 + ...  (i = 0)
-            //       ... +    0*x_o1 + ...  (i > 0)
-            vec_q.op(f2 * alpha, x_o1, f1, y_n);
+            // y_t = ... + 0*x_r + a*-1*x_s + 0*x_n + ...  (i = 0)
+            //     = ... + 0*x_r +    0*x_s + 0*x_n + ...  (i > 0)
             if i == 0 {
-                L::add(-f2 * alpha, x_o1, y_1);
+                L::add(-alpha, x_s, y_t);
             }
+
+            // y_1 = ... + a*-1*x_r + 0*x_s + 0*x_n + ...
+            L::add(-alpha, x_r, y_1);
 
             i += 1;
         }
 
-        let x_p = spl_x;
+        let (x_p, x_1) = spl_x.split2(p, 1).unwrap();
 
-        // y_n = ... + a*mat_a^T*x_p
-        // y_1 = ... +         0*x_p
-        self.mat_a.trans_op(alpha, x_p, beta, y_n);
+        // y_n = .. + a*mat_a^T*x_p + 0*x_1
+        self.mat_a.trans_op(alpha, x_p, f1, y_n);
+
+        // y_t = .. + 0*x_p + 0*x_1
+
+        // y_1 = .. + 0*x_p + a*1*x_1
+        L::add(alpha, x_1, y_1);
     }
 }
 
@@ -183,7 +181,6 @@ pub struct ProbQCQPOpB<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
     n: usize,
-    symvecs_p: &'a[MatBuild<L, F>],
     scls_r: &'a[F],
     vec_b: &'a MatBuild<L, F>,
 }
@@ -191,15 +188,14 @@ where L: LinAlgEx<F>, F: Float
 impl<'a, L, F> ProbQCQPOpB<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    fn dim(&self) -> (usize, usize, usize, usize)
+    fn dim(&self) -> (usize, usize, usize)
     {
         let n = self.n;
-        let m1 = self.symvecs_p.len();
+        let m1 = self.scls_r.len();
         let (p, one) = self.vec_b.size();
         assert_eq!(one, 1);
-        let sn = n * (n + 1) / 2;
 
-        (n, sn, m1, p)
+        (n, m1, p)
     }
 }
 
@@ -208,106 +204,101 @@ where L: LinAlgEx<F>, F: Float
 {
     fn size(&self) -> (usize, usize)
     {
-        let (n, sn, m1, p) = self.dim();
+        let (n, m1, p) = self.dim();
 
-        (m1 * (sn + (n + 1) + n + 1 + 1) + p, 1)
+        (m1 * (2 + n) + p + 1, 1)
     }
 
     fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
-        let (n, sn, _m1, _p) = self.dim();
-
-        let f1 = F::one();
-        let f2 = f1 + f1;
+        let (n, _m1, p) = self.dim();
 
         let mut spl_y = y;
-        for (symvec_p, scl_r) in self.symvecs_p.iter().zip(self.scls_r) {
-            let (y_sn, spl) = spl_y.split_at_mut(sn);
-            let (y_n1_n_1, spl) = spl.split_at_mut((n + 1) + n + 1);
-            let (y_o1, spl) = spl.split_at_mut(1);
+        for scl_r in self.scls_r {
+            let (y_r, spl) = spl_y.split_at_mut(1);
+            let (y_s, spl) = spl.split_at_mut(1);
+            let (y_n, spl) = spl.split_at_mut(n);
             spl_y = spl;
 
-            // y_sn = alpha*symvec_p*x + b*y_sn
-            symvec_p.op(alpha, x, beta, y_sn);
+            // y_r = 0*x + b*y_r
+            L::scale(beta, y_r);
 
-            // y_n1_n_1 = 0*x + b*y_n1_n_1
-            L::scale(beta, y_n1_n_1);
+            // y_s = a*-scl_r*x + b*y_s
+            L::scale(beta, y_s);
+            L::add(-alpha * *scl_r, x, y_s);
 
-            // y_o1 = a*-2*scl_r*x + b*y_o1
-            L::scale(beta, y_o1);
-            L::add(-f2 * alpha * *scl_r, x, y_o1);
+            // y_n = 0*x + b*y_n
+            L::scale(beta, y_n);
         }
 
-        let y_p = spl_y;
+        let (y_p, y_1) = spl_y.split2(p, 1).unwrap();
 
         // y_p = a*vec_b*x + b*y_p
         self.vec_b.op(alpha, x, beta, y_p);
+
+        // y_1 = a*1*x + b*y_1
+        L::scale(beta, y_1);
+        L::add(alpha, x, y_1);
     }
 
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
-        let (n, sn, _m1, _p) = self.dim();
+        let (n, _m1, p) = self.dim();
 
         let f1 = F::one();
-        let f2 = f1 + f1;
 
         // y = b*y + ...
         L::scale(beta, y);
 
         let mut spl_x = x;
-        for (symvec_p, scl_r) in self.symvecs_p.iter().zip(self.scls_r) {
-            let (x_sn, spl) = spl_x.split_at(sn);
-            let (_x_n1_n_1, spl) = spl.split_at((n + 1) + n + 1);
-            let (x_o1, spl) = spl.split_at(1);
+        for scl_r in self.scls_r {
+            let (_x_r, spl) = spl_x.split_at(1);
+            let (x_s, spl) = spl.split_at(1);
+            let (_x_n, spl) = spl.split_at(n);
             spl_x = spl;
 
-            // y = ... + a*symvec_p^T*x_sn + ...
-            symvec_p.trans_op(alpha, x_sn, f1, y);
-
-            // y = ... + 0*x_n1_n_1 + ...
-
-            // y = ... + a*-2*scl_r*x_o1 + ...
-            L::add(-f2 * alpha * *scl_r, x_o1, y);
+            // y = ... + 0*x_r + a*-scl_r*x_s + 0*x_n + ...
+            L::add(-alpha * *scl_r, x_s, y);
         }
 
-        let x_p = spl_x;
+        let (x_p, x_1) = spl_x.split2(p, 1).unwrap();
 
-        // y = ... + a*vec_b^T*x_p
+        // y = ... + a*vec_b^T*x_p * a*1*x_1
         self.vec_b.trans_op(alpha, x_p, f1, y);
+        L::add(alpha, x_1, y);
     }
 }
 
 //
 
-pub struct ProbQCQPCone<'a, L, F>
+pub struct ProbQCQPCone<L, F>
 where L: LinAlgEx<F>, F: Float
 {
     n: usize,
     m1: usize,
-    cone_psd: ConePSD<'a, L, F>,
+    cone_rotsoc: ConeRotSOC<L, F>,
     cone_zero: ConeZero<F>,
 }
 
-impl<'a, L, F> Cone<F> for ProbQCQPCone<'a, L, F>
+impl<L, F> Cone<F> for ProbQCQPCone<L, F>
 where L: LinAlgEx<F>, F: Float
 {
     fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>
     {
         let n = self.n;
         let m1 = self.m1;
-        let sn = n * (n + 1) / 2;
 
         let mut spl_x = x;
         for _ in 0.. m1 {
-            let (x_sn_n1_n_1_1, spl) = spl_x.split_at_mut(sn + (n + 1) + n + 1 + 1);
+            let (x_rsn, spl) = spl_x.split_at_mut(2 + n);
             spl_x = spl;
 
-            self.cone_psd.proj(dual_cone, eps_zero, x_sn_n1_n_1_1)?;
+            self.cone_rotsoc.proj(dual_cone, eps_zero, x_rsn)?;
         }
 
-        let x_p = spl_x;
+        let x_p1 = spl_x;
 
-        self.cone_zero.proj(dual_cone, eps_zero, x_p)?;
+        self.cone_zero.proj(dual_cone, eps_zero, x_p1)?;
         Ok(())
     }
 
@@ -315,19 +306,18 @@ where L: LinAlgEx<F>, F: Float
     {
         let n = self.n;
         let m1 = self.m1;
-        let sn = n * (n + 1) / 2;
 
         let mut spl_t = dp_tau;
         for _ in 0.. m1 {
-            let (t_sn_n1_n_1_1, spl) = spl_t.split_at_mut(sn + (n + 1) + n + 1 + 1);
+            let (t_rsn, spl) = spl_t.split_at_mut(2 + n);
             spl_t = spl;
 
-            self.cone_psd.product_group(t_sn_n1_n_1_1, group);
+            self.cone_rotsoc.product_group(t_rsn, group);
         }
 
-        let t_p = spl_t;
+        let t_p1 = spl_t;
 
-        self.cone_zero.product_group(t_p, group);
+        self.cone_zero.product_group(t_p1, group);
     }
 }
 
@@ -336,15 +326,13 @@ where L: LinAlgEx<F>, F: Float
 pub struct ProbQCQP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    syms_p: Vec<MatBuild<L, F>>,
     vecs_q: Vec<MatBuild<L, F>>,
     scls_r: Vec<F>,
     mat_a: MatBuild<L, F>,
     vec_b: MatBuild<L, F>,
 
-    symvecs_p: Vec<MatBuild<L, F>>,
+    syms_p_sqrt: Vec<MatBuild<L, F>>,
 
-    w_cone_psd: Vec<F>,
     w_solver: Vec<F>,
 }
 
@@ -353,7 +341,8 @@ where L: LinAlgEx<F>, F: Float
 {
     pub fn new(
         syms_p: Vec<MatBuild<L, F>>, vecs_q: Vec<MatBuild<L, F>>, scls_r: Vec<F>,
-        mat_a: MatBuild<L, F>, vec_b: MatBuild<L, F>) -> Self
+        mat_a: MatBuild<L, F>, vec_b: MatBuild<L, F>,
+        eps_zero: F) -> Self
     {
         let (p, n) = mat_a.size();
         let m1 = syms_p.len();
@@ -369,34 +358,27 @@ where L: LinAlgEx<F>, F: Float
         assert_eq!(mat_a.size(), (p, n));
         assert_eq!(vec_b.size(), (p, 1));
 
-        let f1 = F::one();
-        let f2 = f1 + f1;
-        let fsqrt2 = f2.sqrt();
-    
-        let mut symvecs_p = Vec::new();
-        for i in 0.. m1 {
-            symvecs_p.push(syms_p[i].clone()
-                           .scale_nondiag(fsqrt2)
-                           .reshape_colvec());
+        let mut syms_p_sqrt = syms_p;
+
+        for sym_p_sqrt in &mut syms_p_sqrt {
+            sym_p_sqrt.set_sqrt(eps_zero);
+
         }
 
         ProbQCQP {
-            syms_p,
             vecs_q,
             scls_r,
             mat_a,
             vec_b,
-            symvecs_p,
-            w_cone_psd: Vec::new(),
+            syms_p_sqrt,
             w_solver: Vec::new(),
         }
     }
     
-    pub fn problem(&mut self) -> (ProbQCQPOpC<L, F>, ProbQCQPOpA<L, F>, ProbQCQPOpB<L, F>, ProbQCQPCone<'_, L, F>, &mut[F])
+    pub fn problem(&mut self) -> (ProbQCQPOpC<L, F>, ProbQCQPOpA<L, F>, ProbQCQPOpB<L, F>, ProbQCQPCone<L, F>, &mut[F])
     {
         let n = self.mat_a.size().1;
-        let m1 = self.syms_p.len();
-        let sn = n * (n + 1) / 2;
+        let m1 = self.syms_p_sqrt.len();
     
         let f0 = F::zero();
 
@@ -406,22 +388,20 @@ where L: LinAlgEx<F>, F: Float
             n,
         };
         let op_a = ProbQCQPOpA {
-            syms_p: &self.syms_p,
+            syms_p_sqrt: &self.syms_p_sqrt,
             vecs_q: &self.vecs_q,
             mat_a: &self.mat_a,
         };
         let op_b = ProbQCQPOpB {
             n,
-            symvecs_p: &self.symvecs_p,
             scls_r: &self.scls_r,
             vec_b: &self.vec_b,
         };
 
-        self.w_cone_psd.resize(ConePSD::<L, _>::query_worklen(sn + (n + 1) + n + 1 + 1), f0);
         let cone = ProbQCQPCone {
             n,
             m1,
-            cone_psd: ConePSD::new(self.w_cone_psd.as_mut()),
+            cone_rotsoc: ConeRotSOC::new(),
             cone_zero: ConeZero::new(),
         };
 

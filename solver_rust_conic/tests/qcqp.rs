@@ -37,7 +37,7 @@ fn subtest_qcqp1<L: LinAlgEx<f64>>()
 
     let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
     println!("{:?}", s.par);
-    let mut qp = ProbQCQP::<L, _>::new(syms_p, vecs_q, scls_r, mat_a, vec_b);
+    let mut qp = ProbQCQP::<L, _>::new(syms_p, vecs_q, scls_r, mat_a, vec_b, s.par.eps_zero);
     let rslt = s.solve(qp.problem(), PrintLogger).unwrap();
     println!("{:?}", rslt);
 
@@ -47,11 +47,11 @@ fn subtest_qcqp1<L: LinAlgEx<f64>>()
 #[test]
 fn test_qcqp1_1()
 {
-    //subtest_qcqp1::<FloatGeneric<f64>>(); // TODO
+    subtest_qcqp1::<FloatGeneric<f64>>();
 }
 
 #[test]
 fn test_qcqp1_2()
 {
-    //subtest_qcqp1::<F64LAPACK>(); // TODO
+    subtest_qcqp1::<F64LAPACK>();
 }
