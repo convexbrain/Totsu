@@ -62,10 +62,16 @@ where L: LinAlgEx<F>, F: Float
                 if nr > 0 && nc > 0 {
                     L::transform_ge(transpose, nr, nc, alpha, self.as_ref(), x, beta, y)
                 }
+                else {
+                    L::scale(beta, y);
+                }
             },
             MatType::SymPack(n) => {
                 if n > 0 {
                     L::transform_sp(n, alpha, self.as_ref(), x, beta, y)
+                }
+                else {
+                    L::scale(beta, y);
                 }
             },
         }
