@@ -20,7 +20,7 @@ fn main() -> std::io::Result<()> {
     //----- make sample points for training
 
     let mut rng = Xoshiro256StarStar::seed_from_u64(0);
-    let l = 10; // TODO 50; // # of dimension
+    let l = 50; // # of dimension
 
     let x = AMatBuild::new(MatType::General(l, 1))
             .by_fn(|_, _| rng.gen_range(-1. ..= 1.)); // random l-dimensional vector
@@ -67,9 +67,9 @@ fn main() -> std::io::Result<()> {
     //----- solve QP
 
     let s = ASolver::new().par(|p| {
-        p.log_period = 1000;
+        p.log_period = 10000;
     });
-    let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b);
+    let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
     let rslt = s.solve(qp.problem(), PrintLogger).unwrap();
     //println!("{:?}", rslt.0);
 
