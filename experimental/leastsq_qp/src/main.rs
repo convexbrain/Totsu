@@ -46,11 +46,11 @@ fn main() -> std::io::Result<()> {
                     }
                     sum
                 });
-    println!("{}", sym_p);
+    //println!("{}", sym_p);
 
     let mut vec_q = x.clone();
     sym_p.op(-1., x.as_ref(), 0., vec_q.as_mut());
-    println!("{}", vec_q);
+    //println!("{}", vec_q);
 
     let mat_g = AMatBuild::new(MatType::General(m, n));
     //println!("{}", mat_g);
@@ -78,7 +78,7 @@ fn main() -> std::io::Result<()> {
         let absdiff = (x[(i, 0)] - rslt.0[i]).abs();
         max_absdiff = max_absdiff.max(absdiff);
     }
-    println!("{:.3e}", max_absdiff);
+    println!("max_absdiff {:.3e}", max_absdiff);
 
     //println!("{:?}", x);
 
