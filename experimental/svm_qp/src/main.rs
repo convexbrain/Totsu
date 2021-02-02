@@ -51,8 +51,8 @@ fn main() -> std::io::Result<()> {
 
     //----- make sample points for training
 
-    let mut rng = Xoshiro256StarStar::seed_from_u64(10);
-    let l = 10; // TODO 50; // # of samples
+    let mut rng = Xoshiro256StarStar::seed_from_u64(10000);
+    let l = 50; // # of samples
     let x = AMatBuild::new(MatType::General(2, l))
             .by_fn(|_, _| rng.gen()); // random 2-dimensional points
     let y = AMatBuild::new(MatType::General(l, 1))
@@ -99,10 +99,10 @@ fn main() -> std::io::Result<()> {
 
     //----- solve QP
 
-    let mut s = ASolver::new(); // TODO
-    //s.par.eps_acc = 1e-3;
-    s.par.log_period = 1000;
-    let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b);
+    let s = ASolver::new().par(|p| {
+        p.log_period = 10000;
+    });
+    let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
     let rslt = s.solve(qp.problem(), PrintLogger).unwrap();
     //println!("{:?}", rslt);
 
