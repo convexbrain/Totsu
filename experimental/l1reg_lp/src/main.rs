@@ -113,7 +113,9 @@ fn main() -> std::io::Result<()> {
 
     //----- solve LP
 
-    let s = ASolver::new();
+    let s = ASolver::new().par(|p| {
+        p.log_period = 10000;
+    });
     let mut lp = AProbLP::new(vec_c, mat_g, vec_h, mat_a, vec_b);
     let rslt = s.solve(lp.problem(), PrintLogger).unwrap();
     //println!("{:?}", rslt);
