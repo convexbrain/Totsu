@@ -4,8 +4,8 @@ mod qcqp; // std, Float
 mod socp; // std, Float
 mod sdp;  // std, Float
 
-pub use lp::*;
-pub use qp::*;
-pub use qcqp::*;
-pub use socp::*;
-pub use sdp::*;
+pub use lp::ProbLP;
+pub use qp::ProbQP;
+pub use qcqp::ProbQCQP;
+pub use socp::ProbSOCP;
+pub use sdp::ProbSDP;
