@@ -1,3 +1,5 @@
+// TODO: more useful methods and operator overrides from examples
+
 use num::Float;
 use core::ops::{Index, IndexMut, Deref};
 use core::marker::PhantomData;

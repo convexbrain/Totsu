@@ -31,7 +31,7 @@ pub struct SolverParam<F: Float>
     pub eps_acc: F,
     pub eps_inf: F,
     pub eps_zero: F,
-    pub log_period: usize,
+    pub log_period: Option<usize>,
     pub log_verbose: bool,
 }
 
@@ -46,7 +46,7 @@ impl<F: Float> Default for SolverParam<F>
             eps_acc: ten.powi(-6),
             eps_inf: ten.powi(-6),
             eps_zero: ten.powi(-12),
-            log_period: 0,
+            log_period: None,
             log_verbose: false,
         }
     }
@@ -302,8 +302,8 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                 false
             };
 
-            let log_trig = if self.par.log_period > 0 {
-                i % self.par.log_period == 0
+            let log_trig = if let Some(log_period) = self.par.log_period {
+                i % log_period.max(1) == 0
             }
             else {
                 false
