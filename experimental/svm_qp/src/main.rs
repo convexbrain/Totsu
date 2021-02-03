@@ -100,7 +100,8 @@ fn main() -> std::io::Result<()> {
     //----- solve QP
 
     let s = ASolver::new().par(|p| {
-        p.log_period = 10000;
+        p.eps_acc = 1e-3;
+        p.log_period = Some(10000);
     });
     let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
     let rslt = s.solve(qp.problem(), PrintLogger).unwrap();
