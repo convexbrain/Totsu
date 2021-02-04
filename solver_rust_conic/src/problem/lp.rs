@@ -188,6 +188,43 @@ where F: Float
 
 //
 
+/// Linear program
+/// 
+/// <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
+/// 
+/// The problem is
+/// \\[
+/// \begin{array}{ll}
+/// {\rm minimize} & c^Tx + d \\\\
+/// {\rm subject \ to} & G x \preceq h \\\\
+/// & A x = b,
+/// \end{array}
+/// \\]
+/// where
+/// - variables \\( x \in {\bf R}^n \\)
+/// - \\( c \in {\bf R}^n,\ d \in {\bf R} \\)
+/// - \\( G \in {\bf R}^{m \times n},\ h \in {\bf R}^m \\)
+/// - \\( A \in {\bf R}^{p \times n},\ b \in {\bf R}^p \\).
+/// 
+/// In the following, \\( d \\) does not appear since it does not matter.
+/// 
+/// The representation as a conic linear program is as follows:
+/// \\[
+/// \begin{array}{ll}
+/// {\rm minimize} & c^Tx \\\\
+/// {\rm subject \ to} &
+///   \left[ \begin{array}{c}
+///   G \\\\
+///   A
+///   \end{array} \right]
+///   x + s =
+///   \left[ \begin{array}{c}
+///   h \\\\
+///   b
+///   \end{array} \right] \\\\
+/// & s \in {\bf R}_+^m \times \lbrace 0 \rbrace^n.
+/// \end{array}
+/// \\]
 pub struct ProbLP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
@@ -203,6 +240,14 @@ where L: LinAlgEx<F>, F: Float
 impl<L, F> ProbLP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
+    /// Creates a linear program with given data.
+    /// 
+    /// Returns `ProbLP`.
+    /// * `vec_c` is \\(c\\).
+    /// * `mat_g` is \\(G\\).
+    /// * `vec_h` is \\(h\\).
+    /// * `mat_a` is \\(A\\).
+    /// * `vec_b` is \\(b\\).
     pub fn new(
         vec_c: MatBuild<L, F>,
         mat_g: MatBuild<L, F>, vec_h: MatBuild<L, F>,
@@ -228,6 +273,9 @@ where L: LinAlgEx<F>, F: Float
         }
     }
 
+    /// Generates the problem data structures to be fed to `Solver::solve`.
+    /// 
+    /// Returns a tuple of operators, a cone and a work slice.
     pub fn problem(&mut self) -> (ProbLPOpC<L, F>, ProbLPOpA<L, F>, ProbLPOpB<L, F>, ProbLPCone<F>, &mut[F])
     {
         let m = self.vec_h.size().0;

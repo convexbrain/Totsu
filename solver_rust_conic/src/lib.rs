@@ -140,6 +140,7 @@ pub mod cone;
 pub mod logger;
 pub mod problem;
 
+/// Prelude
 pub mod prelude // core, Float
 {
     pub use super::solver::{Solver, SolverError, SolverParam};
