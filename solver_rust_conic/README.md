@@ -16,8 +16,11 @@ Each of those problems can be represented as a conic linear program.
 
 ## Algorithm and design concepts
 
-The author combines the two papers \[1\]\[2\]
-so that the homogeneous self-dual embedding matrix in \[2\] is formed as a linear operator in \[1\].
+The author combines the two papers
+[\[1\]](https://ieeexplore.ieee.org/abstract/document/6126441)
+[\[2\]](https://arxiv.org/abs/1312.3039)
+so that the homogeneous self-dual embedding matrix in [\[2\]](https://arxiv.org/abs/1312.3039)
+is formed as a linear operator in [\[1\]](https://ieeexplore.ieee.org/abstract/document/6126441).
 
 A core method `Solver::solve` takes the following arguments:
 * objective and constraint linear operators that implement `Operator` trait and
