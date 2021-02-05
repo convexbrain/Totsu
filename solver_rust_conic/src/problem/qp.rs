@@ -21,15 +21,13 @@ where L: LinAlgEx<F>, F: Float
 {
     fn size(&self) -> (usize, usize)
     {
-        let n = self.n;
-
-        (n + 2, 1)
+        (self.n + 1, 1)
     }
 
     fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let n = self.n;
-        let (y_n, y_t, y_1) = y.split3(n, 1, 1).unwrap();
+        let (y_n, y_t) = y.split2(n, 1).unwrap();
 
         // y_n = 0*x + b*y_n;
         L::scale(beta, y_n);
@@ -37,17 +35,14 @@ where L: LinAlgEx<F>, F: Float
         // y_t = a*1*x + b*y_t;
         L::scale(beta, y_t);
         L::add(alpha, x, y_t);
-
-        // y_1 = a*0*x + b*y_1;
-        L::scale(beta, y_1);
     }
 
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let n = self.n;
-        let (_x_n, x_t, _x_1) = x.split3(n, 1, 1).unwrap();
+        let (_x_n, x_t) = x.split2(n, 1).unwrap();
 
-        // y = 0*x_n + a*1*x_t + 0*x_1 + b*y;
+        // y = 0*x_n + a*1*x_t + b*y;
         L::scale(beta, y);
         L::add(alpha, x_t, y);
     }
@@ -87,59 +82,49 @@ where L: LinAlgEx<F>, F: Float
     {
         let (n, m, p) = self.dim();
 
-        ((2 + n) + m + p + 1, n + 2)
+        ((2 + n) + m + p, n + 1)
     }
 
     fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let (n, m, p) = self.dim();
-        let (x_n, x_t, x_1) = x.split3(n, 1, 1).unwrap();
-        let (y_r, y_s, y_n, y_m, y_p, y_1) = y.split6(1, 1, n, m, p, 1).unwrap();
+        let (x_n, x_t) = x.split2(n, 1).unwrap();
+        let (y_r, y_s, y_n, y_m, y_p) = y.split5(1, 1, n, m, p).unwrap();
 
-        // y_r = 0*x_n + 0*x_t + a*-1*x_1 + b*y_r
+        // y_r = 0*x_n + 0*x_t + b*y_r
         L::scale(beta, y_r);
-        L::add(-alpha, x_1, y_r);
 
-        // y_s = a*vec_q^T*x_n * a*-1*x_t + 0*x_1 + b*y_s
+        // y_s = a*vec_q^T*x_n * a*-1*x_t + b*y_s
         self.vec_q.trans_op(alpha, x_n, beta, y_s);
         L::add(-alpha, x_t, y_s);
 
-        // y_n = a*-sym_p_sqrt*x_n + 0*x_t + 0*x_1 + b*y_n
+        // y_n = a*-sym_p_sqrt*x_n + 0*x_t + b*y_n
         self.sym_p_sqrt.op(-alpha, x_n, beta, y_n);
 
-        // y_m = a*mat_g*x_n + 0*x_t + 0*x_1 + b*y_m
+        // y_m = a*mat_g*x_n + 0*x_t + b*y_m
         self.mat_g.op(alpha, x_n, beta, y_m);
 
-        // y_p = a*mat_a*x_n + 0*x_t + 0*x_1 + b*y_p
+        // y_p = a*mat_a*x_n + 0*x_t + b*y_p
         self.mat_a.op(alpha, x_n, beta, y_p);
-
-        // y_1 = 0*x_n + 0*x_t + a*1*x_1 + b*y_1
-        L::scale(beta, y_1);
-        L::add(alpha, x_1, y_1);
     }
 
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let (n, m, p) = self.dim();
-        let (x_r, x_s, x_n, x_m, x_p, x_1) = x.split6(1, 1, n, m, p, 1).unwrap();
-        let (y_n, y_t, y_1) = y.split3(n, 1, 1).unwrap();
+        let (_x_r, x_s, x_n, x_m, x_p) = x.split5(1, 1, n, m, p).unwrap();
+        let (y_n, y_t) = y.split2(n, 1).unwrap();
 
         let f1 = F::one();
         
-        // y_n = 0*x_r * a*vec_q*x_s + a*-sym_p_sqrt*x_n + a*mat_g^T*x_m + a*mat_a^T*x_p + 0*x_1 + b*y_n
+        // y_n = 0*x_r * a*vec_q*x_s + a*-sym_p_sqrt*x_n + a*mat_g^T*x_m + a*mat_a^T*x_p + b*y_n
         self.vec_q.op(alpha, x_s, beta, y_n);
         self.sym_p_sqrt.op(-alpha, x_n, f1, y_n);
         self.mat_g.trans_op(alpha, x_m, f1, y_n);
         self.mat_a.trans_op(alpha, x_p, f1, y_n);
 
-        // y_t = 0*x_r + a*-1*x_s + 0*x_n + 0*x_m + 0*x_p + 0*x_1 + b*y_t
+        // y_t = 0*x_r + a*-1*x_s + 0*x_n + 0*x_m + 0*x_p + b*y_t
         L::scale(beta, y_t);
         L::add(-alpha, x_s, y_t);
-
-        // y_1 = a*-1*x_r + 0*x_s + 0*x_n + 0*x_m + 0*x_p + a*1*x_1 + b*y_1
-        L::scale(beta, y_1);
-        L::add(-alpha, x_r, y_1);
-        L::add(alpha, x_1, y_1);
     }
 }
 
@@ -174,39 +159,39 @@ where L: LinAlgEx<F>, F: Float
     {
         let (n, m, p) = self.dim();
 
-        ((2 + n) + m + p + 1, 1)
+        ((2 + n) + m + p, 1)
     }
 
     fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let (n, m, p) = self.dim();
-        let (y_rsn, y_m, y_p, y_1) = y.split4(2 + n, m, p, 1).unwrap();
+        let (y_r, y_sn, y_m, y_p) = y.split4(1, 1 + n, m, p).unwrap();
 
-        // y_rsn = 0*x + b*y_sn
-        L::scale(beta, y_rsn);
+        // y_r = a*1*x + b*y_r
+        L::scale(beta, y_r);
+        L::add(alpha, x, y_r);
+
+        // y_sn = 0*x + b*y_sn
+        L::scale(beta, y_sn);
 
         // y_m = a*vec_h*x + b*y_m
         self.vec_h.op(alpha, x, beta, y_m);
 
         // y_p = a*vec_b*x + b*y_p
         self.vec_b.op(alpha, x, beta, y_p);
-
-        // y_1 = a*1*x + b*y_1
-        L::scale(beta, y_1);
-        L::add(alpha, x, y_1);
     }
 
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         let (n, m, p) = self.dim();
-        let (_x_rsn, x_m, x_p, x_1) = x.split4(2 + n, m, p, 1).unwrap();
+        let (x_r, _x_sn, x_m, x_p) = x.split4(1, 1 + n, m, p).unwrap();
 
         let f1 = F::one();
 
-        // y = 0*x_rsn + a*vec_h^T*x_m + a*vec_b^T*x_p * a*1*x_1 + b*y
+        // y = a*1*x_r + 0*x_sn + a*vec_h^T*x_m + a*vec_b^T*x_p + b*y
         self.vec_h.trans_op(alpha, x_m, beta, y);
         self.vec_b.trans_op(alpha, x_p, f1, y);
-        L::add(alpha, x_1, y);
+        L::add(alpha, x_r, y);
     }
 }
 
@@ -229,22 +214,22 @@ where L: LinAlgEx<F>, F: Float
     fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>
     {
         let (n, m, p) = (self.n, self.m, self.p);
-        let (x_rsn, x_m, x_p1) = x.split3(2 + n, m, p + 1).unwrap();
+        let (x_rsn, x_m, x_p) = x.split3(2 + n, m, p).unwrap();
 
         self.cone_rotsoc.proj(dual_cone, eps_zero, x_rsn)?;
         self.cone_rpos.proj(dual_cone, eps_zero, x_m)?;
-        self.cone_zero.proj(dual_cone, eps_zero, x_p1)?;
+        self.cone_zero.proj(dual_cone, eps_zero, x_p)?;
         Ok(())
     }
 
     fn product_group<G: Fn(&mut[F]) + Copy>(&self, dp_tau: &mut[F], group: G)
     {
         let (n, m, p) = (self.n, self.m, self.p);
-        let (t_rsn, t_m, t_p1) = dp_tau.split3(2 + n, m, p + 1).unwrap();
+        let (t_rsn, t_m, t_p) = dp_tau.split3(2 + n, m, p).unwrap();
 
         self.cone_rotsoc.product_group(t_rsn, group);
         self.cone_rpos.product_group(t_m, group);
-        self.cone_zero.product_group(t_p1, group);
+        self.cone_zero.product_group(t_p, group);
     }
 
 }
