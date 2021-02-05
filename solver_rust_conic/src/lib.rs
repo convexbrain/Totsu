@@ -7,12 +7,7 @@ This crate for Rust provides **a first-order conic linear program solver**.
 
 # Target problem
 
-A common target problem is continuous scalar **convex optimization** such as
-[LP](problem/struct.ProbLP.html),
-[QP](problem/struct.ProbQP.html),
-[QCQP](problem/struct.ProbQCQP.html),
-[SOCP](problem/struct.ProbSOCP.html) and
-[SDP](problem/struct.ProbSDP.html).
+A common target problem is continuous scalar **convex optimization** such as LP, QP, QCQP, SOCP and SDP.
 Each of those problems can be represented as a conic linear program:
 \\[
 \begin{array}{ll}
@@ -35,24 +30,24 @@ The author combines the two papers
 so that the homogeneous self-dual embedding matrix in [\[2\]](https://arxiv.org/abs/1312.3039)
 is formed as a linear operator in [\[1\]](https://ieeexplore.ieee.org/abstract/document/6126441).
 
-A core method [`Solver::solve`](solver/struct.Solver.html#method.solve) takes the following arguments:
-* objective and constraint linear operators that implement [`Operator`](operator/trait.Operator.html) trait and
-* a projection onto a cone that implements [`Cone`](cone/trait.Cone.html) trait.
+A core method [`solver::Solver::solve`] takes the following arguments:
+* objective and constraint linear operators that implement [`operator::Operator`] trait and
+* a projection onto a cone that implements [`cone::Cone`] trait.
 
 Therefore solving a specific problem requires an implementation of those traits.
-You can use pre-defined implementations (see [`problem`](problem/index.html)),
+You can use pre-defined implementations (see [`problem`]),
 as well as construct a user-defined tailored version for the reason of functionality and efficiency.
-Modules [`operator`](operator/index.html) and [`cone`](cone/index.html) include several basic structs
-that implement [`Operator`](operator/trait.Operator.html) and [`Cone`](cone/trait.Cone.html) trait.
+Modules [`operator`] and [`cone`] include several basic structs
+that implement [`operator::Operator`] and [`cone::Cone`] trait.
 
-Core linear algebra operations that [`Solver`](solver/struct.Solver.html) requires
-are abstracted by [`LinAlg`](linalg/trait.LinAlg.html) trait,
-while subtrait [`LinAlgEx`](linalg/trait.LinAlgEx.html) is used for [`operator`](operator/index.html),
-[`cone`](cone/index.html) and [`problem`](problem/index.html) modules.
-This crate includes two [`LinAlgEx`](linalg/trait.LinAlgEx.html) implementors:
-* [`FloatGeneric`](linalg/struct.FloatGeneric.html) -
+Core linear algebra operations that [`solver::Solver`] requires
+are abstracted by [`linalg::LinAlg`] trait,
+while subtrait [`linalg::LinAlgEx`] is used for [`operator`],
+[`cone`] and [`problem`] modules.
+This crate includes two [`linalg::LinAlgEx`] implementors:
+* [`linalg::FloatGeneric`] -
   `num::Float`-generic implementation (pure Rust but slow)
-* [`F64LAPACK`](linalg/struct.F64LAPACK.html) -
+* [`linalg::F64LAPACK`] -
   `f64`-specific implementation using `cblas-sys` and `lapacke-sys`
   (you need a [BLAS/LAPACK source](https://github.com/blas-lapack-rs/blas-lapack-rs.github.io/wiki#sources) to link).
 

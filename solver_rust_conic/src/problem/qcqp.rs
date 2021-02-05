@@ -323,6 +323,69 @@ where L: LinAlgEx<F>, F: Float
 
 //
 
+/// Quadratically constrained quadratic program
+/// 
+/// <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
+/// 
+/// The problem is
+/// \\[
+/// \begin{array}{ll}
+/// {\rm minimize} & {1 \over 2} x^T P_0 x + q_0^T x + r_0 \\\\
+/// {\rm subject \ to} & {1 \over 2} x^T P_i x + q_i^T x + r_i \le 0 \qquad (i = 1, \ldots, m) \\\\
+/// & A x = b,
+/// \end{array}
+/// \\]
+/// where
+/// - variables \\( x \in {\bf R}^n \\)
+/// - \\( P_j \in {\bf S}_{+}^n,\ q_j \in {\bf R}^n,\ r_j \in {\bf R} \\) for \\( j = 0, \ldots, m \\)
+/// - \\( A \in {\bf R}^{p \times n},\ b \in {\bf R}^p \\).
+/// 
+/// The representation as a conic linear program is as follows:
+/// \\[
+/// \begin{array}{ll}
+/// {\rm minimize} & t \\\\
+/// {\rm subject \ to} &
+///   \left[ \begin{array}{ccc}
+///   0 & 0 & -1 \\\\
+///   q_0^T & -1 & 0 \\\\
+///   -P_0^{1 \over 2} & 0 & 0
+///   \end{array} \right]
+///   \left[ \begin{array}{c}
+///   x \\\\ t \\\\ e
+///   \end{array} \right]
+///   + s_0 =
+///   \left[ \begin{array}{c}
+///   0 \\\\ -r_0 \\\\ 0
+///   \end{array} \right] \\\\
+/// & \left[ \begin{array}{ccc}
+///   0 & 0 & -1 \\\\
+///   q_i^T & 0 & 0 \\\\
+///   -P_i^{1 \over 2} & 0 & 0
+///   \end{array} \right]
+///   \left[ \begin{array}{c}
+///   x \\\\ t \\\\ e
+///   \end{array} \right]
+///   + s_i =
+///   \left[ \begin{array}{c}
+///   0 \\\\ -r_i \\\\ 0
+///   \end{array} \right] \qquad (i = 1, \ldots, m) \\\\
+/// & \left[ \begin{array}{ccc}
+///   A & 0 & 0 \\\\
+///   0 & 0 & 1
+///   \end{array} \right]
+///   \left[ \begin{array}{c}
+///   x \\\\ t \\\\ e
+///   \end{array} \right]
+///   + s_z =
+///   \left[ \begin{array}{c}
+///   b \\\ 1
+///   \end{array} \right] \\\\
+/// & \lbrace s_0, \ldots, s_m, s_z \rbrace
+///   \in \mathcal{Q}_r^{2 + n} \times \cdots \times \mathcal{Q}_r^{2 + n} \times \lbrace 0 \rbrace^{p + 1}.
+/// \end{array}
+/// \\]
+/// 
+/// \\( \mathcal{Q}_r \\) is a rotated second-order cone (see [`ConeRotSOC`]).
 pub struct ProbQCQP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
@@ -339,6 +402,15 @@ where L: LinAlgEx<F>, F: Float
 impl<L, F> ProbQCQP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
+    /// Creates a QCQP with given data.
+    /// 
+    /// Returns a [`ProbQCQP`] instance.
+    /// * `syms_p` is \\(P_0, \\ldots, P_m\\) each of which shall belong to [`crate::operator::MatType::SymPack`].
+    /// * `vecs_q` is \\(q_0, \\ldots, q_m\\).
+    /// * `scls_r` is \\(r_0, \\ldots, r_m\\).
+    /// * `mat_a` is \\(A\\).
+    /// * `vec_b` is \\(b\\).
+    /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
     pub fn new(
         syms_p: Vec<MatBuild<L, F>>, vecs_q: Vec<MatBuild<L, F>>, scls_r: Vec<F>,
         mat_a: MatBuild<L, F>, vec_b: MatBuild<L, F>,
@@ -375,6 +447,9 @@ where L: LinAlgEx<F>, F: Float
         }
     }
     
+    /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
+    /// 
+    /// Returns a tuple of operators, a cone and a work slice.
     pub fn problem(&mut self) -> (ProbQCQPOpC<L, F>, ProbQCQPOpA<L, F>, ProbQCQPOpB<L, F>, ProbQCQPCone<L, F>, &mut[F])
     {
         let n = self.mat_a.size().1;

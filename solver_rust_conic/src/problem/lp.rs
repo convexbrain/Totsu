@@ -240,9 +240,9 @@ where L: LinAlgEx<F>, F: Float
 impl<L, F> ProbLP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    /// Creates a linear program with given data.
+    /// Creates a LP with given data.
     /// 
-    /// Returns `ProbLP`.
+    /// Returns a [`ProbLP`] instance.
     /// * `vec_c` is \\(c\\).
     /// * `mat_g` is \\(G\\).
     /// * `vec_h` is \\(h\\).
@@ -273,7 +273,7 @@ where L: LinAlgEx<F>, F: Float
         }
     }
 
-    /// Generates the problem data structures to be fed to `Solver::solve`.
+    /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
     /// 
     /// Returns a tuple of operators, a cone and a work slice.
     pub fn problem(&mut self) -> (ProbLPOpC<L, F>, ProbLPOpA<L, F>, ProbLPOpB<L, F>, ProbLPCone<F>, &mut[F])
