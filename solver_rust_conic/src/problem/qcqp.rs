@@ -304,7 +304,8 @@ where L: LinAlgEx<F>, F: Float
 
 /// Quadratically constrained quadratic program
 /// 
-/// <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
+/// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 /// 
 /// The problem is
 /// \\[
@@ -325,42 +326,27 @@ where L: LinAlgEx<F>, F: Float
 /// {\rm minimize} & t \\\\
 /// {\rm subject \ to} &
 ///   \left[ \begin{array}{ccc}
-///   0 & 0 & -1 \\\\
-///   q_0^T & -1 & 0 \\\\
-///   -P_0^{1 \over 2} & 0 & 0
+///   0 & 0 \\\\
+///   q_0^T & -1 \\\\
+///   -P_0^{1 \over 2} & 0
 ///   \end{array} \right]
 ///   \left[ \begin{array}{c}
-///   x \\\\ t \\\\ e
+///   x \\\\ t
 ///   \end{array} \right]
 ///   + s_0 =
 ///   \left[ \begin{array}{c}
-///   0 \\\\ -r_0 \\\\ 0
+///   1 \\\\ -r_0 \\\\ 0
 ///   \end{array} \right] \\\\
 /// & \left[ \begin{array}{ccc}
-///   0 & 0 & -1 \\\\
-///   q_i^T & 0 & 0 \\\\
-///   -P_i^{1 \over 2} & 0 & 0
+///   0 \\\\ q_i^T \\\\ -P_i^{1 \over 2}
 ///   \end{array} \right]
+///   x + s_i =
 ///   \left[ \begin{array}{c}
-///   x \\\\ t \\\\ e
-///   \end{array} \right]
-///   + s_i =
-///   \left[ \begin{array}{c}
-///   0 \\\\ -r_i \\\\ 0
+///   1 \\\\ -r_i \\\\ 0
 ///   \end{array} \right] \qquad (i = 1, \ldots, m) \\\\
-/// & \left[ \begin{array}{ccc}
-///   A & 0 & 0 \\\\
-///   0 & 0 & 1
-///   \end{array} \right]
-///   \left[ \begin{array}{c}
-///   x \\\\ t \\\\ e
-///   \end{array} \right]
-///   + s_z =
-///   \left[ \begin{array}{c}
-///   b \\\ 1
-///   \end{array} \right] \\\\
+/// & A x + s_z = b \\\\
 /// & \lbrace s_0, \ldots, s_m, s_z \rbrace
-///   \in \mathcal{Q}_r^{2 + n} \times \cdots \times \mathcal{Q}_r^{2 + n} \times \lbrace 0 \rbrace^{p + 1}.
+///   \in \mathcal{Q}_r^{2 + n} \times \cdots \times \mathcal{Q}_r^{2 + n} \times \lbrace 0 \rbrace^p.
 /// \end{array}
 /// \\]
 /// 
