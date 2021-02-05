@@ -11,12 +11,12 @@ $ cargo run --release
 $ python plot.py
 ```
 
-![](plot1.png)
+![](plot1.svg)
 
 * Trajectory at every time interval
 * Red star points: the target positions
 
-![](plot2.png)
+![](plot2.svg)
 
 * Time profile of velocity and acceleration magnitude
 * Acceleration is kept under limit of 90

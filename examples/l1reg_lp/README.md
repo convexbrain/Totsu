@@ -12,7 +12,7 @@ $ cargo run --release
 $ python plot.py
 ```
 
-![](plot.png)
+![](plot.svg)
 
 * Larger points: points resulting to have large coefficients
 * Curved lines: regression surface

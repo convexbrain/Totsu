@@ -11,7 +11,7 @@ $ cargo run --release
 $ python plot.py
 ```
 
-![](plot.png)
+![](plot.svg)
 
 * Larger points: support vectors
 * Curved lines: clasification boundary
