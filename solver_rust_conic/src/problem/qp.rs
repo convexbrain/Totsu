@@ -236,6 +236,51 @@ where L: LinAlgEx<F>, F: Float
 
 //
 
+/// Quadratic program
+/// 
+/// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// 
+/// The problem is
+/// \\[
+/// \begin{array}{ll}
+/// {\rm minimize} & {1 \over 2} x^T P x + q^T x + r \\\\
+/// {\rm subject \ to} & G x \preceq h \\\\
+/// & A x = b,
+/// \end{array}
+/// \\]
+/// where
+/// - variables \\( x \in {\bf R}^n \\)
+/// - \\( P \in {\bf S}_{+}^n,\ q \in {\bf R}^n,\ r \in {\bf R} \\)
+/// - \\( G \in {\bf R}^{m \times n},\ h \in {\bf R}^m \\)
+/// - \\( A \in {\bf R}^{p \times n},\ b \in {\bf R}^p \\).
+/// 
+/// In the following, \\( r \\) does not appear since it does not matter.
+/// 
+/// The representation as a conic linear program is as follows:
+/// \\[
+/// \begin{array}{ll}
+/// {\rm minimize} & t \\\\
+/// {\rm subject \ to} &
+///   \left[ \begin{array}{ccc}
+///   0 & 0 \\\\
+///   q^T & -1 \\\\
+///   -P^{1 \over 2} & 0 \\\\
+///   G & 0 \\\\
+///   A & 0
+///   \end{array} \right]
+///   \left[ \begin{array}{c}
+///   x \\\\ t
+///   \end{array} \right]
+///   + s =
+///   \left[ \begin{array}{c}
+///   1 \\\\ 0 \\\\ 0 \\\\ h \\\\ b
+///   \end{array} \right] \\\\
+/// & s \in \mathcal{Q}_r^{2 + n} \times {\bf R}\_+^m \times \lbrace 0 \rbrace^p.
+/// \end{array}
+/// \\]
+/// 
+/// \\( \mathcal{Q}_r \\) is a rotated second-order cone (see [`ConeRotSOC`]).
 pub struct ProbQP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
@@ -253,6 +298,16 @@ where L: LinAlgEx<F>, F: Float
 impl<L, F> ProbQP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
+    /// Creates a QP with given data.
+    /// 
+    /// Returns a [`ProbQP`] instance.
+    /// * `sym_p` is \\(P\\) which shall belong to [`crate::operator::MatType::SymPack`].
+    /// * `vec_q` is \\(q\\).
+    /// * `mat_g` is \\(G\\).
+    /// * `vec_h` is \\(h\\).
+    /// * `mat_a` is \\(A\\).
+    /// * `vec_b` is \\(b\\).
+    /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
     pub fn new(
         sym_p: MatBuild<L, F>, vec_q: MatBuild<L, F>,
         mat_g: MatBuild<L, F>, vec_h: MatBuild<L, F>,
@@ -284,6 +339,9 @@ where L: LinAlgEx<F>, F: Float
         }
     }
 
+    /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
+    /// 
+    /// Returns a tuple of operators, a cone and a work slice.
     pub fn problem(&mut self) -> (ProbQPOpC<L, F>, ProbQPOpA<L, F>, ProbQPOpB<L, F>, ProbQPCone<L, F>, &mut[F])
     {
         let n = self.vec_q.size().0;
