@@ -1,3 +1,5 @@
+//! First-order conic linear program solver
+
 use num::Float;
 use core::marker::PhantomData;
 use core::fmt::{Debug, LowerExp};
@@ -8,30 +10,44 @@ use crate::utils::*;
 
 //
 
+/// Solver errors.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SolverError
 {
+    /// Found an unbounded certificate.
     Unbounded,
+    /// Found an infeasibile certificate.
     Infeasible,
-    OverIter,
-    OverIterInf,
+    /// Exceed max iterations.
+    ExcessIter,
 
+    /// Invalid [`Operator`].
     InvalidOp,
+    /// Shortage of work slice length.
     WorkShortage,
+    /// Failed to log due to I/O error.
     LogFailure,
+    /// Failure caused by [`Cone`].
     ConeFailure,
 }
 
 //
 
+/// Solver parameters.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SolverParam<F: Float>
 {
+    /// Max iteration number of first-order algorithm. `None` means no upper limit.
     pub max_iter: Option<usize>,
+    /// Tolerance of the primal residual, dual residual and duality gap.
     pub eps_acc: F,
+    /// Tolerance of the unboundness and infeasibility.
     pub eps_inf: F,
+    /// Tolerance of small positive value to avoid division by zero.
     pub eps_zero: F,
+    /// Period of iterations to output progress log. `None` means no periodic log.
     pub log_period: Option<usize>,
+    /// Enables to log verbose vector status.
     pub log_verbose: bool,
 }
 
@@ -179,8 +195,40 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
 
 //
 
+/// First-order conic linear program solver struct.
+/// 
+/// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// 
+/// This struct abstracts a solver of a conic linear program:
+/// \\[
+/// \begin{array}{ll}
+/// {\rm minimize} & c^T x \\\\
+/// {\rm subject \ to} & A x + s = b \\\\
+/// & s \in \mathcal{K},
+/// \end{array}
+/// \\]
+/// where
+/// * variables \\( x \in {\bf R}^n,\ s \in {\bf R}^m \\)
+/// * \\( c \in {\bf R}^n \\) as an objective linear operator 
+/// * \\( A \in {\bf R}^{m \times n} \\) and \\( b \in {\bf R}^m \\) as constraint linear operators 
+/// * a nonempty, closed, convex cone \\( \mathcal{K} \\).
+/// 
+/// The solution gives optimal values of primal variables \\(x\\)
+/// as well as dual variables \\(y\\) of the dual problem:
+/// \\[
+/// \begin{array}{ll}
+/// {\rm maximize} & -b^T y \\\\
+/// {\rm subject \ to} & -A^T y = c \\\\
+/// & y \in \mathcal{K}^*,
+/// \end{array}
+/// \\]
+/// where
+/// * variables \\( y \in {\bf R}^m \\)
+/// * \\( \mathcal{K}^* \\) is the dual cone of \\( \mathcal{K} \\).
 pub struct Solver<L: LinAlg<F>, F: Float>
 {
+    /// solver parameters.
     pub par: SolverParam<F>,
 
     ph_l: PhantomData<L>,
@@ -189,6 +237,9 @@ pub struct Solver<L: LinAlg<F>, F: Float>
 impl<L, F> Solver<L, F>
 where L: LinAlg<F>, F: Float
 {
+    /// Query of a length of work slice.
+    /// 
+    /// Returns a length of work slice that [`Solver::solve`] requires.
     pub fn query_worklen(op_a_size: (usize, usize)) -> usize
     {
         let (m, n) = op_a_size;
@@ -211,6 +262,9 @@ where L: LinAlg<F>, F: Float
         len_iteration
     }
 
+    /// Creates an instance.
+    /// 
+    /// Returns [`Solver`] instance.
     pub fn new() -> Self
     {
         Solver {
@@ -219,6 +273,10 @@ where L: LinAlg<F>, F: Float
         }
     }
 
+    /// Changes solver parameters.
+    /// 
+    /// Returns [`Solver`] with its parameters changed.
+    /// * `f` is a function to change parameters given by its argument.
     pub fn par<P>(mut self, f: P) -> Self
     where P: FnOnce(&mut SolverParam<F>)
     {
@@ -230,6 +288,16 @@ where L: LinAlg<F>, F: Float
 impl<L, F> Solver<L, F>
 where L: LinAlg<F>, F: Float + Debug + LowerExp
 {
+    /// Starts to solve a conic linear program.
+    /// 
+    /// Returns `Ok` with a tuple of optimal \\(x, y\\)
+    /// or `Err` with [`SolverError`] type.
+    /// * `op_c` is \\(c\\) as a linear [`Operator`].
+    /// * `op_a` is \\(A\\) as a linear [`Operator`].
+    /// * `op_b` is \\(b\\) as a linear [`Operator`].
+    /// * `cone` is \\(\mathcal{K}\\) expressed by [`Cone`].
+    /// * `work` slice is used for temporal variables. [`Solver::solve`] does not rely on dynamic heap allocation.
+    /// * `logger` outputs solver progress.
     pub fn solve<OC, OA, OB, C, W>(self,
         (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut[F]),
         logger: W
@@ -296,7 +364,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         // Iteration
         let mut i = 0;
         loop {
-            let over_iter = if let Some(max_iter) = self.par.max_iter {
+            let excess_iter = if let Some(max_iter) = self.par.max_iter {
                 i + 1 >= max_iter
             } else {
                 false
@@ -322,11 +390,11 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
 
                 let term_conv = (cri_pri <= self.par.eps_acc) && (cri_dual <= self.par.eps_acc) && (cri_gap <= self.par.eps_acc);
 
-                if log_trig || over_iter || term_conv {
+                if log_trig || excess_iter || term_conv {
                     writeln_or!(self.logger, "{}: pri_dual_gap {:.2e} {:.2e} {:.2e}", i, cri_pri, cri_dual, cri_gap)?;
                 }
 
-                if over_iter || term_conv {
+                if excess_iter || term_conv {
                     let (x_x_ast, x_y_ast) = x.split2(n, m).unwrap();
                     L::scale(val_tau.recip(), x_x_ast);
                     L::scale(val_tau.recip(), x_y_ast);
@@ -342,9 +410,9 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                         return Ok((x_x_ast, x_y_ast));
                     }
                     else {
-                        writeln_or!(self.logger, "----- OverIter")?;
+                        writeln_or!(self.logger, "----- ExcessIter")?;
 
-                        return Err(SolverError::OverIter);
+                        return Err(SolverError::ExcessIter);
                     }
                 }
             }
@@ -355,11 +423,11 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                 let term_unbdd = cri_unbdd <= self.par.eps_inf;
                 let term_infeas = cri_infeas <= self.par.eps_inf;
 
-                if log_trig || over_iter || term_unbdd || term_infeas {
+                if log_trig || excess_iter || term_unbdd || term_infeas {
                     writeln_or!(self.logger, "{}: unbdd_infeas {:.2e} {:.2e}", i, cri_unbdd, cri_infeas)?;
                 }
 
-                if over_iter || term_unbdd || term_infeas {
+                if excess_iter || term_unbdd || term_infeas {
                     let (x_x_cert, x_y_cert) = x.split2(n, m).unwrap();
 
                     if self.par.log_verbose {
@@ -378,15 +446,15 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                         return Err(SolverError::Infeasible);
                     }
                     else {
-                        writeln_or!(self.logger, "----- OverIterInf")?;
+                        writeln_or!(self.logger, "----- ExcessIter")?;
 
-                        return Err(SolverError::OverIterInf);
+                        return Err(SolverError::ExcessIter);
                     }
                 }
             }
 
             i += 1;
-            assert!(!over_iter);
+            assert!(!excess_iter);
         } // end of loop
     }
 
