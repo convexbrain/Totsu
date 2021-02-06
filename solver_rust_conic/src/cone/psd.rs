@@ -5,6 +5,14 @@ use super::Cone;
 
 //
 
+/// Positive semidefinite cone
+/// 
+/// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// 
+/// \\(\mathcal{K}={\rm vec}({\bf S}\_+^k)\\),
+/// where \\( {\rm vec}(X) = (X_{11}\ \sqrt2 X_{12}\ X_{22}\ \sqrt2 X_{13}\ \sqrt2 X_{23}\ X_{33}\ \cdots)^T \\)
+/// which extracts and scales the upper-triangular part of a matrix X in column-wise.
 pub struct ConePSD<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
@@ -15,11 +23,19 @@ where L: LinAlgEx<F>, F: Float
 impl<'a, L, F> ConePSD<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    pub fn query_worklen(nvars_dual: usize) -> usize
+    /// Query of a length of work slice.
+    /// 
+    /// Returns a length of work slice that [`ConePSD::new`] requires.
+    /// * `nvars` is a number of variables, that is a length of `x` of [`ConePSD::proj`].
+    pub fn query_worklen(nvars: usize) -> usize
     {
-        L::proj_psd_worklen(nvars_dual)
+        L::proj_psd_worklen(nvars)
     }
 
+    /// Creates an instance.
+    /// 
+    /// Returns [`ConePSD`] instance.
+    /// * `work` slice is used for temporal variables in [`ConePSD::proj`].
     pub fn new(work: &'a mut[F]) -> Self
     {
         ConePSD {

@@ -1,4 +1,6 @@
 //! Pre-defined optimization problems
+//! 
+//! This module relies on dynamic heap allocation.
 
 mod lp;   // std, Float
 mod qp;   // std, Float

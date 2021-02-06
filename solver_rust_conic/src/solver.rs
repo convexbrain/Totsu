@@ -240,6 +240,7 @@ where L: LinAlg<F>, F: Float
     /// Query of a length of work slice.
     /// 
     /// Returns a length of work slice that [`Solver::solve`] requires.
+    /// * `op_a_size` is a number of rows and columns of \\(A\\).
     pub fn query_worklen(op_a_size: (usize, usize)) -> usize
     {
         let (m, n) = op_a_size;
