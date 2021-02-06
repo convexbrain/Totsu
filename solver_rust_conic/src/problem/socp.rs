@@ -258,6 +258,48 @@ where L: LinAlgEx<F>, F: Float
 
 //
 
+/// Second-order cone program
+/// 
+/// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// 
+/// The problem is
+/// \\[
+/// \begin{array}{ll}
+/// {\rm minimize} & f^T x \\\\
+/// {\rm subject \ to} & \\| G_i x + h_i \\|_2 \le c_i^T x + d_i \quad (i = 0, \ldots, m - 1) \\\\
+/// & A x = b,
+/// \end{array}
+/// \\]
+/// where
+/// - variables \\( x \in {\bf R}^n \\)
+/// - \\( f \in {\bf R}^n \\)
+/// - \\( G_i \in {\bf R}^{n_i \times n},\ h_i \in {\bf R}^{n_i},\ c_i \in {\bf R}^n,\ d_i \in {\bf R} \\)
+/// - \\( A \in {\bf R}^{p \times n},\ b \in {\bf R}^p \\).
+/// 
+/// The representation as a conic linear program is as follows:
+/// \\[
+/// \begin{array}{ll}
+/// {\rm minimize} & f^T x \\\\
+/// {\rm subject \ to} &
+///   \left[ \begin{array}{c}
+///   -c_0^T \\\\ -G_0 \\\\
+///   \vdots \\\\
+///   -c_{m - 1}^T \\\\ -G_{m - 1} \\\\
+///   A
+///   \end{array} \right]
+///   x + s =
+///   \left[ \begin{array}{c}
+///   d_0 \\\\ h_0 \\\\
+///   \vdots \\\\
+///   d_{m - 1} \\\\ h_{m - 1} \\\\
+///   b
+///   \end{array} \right] \\\\
+/// & s \in \mathcal{Q}^{1 + n_0} \times \cdots \times \mathcal{Q}^{1 + n_{m - 1}} \times \lbrace 0 \rbrace^p.
+/// \end{array}
+/// \\]
+/// 
+/// \\( \mathcal{Q} \\) is a second-order (or quadratic) cone (see [`ConeSOC`]).
 pub struct ProbSOCP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
@@ -275,6 +317,16 @@ where L: LinAlgEx<F>, F: Float
 impl<L, F> ProbSOCP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
+    /// Creates a SOCP with given data.
+    /// 
+    /// Returns a [`ProbSOCP`] instance.
+    /// * `vec_f` is \\(f\\).
+    /// * `mats_g` is \\(G_0, \\ldots, G_{m-1}\\).
+    /// * `vecs_h` is \\(h_0, \\ldots, h_{m-1}\\).
+    /// * `vecs_c` is \\(c_0, \\ldots, c_{m-1}\\).
+    /// * `scls_d` is \\(d_0, \\ldots, d_{m-1}\\).
+    /// * `mat_a` is \\(A\\).
+    /// * `vec_b` is \\(b\\).
     pub fn new(
         vec_f: MatBuild<L, F>,
         mats_g: Vec<MatBuild<L, F>>, vecs_h: Vec<MatBuild<L, F>>,
@@ -311,6 +363,9 @@ where L: LinAlgEx<F>, F: Float
         }
     }
     
+    /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
+    /// 
+    /// Returns a tuple of operators, a cone and a work slice.
     pub fn problem(&mut self) -> (ProbSOCPOpC<L, F>, ProbSOCPOpA<L, F>, ProbSOCPOpB<L, F>, ProbSOCPCone<'_, L, F>, &mut[F])
     {
         let op_c = ProbSOCPOpC {

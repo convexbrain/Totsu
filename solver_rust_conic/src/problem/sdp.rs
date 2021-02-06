@@ -227,6 +227,7 @@ where L: LinAlgEx<F>, F: Float
 /// 
 /// \\( {\rm vec}(X) = (X_{11}\ \sqrt2 X_{12}\ X_{22}\ \sqrt2 X_{13}\ \sqrt2 X_{23}\ X_{33}\ \cdots)^T \\)
 /// which extracts and scales the upper-triangular part of a matrix X in column-wise.
+/// See [`ConePSD`] for more about \\( {\rm vec}({\bf S}_+^k) \\).
 pub struct ProbSDP<L, F>
 where L: LinAlgEx<F>, F: Float
 {

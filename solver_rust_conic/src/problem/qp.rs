@@ -280,7 +280,7 @@ where L: LinAlgEx<F>, F: Float
 /// \end{array}
 /// \\]
 /// 
-/// \\( \mathcal{Q}_r \\) is a rotated second-order cone (see [`ConeRotSOC`]).
+/// \\( \mathcal{Q}_r \\) is a rotated second-order (or quadratic) cone (see [`ConeRotSOC`]).
 pub struct ProbQP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
