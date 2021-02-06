@@ -119,9 +119,6 @@ More practical [examples](https://github.com/convexbrain/Totsu/tree/master/examp
 1. Mosek ApS.
    "MOSEK modeling cookbook."
    (2020).
-1. M. Andersen, et al.
-   "Interior-point methods for large-scale cone programming."
-   Optimization for machine learning 5583 (2011).
 1. S. Boyd and L. Vandenberghe.
    "Convex Optimization."
    (2004).

@@ -188,6 +188,45 @@ where L: LinAlgEx<F>, F: Float
 
 //
 
+/// Semidefinite program
+/// 
+/// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// 
+/// The problem is
+/// \\[
+/// \begin{array}{ll}
+/// {\rm minimize} & c^Tx \\\\
+/// {\rm subject \ to} & \sum_{i=0}^{n - 1} x_i F_i + F_n \preceq 0 \\\\
+/// & A x = b,
+/// \end{array}
+/// \\]
+/// where
+/// - variables \\( x \in {\bf R}^n \\)
+/// - \\( c \in {\bf R}^n \\)
+/// - \\( F_j \in {\bf S}^k \\) for \\( j = 0, \ldots, n \\)
+/// - \\( A \in {\bf R}^{p \times n},\ b \in {\bf R}^p \\).
+/// 
+/// This is already a conic problem and can be reformulated as follows:
+/// \\[
+/// \begin{array}{ll}
+/// {\rm minimize} & c^Tx \\\\
+/// {\rm subject \ to} &
+///   \left[ \begin{array}{ccc}
+///   {\rm vec}(F_0) & \cdots & {\rm vec}(F_{n - 1}) \\\\
+///   & A &
+///   \end{array} \right]
+///   x
+///   + s =
+///   \left[ \begin{array}{c}
+///   -{\rm vec}(F_n) \\\\ b
+///   \end{array} \right] \\\\
+/// & s \in {\rm vec}({\bf S}_+^k) \times \lbrace 0 \rbrace^p.
+/// \end{array}
+/// \\]
+/// 
+/// \\( {\rm vec}(X) = (X_{11}\ \sqrt2 X_{12}\ X_{22}\ \sqrt2 X_{13}\ \sqrt2 X_{23}\ X_{33}\ \cdots)^T \\)
+/// which extracts and scales the upper-triangular part of a matrix X in column-wise.
 pub struct ProbSDP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
@@ -205,6 +244,13 @@ where L: LinAlgEx<F>, F: Float
 impl<L, F> ProbSDP<L, F>
 where L: LinAlgEx<F>, F: Float
 {
+    /// Creates a SDP with given data.
+    /// 
+    /// Returns a [`ProbSDP`] instance.
+    /// * `vec_c` is \\(c\\).
+    /// * `syms_f` is \\(F_0, \\ldots, F_n\\) each of which shall belong to [`crate::operator::MatType::SymPack`].
+    /// * `mat_a` is \\(A\\).
+    /// * `vec_b` is \\(b\\).
     pub fn new(
         vec_c: MatBuild<L, F>,
         mut syms_f: Vec<MatBuild<L, F>>,
@@ -249,6 +295,9 @@ where L: LinAlgEx<F>, F: Float
         }
     }
 
+    /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
+    /// 
+    /// Returns a tuple of operators, a cone and a work slice.
     pub fn problem(&mut self) -> (ProbSDPOpC<L, F>, ProbSDPOpA<L, F>, ProbSDPOpB<L, F>, ProbSDPCone<'_, L, F>, &mut[F])
     {
         let p = self.vec_b.size().0;
