@@ -7,6 +7,9 @@ use crate::utils::*;
 
 //
 
+/// `num::Float`-generic [`LinAlgEx`] implementation
+/// 
+/// All numeric operations are written in pure Rust, but slow.
 #[derive(Debug, Clone)]
 pub struct FloatGeneric<F>
 {

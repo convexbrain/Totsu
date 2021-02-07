@@ -1,3 +1,5 @@
+//! Linear algebra
+
 use num::Float;
 
 pub trait LinAlg<F: Float>
