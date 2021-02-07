@@ -186,9 +186,9 @@ impl LinAlgEx<f64> for F64LAPACK
         len_a + eig_func_worklen(n)
     }
 
-    fn sqrt_spmat(x: &mut[f64], eps_zero: f64, work: &mut[f64])
+    fn sqrt_spmat(mat: &mut[f64], eps_zero: f64, work: &mut[f64])
     {
-        let sn = x.len();
+        let sn = mat.len();
 
         let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
         assert_eq!(n * (n + 1) / 2, sn);
@@ -196,7 +196,7 @@ impl LinAlgEx<f64> for F64LAPACK
 
         let (a, wz) = work.split2(n * n, n + n * n).unwrap();
 
-        vec_to_mat(x, a, false);
+        vec_to_mat(mat, a, false);
     
         eig_func(a, n, eps_zero, wz, |e| {
             if e > 0. {
@@ -207,7 +207,7 @@ impl LinAlgEx<f64> for F64LAPACK
             }
         });
 
-        mat_to_vec(a, x, false);
+        mat_to_vec(a, mat, false);
     }
 }
 

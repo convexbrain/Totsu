@@ -451,17 +451,17 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
         eig_func_worklen(n)
     }
 
-    fn sqrt_spmat(x: &mut[F], eps_zero: F, work: &mut[F])
+    fn sqrt_spmat(mat: &mut[F], eps_zero: F, work: &mut[F])
     {
         let f0 = F::zero();
 
-        let sn = x.len();
+        let sn = mat.len();
         let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
 
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
         let mut spmat_x = SpMatIdxMut {
-            n, mat: x,
+            n, mat,
         };
 
         eig_func(&mut spmat_x, eps_zero, work, |e| {

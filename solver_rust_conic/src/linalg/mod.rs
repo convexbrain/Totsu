@@ -110,14 +110,14 @@ pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
     fn sqrt_spmat_worklen(n: usize) -> usize;
 
     /// Calculate \\(S^{\frac12}\\),
-    /// where \\(S\\) is a symmetric matrix, supplied in packed form.
+    /// where \\(S \in {\bf S}\_+^n\\), supplied in packed form.
     /// 
-    /// * `x` is a matrix \\(S\\) before entry, \\(S^{\frac12}\\) on exit.
+    /// * `mat` is a matrix \\(S\\) before entry, \\(S^{\frac12}\\) on exit.
     ///   It shall be stored in packed form (the upper-triangular part in column-wise).
-    ///   The length of `x` shall be \\(\frac12n(n+1)\\) if \\(S \in {\bf S}^n\\).
+    ///   The length of `mat` shall be \\(\frac12n(n+1)\\).
     /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
     /// * `work` slice is used for temporal variables.
-    fn sqrt_spmat(x: &mut[F], eps_zero: F, work: &mut[F]);
+    fn sqrt_spmat(mat: &mut[F], eps_zero: F, work: &mut[F]);
 }
 
 //
