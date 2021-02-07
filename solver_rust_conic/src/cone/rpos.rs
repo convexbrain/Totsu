@@ -10,8 +10,10 @@ use super::Cone;
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 /// 
 /// \\[
-/// {\bf R}\_+^n = {\bf R}\_+ \times \cdots \times {\bf R}\_+
-/// = \lbrace x \in {\bf R}^n\ |\ x_i \ge 0,\ i=1,\ldots,n \rbrace
+/// {\bf R}\_+^n = {\bf R}\_+ \times \cdots \times {\bf R}\_+ =
+/// \left\lbrace x \in {\bf R}^n
+/// \ \middle|\ x_i \ge 0,\ i=1,\ldots,n
+/// \right\rbrace
 /// \\]
 pub struct ConeRPos<F>
 {

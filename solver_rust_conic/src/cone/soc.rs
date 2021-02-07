@@ -5,6 +5,17 @@ use super::Cone;
 
 //
 
+/// Second-order (or quadratic) cone
+/// 
+/// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// 
+/// \\[
+/// \mathcal{Q}^n =
+/// \left\lbrace x \in {\bf R}^n
+/// \ \middle|\ \sqrt{x_2^2+\cdots+x_n^2} \le x_1
+/// \right\rbrace
+/// \\]
 pub struct ConeSOC<L, F>
 where L: LinAlg<F>, F: Float
 {
@@ -15,6 +26,9 @@ where L: LinAlg<F>, F: Float
 impl<L, F> ConeSOC<L, F>
 where L: LinAlg<F>, F: Float
 {
+    /// Creates an instance.
+    /// 
+    /// Returns [`ConeSOC`] instance.
     pub fn new() -> Self
     {
         ConeSOC {
