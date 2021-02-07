@@ -1,0 +1,12 @@
+[package]
+name = "leastsq_qp"
+version = "0.1.0"
+authors = ["convexbrain <convexbrain@gmail.com>"]
+edition = "2018"
+publish = false
+
+[dependencies]
+totsu = {path = "../../solver_rust_conic"}
+rand = "0.8.2"
+itertools = "0.10.0"
+rand_xoshiro = "0.6.0"

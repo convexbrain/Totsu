@@ -205,6 +205,43 @@ mod tests {
     }
 
     #[test]
+    fn test_socp_issue21()
+    {
+        // minimize f
+        // 0 <= -f + 50
+        // |-x+2| <= f
+        // expected x=2, f=0
+        let mut pdipm = PDIPM::new();
+        let param = PDIPMParam {
+            eps: 1e-7, // solve_socp() may require more tolerance
+            .. PDIPMParam::default()
+        };
+        let vec_f = Mat::new_vec(2).set_iter(&[0., 1.]);
+        let mat_g = vec![Mat::new(0, 2), Mat::new(1, 2).set_iter(&[-1.0, 0.0])];
+        let vec_h = vec![Mat::new_vec(0), Mat::new_vec(1).set_iter(&[2.])];
+        let vec_c = vec![
+            Mat::new_vec(2).set_iter(&[0., -1.0]),
+            Mat::new_vec(2).set_iter(&[0., 1.0]),
+        ];
+        let scl_d = vec![50., 0.];
+        let mat_a = Mat::new(0, 2);
+        let vec_b = Mat::new_vec(0);
+    
+        let r = pdipm.solve_socp(
+            &param,
+            &mut std::io::sink(),
+            &vec_f,
+            &mat_g,
+            &vec_h,
+            &vec_c,
+            &scl_d,
+            &mat_a,
+            &vec_b,
+        ).unwrap();
+        println!("res={}", r);
+    }
+
+    #[test]
     fn test_lp_infeas()
     {
         let n: usize = 1;
