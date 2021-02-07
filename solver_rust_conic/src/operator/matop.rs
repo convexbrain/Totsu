@@ -5,15 +5,21 @@ use super::Operator;
 
 //
 
+/// Matrix type and size
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MatType
 {
+    /// General matrix with a number of rows and a number of columns.
     General(usize, usize),
+    /// Symmetric matrix, supplied in packed form, with a number of rows and columns.
     SymPack(usize),
 }
 
 impl MatType
 {
+    /// Length of array to store a [`MatType`] matrix.
+    /// 
+    /// Returns the length.
     pub fn len(&self) -> usize
     {
         match self {
@@ -22,6 +28,9 @@ impl MatType
         }
     }
 
+    /// Size of a [`MatType`] matrix.
+    /// 
+    /// Returns a tuple of a number of rows and a number of columns.
     pub fn size(&self) -> (usize, usize)
     {
         match self {
