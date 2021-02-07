@@ -10,9 +10,12 @@ use super::Cone;
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 /// 
-/// \\(\mathcal{K}={\rm vec}({\bf S}\_+^k)\\),
-/// where \\( {\rm vec}(X) = (X_{11}\ \sqrt2 X_{12}\ X_{22}\ \sqrt2 X_{13}\ \sqrt2 X_{23}\ X_{33}\ \cdots)^T \\)
-/// which extracts and scales the upper-triangular part of a matrix X in column-wise.
+/// \\[
+/// {\rm vec}({\bf S}\_+^k)
+/// = \lbrace x \in {\bf R}^n,\ n=\frac12 k(k+1)\ |\ {\rm vec}^{-1}(x) \in {\bf S}\_+^k \rbrace
+/// \\]
+/// \\( {\rm vec}(X) = (X_{11}\ \sqrt2 X_{12}\ X_{22}\ \sqrt2 X_{13}\ \sqrt2 X_{23}\ X_{33}\ \cdots)^T \\)
+/// which extracts and scales the upper-triangular part of a symmetric matrix X in column-wise.
 pub struct ConePSD<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {

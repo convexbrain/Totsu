@@ -4,6 +4,15 @@ use super::Cone;
 
 //
 
+/// Nonnegative orthant cone
+/// 
+/// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// 
+/// \\[
+/// {\bf R}\_+^n = {\bf R}\_+ \times \cdots \times {\bf R}\_+
+/// = \lbrace x \in {\bf R}^n\ |\ x_i \ge 0,\ i=1,\ldots,n \rbrace
+/// \\]
 pub struct ConeRPos<F>
 {
     ph_f: PhantomData<F>,
@@ -11,6 +20,9 @@ pub struct ConeRPos<F>
 
 impl<F> ConeRPos<F>
 {
+    /// Creates an instance.
+    /// 
+    /// Returns [`ConeRPos`] instance.
     pub fn new() -> Self
     {
         ConeRPos {
