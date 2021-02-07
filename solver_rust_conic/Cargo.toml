@@ -7,7 +7,7 @@ edition = "2018"
 description = "A first-order conic solver for continuous scalar convex optimization problems."
 
 #documentation = "..."
-homepage = "https://github.com/convexbrain/Totsu/tree/master/solver_rust_cone"
+homepage = "https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic"
 repository = "https://github.com/convexbrain/Totsu"
 
 readme = "README.md"
