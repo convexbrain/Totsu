@@ -1,3 +1,5 @@
+//! loggers of solver progress
+
 mod nulllogger; // core
 mod stdlogger;  // std
 

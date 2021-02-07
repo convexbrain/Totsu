@@ -1,3 +1,4 @@
+/// Logger using `print!` macro
 pub struct PrintLogger;
 
 impl core::fmt::Write for PrintLogger
@@ -11,6 +12,7 @@ impl core::fmt::Write for PrintLogger
 
 //
 
+/// Logger with a `std::io::Write` implementor.
 pub struct IoWriteLogger<'a, W: std::io::Write>(pub &'a mut W);
 
 impl<'a, W: std::io::Write> core::fmt::Write for IoWriteLogger<'a, W>

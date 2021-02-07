@@ -1,3 +1,4 @@
+/// Logger with no output, discarding all log messages
 pub struct NullLogger;
 
 impl core::fmt::Write for NullLogger
