@@ -1,11 +1,11 @@
-# Example: svm_toyprob
+# Example: svm_qp
 
-![](svm_toyprob/plot.png)
+![](svm_qp/plot.svg)
 
-# Example: l1reg_toyprob
+# Example: l1reg_lp
 
-![](l1reg_toyprob/plot.png)
+![](l1reg_lp/plot.svg)
 
-# Example: trajplan_toyprob
+# Example: trajplan_qcqp
 
-![](trajplan_toyprob/plot1.png)
+![](trajplan_qcqp/plot1.svg)
