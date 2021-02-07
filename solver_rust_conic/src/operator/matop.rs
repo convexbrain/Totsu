@@ -42,6 +42,9 @@ impl MatType
 
 //
 
+/// Matrix operator
+/// 
+/// Matrix struct which borrows a slice of data array and implements [`Operator`].
 #[derive(Debug, Clone)]
 pub struct MatOp<'a, L, F>
 where L: LinAlgEx<F>, F: Float
@@ -54,6 +57,13 @@ where L: LinAlgEx<F>, F: Float
 impl<'a, L, F> MatOp<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
+    /// Creates an instance
+    /// 
+    /// Returns [`MatOp`] instance.
+    /// * `typ`: Matrix type and size.
+    /// * `array`: data array slice.
+    ///   Column-major matrix data shall be stored if [`MatType::General`].
+    ///   Symmetric packed form (the upper-triangular part in column-wise) of matrix data shall be stored if [`MatType::SymPack`].
     pub fn new(typ: MatType, array: &'a[F]) -> Self
     {
         assert_eq!(typ.len(), array.len());

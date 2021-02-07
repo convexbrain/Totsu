@@ -8,6 +8,13 @@ use super::{Operator, MatType, MatOp};
 
 //
 
+/// Matrix builder
+/// 
+/// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// 
+/// Matrix struct which owns a `Vec` of data array and implements [`Operator`].
+/// This struct relies on dynamic heap allocation.
 #[derive(Debug, Clone)]
 pub struct MatBuild<L, F>
 where L: LinAlgEx<F>, F: Float
@@ -20,6 +27,10 @@ where L: LinAlgEx<F>, F: Float
 impl<L, F> MatBuild<L, F>
 where L: LinAlgEx<F>, F: Float
 {
+    /// Creates an instance.
+    /// 
+    /// Returns [`MatBuild`] instance with zero data.
+    /// * `typ` is Matrix type and size.
     pub fn new(typ: MatType) -> Self
     {
         MatBuild {
@@ -29,6 +40,9 @@ where L: LinAlgEx<F>, F: Float
         }
     }
 
+    /// Checks if symmetric packed.
+    /// 
+    /// Returns `true` if [`MatType::SymPack`], `false` otherwise.
     pub fn is_sympack(&self) -> bool
     {
         if let MatType::SymPack(_) = self.typ {
@@ -39,6 +53,9 @@ where L: LinAlgEx<F>, F: Float
         }
     }
 
+    /// Data by a function.
+    /// 
+    /// * `func` takes a row and a column of the matrix and returns data of each element.
     pub fn set_by_fn<M>(&mut self, mut func: M)
     where M: FnMut(usize, usize) -> F
     {
@@ -59,6 +76,7 @@ where L: LinAlgEx<F>, F: Float
             },
         };
     }
+    /// Builder pattern of [`MatBuild::set_by_fn`].
     pub fn by_fn<M>(mut self, func: M) -> Self
     where M: FnMut(usize, usize) -> F
     {
@@ -66,6 +84,9 @@ where L: LinAlgEx<F>, F: Float
         self
     }
 
+    /// Data by an iterator in column-major.
+    /// 
+    /// * `iter` iterates matrix data in column-major.
     pub fn set_iter_colmaj<T, I>(&mut self, iter: T)
     where T: IntoIterator<Item=I>, I: Deref<Target=F>
     {
@@ -83,6 +104,7 @@ where L: LinAlgEx<F>, F: Float
             }
         }
     }
+    /// Builder pattern of [`MatBuild::set_iter_colmaj`].
     pub fn iter_colmaj<T, I>(mut self, iter: T) -> Self
     where T: IntoIterator<Item=I>, I: Deref<Target=F>
     {
@@ -90,6 +112,9 @@ where L: LinAlgEx<F>, F: Float
         self
     }
 
+    /// Data by an iterator in row-major.
+    /// 
+    /// * `iter` iterates matrix data in row-major.
     pub fn set_iter_rowmaj<T, I>(&mut self, iter: T)
     where T: IntoIterator<Item=I>, I: Deref<Target=F>
     {
@@ -107,6 +132,7 @@ where L: LinAlgEx<F>, F: Float
             }
         }
     }
+    /// Builder pattern of [`MatBuild::set_iter_rowmaj`].
     pub fn iter_rowmaj<T, I>(mut self, iter: T) -> Self
     where T: IntoIterator<Item=I>, I: Deref<Target=F>
     {
@@ -114,16 +140,23 @@ where L: LinAlgEx<F>, F: Float
         self
     }
 
+    /// Scales by \\(\alpha\\).
+    /// 
+    /// * `alpha` is a scalar \\(\alpha\\).
     pub fn set_scale(&mut self, alpha: F)
     {
         L::scale(alpha, self.as_mut());
     }
+    /// Builder pattern of [`MatBuild::set_scale`].
     pub fn scale(mut self, alpha: F) -> Self
     {
         self.set_scale(alpha);
         self
     }
 
+    /// Scales by \\(\alpha\\) except diagonal elements.
+    /// 
+    /// * `alpha` is a scalar \\(\alpha\\).
     pub fn set_scale_nondiag(&mut self, alpha: F)
     {
         match self.typ {
@@ -150,23 +183,30 @@ where L: LinAlgEx<F>, F: Float
             },
         }
     }
+    /// Builder pattern of [`MatBuild::set_scale_nondiag`].
     pub fn scale_nondiag(mut self, alpha: F) -> Self
     {
         self.set_scale_nondiag(alpha);
         self
     }
 
+    /// Reshapes the internal data array as it is into a one-column matrix.
     pub fn set_reshape_colvec(&mut self)
     {
         let sz = self.as_ref().len();
         self.typ = MatType::General(sz, 1);
     }
+    /// Builder pattern of [`MatBuild::set_reshape_colvec`].
     pub fn reshape_colvec(mut self) -> Self
     {
         self.set_reshape_colvec();
         self
     }
 
+    /// Calculates and converts the matrix \\(A\\) to \\(A^{\frac12}\\).
+    /// 
+    /// The matrix shall belong to [`MatType::SymPack`].
+    /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
     pub fn set_sqrt(&mut self, eps_zero: F)
     {
         match self.typ {
@@ -179,6 +219,7 @@ where L: LinAlgEx<F>, F: Float
             }
         }
     }
+    /// Builder pattern of [`MatBuild::set_sqrt`].
     pub fn sqrt(mut self, eps_zero: F) -> Self
     {
         self.set_sqrt(eps_zero);
