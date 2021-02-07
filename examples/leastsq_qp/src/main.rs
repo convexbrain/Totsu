@@ -1,6 +1,5 @@
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
-use totsu::linalg::F64LAPACK;
 use totsu::logger::PrintLogger;
 use totsu::problem::ProbQP;
 
@@ -8,11 +7,10 @@ use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256StarStar;
 
-extern crate intel_mkl_src;
-
-type AMatBuild = MatBuild<F64LAPACK, f64>;
-type AProbQP = ProbQP<F64LAPACK, f64>;
-type ASolver = Solver<F64LAPACK, f64>;
+type LA = FloatGeneric<f64>;
+type AMatBuild = MatBuild<LA, f64>;
+type AProbQP = ProbQP<LA, f64>;
+type ASolver = Solver<LA, f64>;
 
 /// main
 fn main() -> std::io::Result<()> {

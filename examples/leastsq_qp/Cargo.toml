@@ -10,10 +10,3 @@ totsu = {path = "../../solver_rust_conic"}
 rand = "0.8.2"
 itertools = "0.10.0"
 rand_xoshiro = "0.6.0"
-
-[dependencies.intel-mkl-src]
-default-features = false
-#version = "0.6.0+mkl2020.1"
-#features = ["mkl-static-lp64-seq"]
-path = "../../../../others/intel-mkl-src/intel-mkl-src"
-features = ["mkl-static-lp64-iomp"]
