@@ -144,5 +144,4 @@ pub mod prelude // core, Float
 }
 
 // TODO: no-std
-// MUST TODO: doc, readme
 // TODO: more tests
