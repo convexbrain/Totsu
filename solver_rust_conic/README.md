@@ -17,26 +17,7 @@ The author combines the two papers
 so that the homogeneous self-dual embedding matrix in [\[2\]](https://arxiv.org/abs/1312.3039)
 is formed as a linear operator in [\[1\]](https://ieeexplore.ieee.org/abstract/document/6126441).
 
-A core method `solver::Solver::solve` takes the following arguments:
-* objective and constraint linear operators that implement `operator::Operator` trait and
-* a projection onto a cone that implements `cone::Cone` trait.
-
-Therefore solving a specific problem requires an implementation of those traits.
-You can use pre-defined implementations (see `problem`),
-as well as construct a user-defined tailored version for the reason of functionality and efficiency.
-Modules `operator` and `cone` include several basic structs
-that implement `operator::Operator` and `cone::Cone` trait.
-
-Core linear algebra operations that `solver::Solver` requires
-are abstracted by `linalg::LinAlg` trait,
-while subtrait `linalg::LinAlgEx` is used for `operator`,
-`cone` and `problem` modules.
-This crate includes two `linalg::LinAlgEx` implementors:
-* `linalg::FloatGeneric` -
-  `num::Float`-generic implementation (pure Rust but slow)
-* `linalg::F64LAPACK` -
-  `f64`-specific implementation using `cblas-sys` and `lapacke-sys`
-  (you need a [BLAS/LAPACK source](https://github.com/blas-lapack-rs/blas-lapack-rs.github.io/wiki#sources) to link).
+See [documentation](https://docs.rs/totsu/) for more details.
 
 ## Examples
 ### QP
