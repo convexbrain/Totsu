@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added 
+### Added
+- Feature `nostd` for `#![no_std]` support.
+
 ### Changed
 ### Deprecated
 ### Removed

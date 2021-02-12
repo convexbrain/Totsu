@@ -19,6 +19,24 @@ is formed as a linear operator in [\[1\]](https://ieeexplore.ieee.org/abstract/d
 
 See [documentation](https://docs.rs/totsu/) for more details.
 
+### Features
+
+This crate can be used without the standard library (`#![no_std]`).
+Use this in `Cargo.toml`:
+
+```toml
+[dependencies.totsu]
+version = "0.7.0"
+default-features = false
+features = ["nostd"]
+```
+
+Some module and structs are not availale in this case.
+
+### Changelog
+
+Changelog is available in [CHANGELOG.md](https://github.com/convexbrain/Totsu/blob/master/solver_rust_conic/CHANGELOG.md).
+
 ## Examples
 ### QP
 
