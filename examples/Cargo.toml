@@ -4,8 +4,6 @@ members = [
     "svm_qp",
     "l1reg_lp",
     "trajplan_qcqp",
-
-    "leastsq_qp",
 ]
 
 exclude = [
