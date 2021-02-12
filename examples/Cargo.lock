@@ -123,6 +123,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "either"
+version = "1.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
+
+[[package]]
 name = "getrandom"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -174,6 +180,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37d572918e350e82412fe766d24b15e6682fb2ed2bbe018280caa810397cb319"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "l1reg_lp"
+version = "0.1.0"
+dependencies = [
+ "intel-mkl-src",
+ "itertools",
+ "rand",
+ "rand_xoshiro",
+ "totsu",
+]
+
+[[package]]
 name = "lapacke"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -198,6 +224,16 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+
+[[package]]
+name = "leastsq_qp"
+version = "0.1.0"
+dependencies = [
+ "itertools",
+ "rand",
+ "rand_xoshiro",
+ "totsu",
+]
 
 [[package]]
 name = "libc"
@@ -360,6 +396,14 @@ dependencies = [
  "cblas",
  "lapacke",
  "num-traits",
+]
+
+[[package]]
+name = "trajplan_qcqp"
+version = "0.1.0"
+dependencies = [
+ "intel-mkl-src",
+ "totsu",
 ]
 
 [[package]]
