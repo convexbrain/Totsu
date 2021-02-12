@@ -101,6 +101,7 @@ dependencies = [
  "cortex-m",
  "cortex-m-rt",
  "cortex-m-semihosting",
+ "num-traits",
  "panic-semihosting",
  "totsu",
 ]
