@@ -1,0 +1,23 @@
+[package]
+name = "nostd_cortex-m"
+version = "0.1.0"
+authors = ["convexbrain <convexbrain@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cortex-m = "0.7.1"
+cortex-m-rt = "0.6.13"
+cortex-m-semihosting = "0.3.7"
+panic-semihosting = {version = "0.5.6", features = ["exit"]}
+
+[dependencies.totsu]
+path = "../../solver_rust_conic"
+default-features = false
+features = ["nostd"]
+
+[profile.dev]
+opt-level = 1      # controls the `--opt-level` the compiler builds with.
+                   # 0-1 is good for debugging. 2 is well-optimized. Max is 3.
+                   # 's' attempts to reduce size, 'z' reduces size even more.
