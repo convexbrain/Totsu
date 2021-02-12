@@ -1,3 +1,8 @@
+use std::print;
+use std::prelude::v1::*;
+
+//
+
 /// Logger using `print!` macro
 pub struct PrintLogger;
 

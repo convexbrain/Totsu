@@ -124,6 +124,10 @@ More practical [examples](https://github.com/convexbrain/Totsu/tree/master/examp
    (2004).
 */
 
+#![no_std]
+#[cfg(not(feature = "nostd"))]
+extern crate std;
+
 pub mod solver; // core, Float
 mod utils;
 
@@ -131,6 +135,8 @@ pub mod linalg;
 pub mod operator;
 pub mod cone;
 pub mod logger;
+
+#[cfg(not(feature = "nostd"))]
 pub mod problem;
 
 /// Prelude
@@ -143,5 +149,4 @@ pub mod prelude // core, Float
     pub use super::logger::NullLogger;
 }
 
-// TODO: no-std
 // TODO: more tests

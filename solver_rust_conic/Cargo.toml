@@ -18,10 +18,18 @@ categories = ["science"]
 
 license = "Unlicense"
 
+[features]
+default = ["num-traits/std", "lapacke", "cblas"]
+
+nostd = ["num-traits/libm"]
+
 [dependencies]
-num = "0.3.1"
-lapacke = "0.2.0"
-cblas = "0.2.0"
+lapacke = {version = "0.2.0", optional = true}
+cblas = {version = "0.2.0", optional = true}
+
+[dependencies.num-traits]
+version = "0.2.14"
+default-features = false
 
 [dev-dependencies]
 float_eq = "0.5.0"

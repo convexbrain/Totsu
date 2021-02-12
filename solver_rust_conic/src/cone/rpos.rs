@@ -1,4 +1,4 @@
-use num::Float;
+use num_traits::Float;
 use core::marker::PhantomData;
 use super::Cone;
 

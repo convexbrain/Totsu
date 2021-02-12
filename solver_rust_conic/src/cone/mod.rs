@@ -1,6 +1,6 @@
 //! Convex cone
 
-use num::Float;
+use num_traits::Float;
 
 /// Convex cone trait
 /// 

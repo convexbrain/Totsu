@@ -1,6 +1,6 @@
 //! First-order conic linear program solver
 
-use num::Float;
+use num_traits::Float;
 use core::marker::PhantomData;
 use core::fmt::{Debug, LowerExp};
 use crate::linalg::LinAlg;

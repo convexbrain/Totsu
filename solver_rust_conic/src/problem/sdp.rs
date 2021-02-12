@@ -1,4 +1,5 @@
-use num::Float;
+use std::prelude::v1::*;
+use num_traits::Float;
 use crate::solver::Solver;
 use crate::linalg::LinAlgEx;
 use crate::operator::{Operator, MatType, MatBuild};
