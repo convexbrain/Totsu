@@ -125,7 +125,7 @@ assert_float_eq!(rslt.0[0..2], [2., 0.].as_ref(), abs_all <= 1e-3);
 
 ## Other Examples
 
-You can find other [tests](https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic/tests) of pre-defined solvers.
+You can find other [tests](https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic/tests) of pre-defined problems.
 More practical [examples](https://github.com/convexbrain/Totsu/tree/master/examples) are also available.
 
 ## References
