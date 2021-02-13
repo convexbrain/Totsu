@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Feature `nostd` for `#![no_std]` support.
 
 ### Changed
+- `Cone` trait itself doesn't take `eps_zero`.
+
 ### Deprecated
 ### Removed
 ### Fixed
