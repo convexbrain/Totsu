@@ -23,6 +23,7 @@ where L: LinAlgEx<F>, F: Float
 {
     ph_l: PhantomData<L>,
     work: &'a mut[F],
+    eps_zero: F,
 }
 
 impl<'a, L, F> ConePSD<'a, L, F>
@@ -41,11 +42,13 @@ where L: LinAlgEx<F>, F: Float
     /// 
     /// Returns [`ConePSD`] instance.
     /// * `work` slice is used for temporal variables in [`ConePSD::proj`].
-    pub fn new(work: &'a mut[F]) -> Self
+    /// * `eps_zero` shall be the same value as [`crate::solver::SolverParam::eps_zero`].
+    pub fn new(work: &'a mut[F], eps_zero: F) -> Self
     {
         ConePSD {
             ph_l: PhantomData::<L>,
             work,
+            eps_zero,
         }
     }
 }
@@ -53,13 +56,13 @@ where L: LinAlgEx<F>, F: Float
 impl<'a, L, F> Cone<F> for ConePSD<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    fn proj(&mut self, _dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, _dual_cone: bool, x: &mut[F]) -> Result<(), ()>
     {
         if self.work.len() < L::proj_psd_worklen(x.len()) {
             return Err(());
         }
 
-        L::proj_psd(x, eps_zero, self.work);
+        L::proj_psd(x, self.eps_zero, self.work);
 
         Ok(())
     }
@@ -90,7 +93,7 @@ fn test_cone_psd1()
     ];
     assert!(ConePSD::<L, _>::query_worklen(x.len()) <= 10);
     let w = &mut[0.; 10];
-    let mut c = ConePSD::<L, _>::new(w);
-    c.proj(false, 1e-12, x).unwrap();
+    let mut c = ConePSD::<L, _>::new(w, 1e-12);
+    c.proj(false, x).unwrap();
     assert_float_eq!(ref_x, x, abs_all <= 1e-6);
 }

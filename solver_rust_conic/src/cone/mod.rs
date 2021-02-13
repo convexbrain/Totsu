@@ -13,9 +13,8 @@ pub trait Cone<F: Float>
     /// 
     /// Returns `Ok`, or `Err` if something fails.
     /// * If `dual_cone` is `true`, project onto the dual cone \\(\mathcal{K}^*\\).
-    /// * `eps_zero` shall be the same value as [`crate::solver::SolverParam::eps_zero`].
     /// * `x` is \\(x\\), a vector to be projected before entry, and shall be replaced with the projected vector on exit.
-    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>;
+    fn proj(&mut self, dual_cone: bool, x: &mut[F]) -> Result<(), ()>;
 
     /// Performs grouping for a diagonal preconditioning vector according to the cone \\(\mathcal{K}\\).
     /// 

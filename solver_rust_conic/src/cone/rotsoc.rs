@@ -38,7 +38,7 @@ where L: LinAlg<F>, F: Float
 impl<L, F> Cone<F> for ConeRotSOC<L, F>
 where L: LinAlg<F>, F: Float
 {
-    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, dual_cone: bool, x: &mut[F]) -> Result<(), ()>
     {
         let f0 = F::zero();
         let f1 = F::one();
@@ -55,7 +55,7 @@ where L: LinAlg<F>, F: Float
                 x[0] = (r + s) / fsqrt2;
                 x[1] = (r - s) / fsqrt2;
 
-                self.soc.proj(dual_cone, eps_zero, x)?;
+                self.soc.proj(dual_cone, x)?;
 
                 let r = x[0];
                 let s = x[1];

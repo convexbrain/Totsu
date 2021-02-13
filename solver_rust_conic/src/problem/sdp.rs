@@ -166,13 +166,13 @@ where L: LinAlgEx<F>, F: Float
 impl<'a, L, F> Cone<F> for ProbSDPCone<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, dual_cone: bool, x: &mut[F]) -> Result<(), ()>
     {
         let (sk, p) = (self.sk, self.p);
         let (x_sk, x_p) = x.split2(sk, p).unwrap();
 
-        self.cone_psd.proj(dual_cone, eps_zero, x_sk)?;
-        self.cone_zero.proj(dual_cone, eps_zero, x_p)?;
+        self.cone_psd.proj(dual_cone, x_sk)?;
+        self.cone_zero.proj(dual_cone, x_p)?;
         Ok(())
     }
 
@@ -239,6 +239,7 @@ where L: LinAlgEx<F>, F: Float
     symmat_f: MatBuild<L, F>,
     symvec_f_n: MatBuild<L, F>,
 
+    eps_zero: F,
     w_cone_psd: Vec<F>,
     w_solver: Vec<F>,
 }
@@ -253,10 +254,12 @@ where L: LinAlgEx<F>, F: Float
     /// * `syms_f` is \\(F_0, \\ldots, F_n\\) each of which shall belong to [`crate::operator::MatType::SymPack`].
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
+    /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
     pub fn new(
         vec_c: MatBuild<L, F>,
         mut syms_f: Vec<MatBuild<L, F>>,
-        mat_a: MatBuild<L, F>, vec_b: MatBuild<L, F>) -> Self
+        mat_a: MatBuild<L, F>, vec_b: MatBuild<L, F>,
+        eps_zero: F) -> Self
     {
         let n = vec_c.size().0;
         let p = vec_b.size().0;
@@ -292,6 +295,7 @@ where L: LinAlgEx<F>, F: Float
             vec_b,
             symmat_f,
             symvec_f_n,
+            eps_zero,
             w_cone_psd: Vec::new(),
             w_solver: Vec::new(),
         }
@@ -322,7 +326,7 @@ where L: LinAlgEx<F>, F: Float
         self.w_cone_psd.resize(ConePSD::<L, _>::query_worklen(sk + p), f0);
         let cone = ProbSDPCone {
             sk, p,
-            cone_psd: ConePSD::new(self.w_cone_psd.as_mut()),
+            cone_psd: ConePSD::new(self.w_cone_psd.as_mut(), self.eps_zero),
             cone_zero: ConeZero::new(),
         };
 

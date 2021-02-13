@@ -570,8 +570,8 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         { // Projection prox_G(x)
             let (_x_x, x_y, x_s, x_tau) = x.split4(n, m, m, 1).unwrap();
 
-            self.cone.proj(true, self.par.eps_zero, x_y).or(Err(SolverError::ConeFailure))?;
-            self.cone.proj(false, self.par.eps_zero, x_s).or(Err(SolverError::ConeFailure))?;
+            self.cone.proj(true, x_y).or(Err(SolverError::ConeFailure))?;
+            self.cone.proj(false, x_s).or(Err(SolverError::ConeFailure))?;
             x_tau[0] = x_tau[0].max(f0);
 
             val_tau = x_tau[0];
