@@ -1,5 +1,10 @@
 # totsu
 
+[![Github](https://img.shields.io/github/last-commit/convexbrain/totsu?logo=github)](https://github.com/convexbrain/Totsu)
+[![Crate](https://img.shields.io/crates/v/totsu.svg)](https://crates.io/crates/totsu)
+[![API](https://docs.rs/totsu/badge.svg)](https://docs.rs/totsu)
+[![License](https://img.shields.io/crates/l/totsu.svg)](https://unlicense.org/)
+
 Totsu ([凸](http://www.decodeunicode.org/en/u+51F8) in Japanese) means convex.
 
 This crate for Rust provides **a first-order conic linear program solver**.
@@ -17,26 +22,25 @@ The author combines the two papers
 so that the homogeneous self-dual embedding matrix in [\[2\]](https://arxiv.org/abs/1312.3039)
 is formed as a linear operator in [\[1\]](https://ieeexplore.ieee.org/abstract/document/6126441).
 
-A core method `solver::Solver::solve` takes the following arguments:
-* objective and constraint linear operators that implement `operator::Operator` trait and
-* a projection onto a cone that implements `cone::Cone` trait.
+See [documentation](https://docs.rs/totsu/) for more details.
 
-Therefore solving a specific problem requires an implementation of those traits.
-You can use pre-defined implementations (see `problem`),
-as well as construct a user-defined tailored version for the reason of functionality and efficiency.
-Modules `operator` and `cone` include several basic structs
-that implement `operator::Operator` and `cone::Cone` trait.
+### Features
 
-Core linear algebra operations that `solver::Solver` requires
-are abstracted by `linalg::LinAlg` trait,
-while subtrait `linalg::LinAlgEx` is used for `operator`,
-`cone` and `problem` modules.
-This crate includes two `linalg::LinAlgEx` implementors:
-* `linalg::FloatGeneric` -
-  `num::Float`-generic implementation (pure Rust but slow)
-* `linalg::F64LAPACK` -
-  `f64`-specific implementation using `cblas-sys` and `lapacke-sys`
-  (you need a [BLAS/LAPACK source](https://github.com/blas-lapack-rs/blas-lapack-rs.github.io/wiki#sources) to link).
+This crate can be used without the standard library (`#![no_std]`).
+Use this in `Cargo.toml`:
+
+```toml
+[dependencies.totsu]
+version = "0.7.0"
+default-features = false
+features = ["nostd"]
+```
+
+Some module and structs are not availale in this case.
+
+### Changelog
+
+Changelog is available in [CHANGELOG.md](https://github.com/convexbrain/Totsu/blob/master/solver_rust_conic/CHANGELOG.md).
 
 ## Examples
 ### QP

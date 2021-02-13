@@ -1,4 +1,5 @@
-use num::Float;
+use std::prelude::v1::*;
+use num_traits::Float;
 use core::marker::PhantomData;
 use crate::solver::Solver;
 use crate::linalg::LinAlgEx;
@@ -262,7 +263,7 @@ where L: LinAlgEx<F>, F: Float
 impl<L, F> Cone<F> for ProbQCQPCone<L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    fn proj(&mut self, dual_cone: bool, eps_zero: F, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, dual_cone: bool, x: &mut[F]) -> Result<(), ()>
     {
         let n = self.n;
         let m1 = self.m1;
@@ -272,12 +273,12 @@ where L: LinAlgEx<F>, F: Float
             let (x_rsn, spl) = spl_x.split_at_mut(2 + n);
             spl_x = spl;
 
-            self.cone_rotsoc.proj(dual_cone, eps_zero, x_rsn)?;
+            self.cone_rotsoc.proj(dual_cone, x_rsn)?;
         }
 
         let x_p = spl_x;
 
-        self.cone_zero.proj(dual_cone, eps_zero, x_p)?;
+        self.cone_zero.proj(dual_cone, x_p)?;
         Ok(())
     }
 

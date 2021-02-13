@@ -1,13 +1,13 @@
 [package]
 name = "totsu"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2018"
 
 description = "A first-order conic solver for continuous scalar convex optimization problems."
 
 #documentation = "..."
-homepage = "https://github.com/convexbrain/Totsu/tree/master/solver_rust_cone"
+homepage = "https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic"
 repository = "https://github.com/convexbrain/Totsu"
 
 readme = "README.md"
@@ -18,10 +18,18 @@ categories = ["science"]
 
 license = "Unlicense"
 
+[features]
+default = ["num-traits/std", "lapacke", "cblas"]
+
+nostd = ["num-traits/libm"]
+
 [dependencies]
-num = "0.3.1"
-lapacke = "0.2.0"
-cblas = "0.2.0"
+lapacke = {version = "0.2.0", optional = true}
+cblas = {version = "0.2.0", optional = true}
+
+[dependencies.num-traits]
+version = "0.2.14"
+default-features = false
 
 [dev-dependencies]
 float_eq = "0.5.0"

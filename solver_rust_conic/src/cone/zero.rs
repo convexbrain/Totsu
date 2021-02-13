@@ -1,4 +1,4 @@
-use num::Float;
+use num_traits::Float;
 use core::marker::PhantomData;
 use super::Cone;
 
@@ -36,7 +36,7 @@ impl<F> ConeZero<F>
 impl<F> Cone<F> for ConeZero<F>
 where F: Float
 {
-    fn proj(&mut self, dual_cone: bool, _eps_zero: F, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, dual_cone: bool, x: &mut[F]) -> Result<(), ()>
     {
         if !dual_cone {
             for e in x {

@@ -1,6 +1,6 @@
 //! Linear algebra
 
-use num::Float;
+use num_traits::Float;
 
 /// Linear algebra trait
 /// 
@@ -123,7 +123,11 @@ pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
 //
 
 mod floatgeneric; // core, Float
+
+#[cfg(not(feature = "nostd"))]
 mod f64lapack;    // core, f64(cblas/lapacke)
 
 pub use floatgeneric::*;
+
+#[cfg(not(feature = "nostd"))]
 pub use f64lapack::*;

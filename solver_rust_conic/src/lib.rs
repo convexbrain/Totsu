@@ -52,6 +52,29 @@ This crate includes two [`linalg::LinAlgEx`] implementors:
   `f64`-specific implementation using `cblas-sys` and `lapacke-sys`
   (you need a [BLAS/LAPACK source](https://github.com/blas-lapack-rs/blas-lapack-rs.github.io/wiki#sources) to link).
 
+## Features
+
+This crate can be used without the standard library (`#![no_std]`).
+Use this in `Cargo.toml`:
+
+```toml
+[dependencies.totsu]
+version = "0.7.0"
+default-features = false
+features = ["nostd"]
+```
+
+Some module and structs are not availale in this case:
+* [`problem`]
+* [`linalg::F64LAPACK`]
+* [`logger::PrintLogger`]
+* [`logger::IoWriteLogger`]
+* [`operator::MatBuild`]
+
+## Changelog
+
+Changelog is available in [CHANGELOG.md](https://github.com/convexbrain/Totsu/blob/master/solver_rust_conic/CHANGELOG.md).
+
 # Examples
 ## QP
 
@@ -124,6 +147,10 @@ More practical [examples](https://github.com/convexbrain/Totsu/tree/master/examp
    (2004).
 */
 
+#![no_std]
+#[cfg(not(feature = "nostd"))]
+extern crate std;
+
 pub mod solver; // core, Float
 mod utils;
 
@@ -131,6 +158,8 @@ pub mod linalg;
 pub mod operator;
 pub mod cone;
 pub mod logger;
+
+#[cfg(not(feature = "nostd"))]
 pub mod problem;
 
 /// Prelude
@@ -143,6 +172,4 @@ pub mod prelude // core, Float
     pub use super::logger::NullLogger;
 }
 
-// TODO: no-std
-// MUST TODO: doc, readme
 // TODO: more tests
