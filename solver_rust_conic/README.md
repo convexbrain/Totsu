@@ -3,6 +3,7 @@
 [![Github](https://img.shields.io/github/last-commit/convexbrain/totsu?logo=github)](https://github.com/convexbrain/Totsu)
 [![Crate](https://img.shields.io/crates/v/totsu.svg)](https://crates.io/crates/totsu)
 [![API](https://docs.rs/totsu/badge.svg)](https://docs.rs/totsu)
+[![Book](https://img.shields.io/badge/book-日本語-yellow)](https://convexbrain.github.io/Totsu/book/)
 [![License](https://img.shields.io/crates/l/totsu.svg)](https://unlicense.org/)
 
 Totsu ([凸](http://www.decodeunicode.org/en/u+51F8) in Japanese) means convex.
