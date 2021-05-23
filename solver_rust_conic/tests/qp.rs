@@ -51,7 +51,7 @@ fn test_qp1()
 #[cfg(feature = "f64lapack")]
 mod f64lapack
 {
-    extern crate intel_mkl_src;
+    use intel_mkl_src as _;
     use totsu::linalg::F64LAPACK;
     use super::*;
 

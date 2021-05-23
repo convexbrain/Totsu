@@ -49,10 +49,22 @@ This crate includes two [`linalg::LinAlgEx`] implementors:
 * [`linalg::FloatGeneric`] -
   `num::Float`-generic implementation (pure Rust but slow)
 * [`linalg::F64LAPACK`] -
-  `f64`-specific implementation using `cblas-sys` and `lapacke-sys`
-  (you need a [BLAS/LAPACK source](https://github.com/blas-lapack-rs/blas-lapack-rs.github.io/wiki#sources) to link).
+  `f64`-specific implementation using `cblas-sys` and `lapacke-sys`.
 
 ## Features
+
+### Using [`linalg::F64LAPACK`]
+
+```toml
+[dependencies.totsu]
+version = "0.7.0"
+features = ["f64lapack"]
+```
+
+In addition you need a
+[BLAS/LAPACK source](https://github.com/blas-lapack-rs/blas-lapack-rs.github.io/wiki#sources) to link.
+
+### Without `std`
 
 This crate can be used without the standard library (`#![no_std]`).
 Use this in `Cargo.toml`:
@@ -61,12 +73,11 @@ Use this in `Cargo.toml`:
 [dependencies.totsu]
 version = "0.7.0"
 default-features = false
-features = ["nostd"]
+features = ["libm"]
 ```
 
 Some module and structs are not availale in this case:
 * [`problem`]
-* [`linalg::F64LAPACK`]
 * [`logger::PrintLogger`]
 * [`logger::IoWriteLogger`]
 * [`operator::MatBuild`]
@@ -80,7 +91,7 @@ Changelog is available in [CHANGELOG.md](https://github.com/convexbrain/Totsu/bl
 
 ```
 # #[cfg(feature = "f64lapack")]
-# extern crate intel_mkl_src;
+# use intel_mkl_src as _;
 
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
@@ -126,7 +137,7 @@ let rslt = s.solve(qp.problem(), NullLogger).unwrap();
 assert_float_eq!(rslt.0[0..2], [2., 0.].as_ref(), abs_all <= 1e-3);
 ```
 
-## Other Examples
+## Other examples
 
 You can find other [tests](https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic/tests) of pre-defined problems.
 More practical [examples](https://github.com/convexbrain/Totsu/tree/master/examples) are also available.

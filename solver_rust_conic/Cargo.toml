@@ -19,11 +19,14 @@ categories = ["science"]
 license = "Unlicense"
 
 [features]
-default = ["std", "f64lapack"]
+default = ["std"]
 
 std = ["num-traits/std"]
 f64lapack = ["lapacke", "cblas"]
 libm = ["num-traits/libm"]
+
+[package.metadata.docs.rs]
+features = ["f64lapack"]
 
 [dependencies]
 lapacke = {version = "0.5.0", optional = true}
