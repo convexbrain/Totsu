@@ -1,8 +1,5 @@
-extern crate intel_mkl_src;
-
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
-use totsu::linalg::F64LAPACK;
 use totsu::operator::MatBuild;
 use totsu::logger::PrintLogger;
 use totsu::problem::ProbQCQP;
@@ -45,13 +42,21 @@ fn subtest_qcqp1<L: LinAlgEx<f64>>()
 }
 
 #[test]
-fn test_qcqp1_1()
+fn test_qcqp1()
 {
     subtest_qcqp1::<FloatGeneric<f64>>();
 }
 
-#[test]
-fn test_qcqp1_2()
+#[cfg(feature = "f64lapack")]
+mod f64lapack
 {
-    subtest_qcqp1::<F64LAPACK>();
+    extern crate intel_mkl_src;
+    use totsu::linalg::F64LAPACK;
+    use super::*;
+
+    #[test]
+    fn test_qcqp1()
+    {
+        subtest_qcqp1::<F64LAPACK>();
+    }
 }

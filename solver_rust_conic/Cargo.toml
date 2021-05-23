@@ -19,20 +19,22 @@ categories = ["science"]
 license = "Unlicense"
 
 [features]
-default = ["num-traits/std", "lapacke", "cblas"]
+default = ["std", "f64lapack"]
 
-nostd = ["num-traits/libm"]
+std = ["num-traits/std"]
+f64lapack = ["lapacke", "cblas"]
+libm = ["num-traits/libm"]
 
 [dependencies]
-lapacke = {version = "0.2.0", optional = true}
-cblas = {version = "0.2.0", optional = true}
+lapacke = {version = "0.5.0", optional = true}
+cblas = {version = "0.3.0", optional = true}
 
 [dependencies.num-traits]
 version = "0.2.14"
 default-features = false
 
 [dev-dependencies]
-float_eq = "0.5.0"
+float_eq = "0.6.0"
 
 [dev-dependencies.intel-mkl-src]
 default-features = false

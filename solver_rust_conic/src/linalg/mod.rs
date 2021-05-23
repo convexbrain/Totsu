@@ -124,10 +124,10 @@ pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
 
 mod floatgeneric; // core, Float
 
-#[cfg(not(feature = "nostd"))]
+#[cfg(feature = "f64lapack")]
 mod f64lapack;    // core, f64(cblas/lapacke)
 
 pub use floatgeneric::*;
 
-#[cfg(not(feature = "nostd"))]
+#[cfg(feature = "f64lapack")]
 pub use f64lapack::*;

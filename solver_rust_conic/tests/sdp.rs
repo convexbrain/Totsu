@@ -1,8 +1,5 @@
-extern crate intel_mkl_src;
-
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
-use totsu::linalg::F64LAPACK;
 use totsu::operator::MatBuild;
 use totsu::logger::PrintLogger;
 use totsu::problem::ProbSDP;
@@ -48,13 +45,21 @@ fn subtest_sdp1<L: LinAlgEx<f64>>()
 }
 
 #[test]
-fn test_sdp1_1()
+fn test_sdp1()
 {
     subtest_sdp1::<FloatGeneric<f64>>();
 }
 
-#[test]
-fn test_sdp1_2()
+#[cfg(feature = "f64lapack")]
+mod f64lapack
 {
-    subtest_sdp1::<F64LAPACK>();
+    extern crate intel_mkl_src;
+    use totsu::linalg::F64LAPACK;
+    use super::*;
+
+    #[test]
+    fn test_sdp1()
+    {
+        subtest_sdp1::<F64LAPACK>();
+    }
 }

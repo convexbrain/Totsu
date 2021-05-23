@@ -42,10 +42,10 @@ pub trait Operator<F: Float>
 
 mod matop;    // core, Float
 
-#[cfg(not(feature = "nostd"))]
+#[cfg(feature = "std")]
 mod matbuild; // std,  Float
 
 pub use matop::*;
 
-#[cfg(not(feature = "nostd"))]
+#[cfg(feature = "std")]
 pub use matbuild::*;

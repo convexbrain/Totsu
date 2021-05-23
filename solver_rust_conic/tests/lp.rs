@@ -1,7 +1,4 @@
-extern crate intel_mkl_src;
-
 use totsu::prelude::*;
-use totsu::linalg::F64LAPACK;
 use totsu::operator::MatBuild;
 use totsu::logger::PrintLogger;
 use totsu::problem::ProbLP;
@@ -42,15 +39,9 @@ fn subtest_lp1<L: LinAlgEx<f64>>()
 }
 
 #[test]
-fn test_lp1_1()
+fn test_lp1()
 {
     subtest_lp1::<FloatGeneric<f64>>();
-}
-
-#[test]
-fn test_lp1_2()
-{
-    subtest_lp1::<F64LAPACK>();
 }
 
 //
@@ -89,13 +80,27 @@ fn subtest_lp2<L: LinAlgEx<f64>>()
 }
 
 #[test]
-fn test_lp2_1()
+fn test_lp2()
 {
     subtest_lp2::<FloatGeneric<f64>>();
 }
 
-#[test]
-fn test_lp2_2()
+#[cfg(feature = "f64lapack")]
+mod f64lapack
 {
-    subtest_lp2::<F64LAPACK>();
+    extern crate intel_mkl_src;
+    use totsu::linalg::F64LAPACK;
+    use super::*;
+
+    #[test]
+    fn test_lp1()
+    {
+        subtest_lp1::<F64LAPACK>();
+    }
+    
+    #[test]
+    fn test_lp2()
+    {
+        subtest_lp2::<F64LAPACK>();
+    }
 }

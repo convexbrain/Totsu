@@ -2,10 +2,10 @@
 
 mod nulllogger; // core
 
-#[cfg(not(feature = "nostd"))]
+#[cfg(feature = "std")]
 mod stdlogger;  // std
 
 pub use nulllogger::*;
 
-#[cfg(not(feature = "nostd"))]
+#[cfg(feature = "std")]
 pub use stdlogger::*;

@@ -1,8 +1,5 @@
-extern crate intel_mkl_src;
-
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
-use totsu::linalg::F64LAPACK;
 use totsu::operator::MatBuild;
 use totsu::logger::PrintLogger;
 use totsu::problem::ProbSOCP;
@@ -44,15 +41,9 @@ fn subtest_socp1<L: LinAlgEx<f64>>()
 }
 
 #[test]
-fn test_socp1_1()
+fn test_socp1()
 {
     subtest_socp1::<FloatGeneric<f64>>();
-}
-
-#[test]
-fn test_socp1_2()
-{
-    subtest_socp1::<F64LAPACK>();
 }
 
 //
@@ -101,13 +92,27 @@ fn subtest_socp2<L: LinAlgEx<f64>>()
 }
 
 #[test]
-fn test_socp2_1()
+fn test_socp2()
 {
     subtest_socp2::<FloatGeneric<f64>>();
 }
 
-#[test]
-fn test_socp2_2()
+#[cfg(feature = "f64lapack")]
+mod f64lapack
 {
-    subtest_socp2::<F64LAPACK>();
+    extern crate intel_mkl_src;
+    use totsu::linalg::F64LAPACK;
+    use super::*;
+
+    #[test]
+    fn test_socp1()
+    {
+        subtest_socp1::<F64LAPACK>();
+    }
+    
+    #[test]
+    fn test_socp2()
+    {
+        subtest_socp2::<F64LAPACK>();
+    }
 }

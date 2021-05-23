@@ -1,3 +1,6 @@
+#[cfg(feature = "f64lapack")]
+extern crate intel_mkl_src;
+
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
 

@@ -79,6 +79,9 @@ Changelog is available in [CHANGELOG.md](https://github.com/convexbrain/Totsu/bl
 ## QP
 
 ```
+# #[cfg(feature = "f64lapack")]
+# extern crate intel_mkl_src;
+
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
@@ -148,7 +151,7 @@ More practical [examples](https://github.com/convexbrain/Totsu/tree/master/examp
 */
 
 #![no_std]
-#[cfg(not(feature = "nostd"))]
+#[cfg(feature = "std")]
 extern crate std;
 
 pub mod solver; // core, Float
@@ -159,7 +162,7 @@ pub mod operator;
 pub mod cone;
 pub mod logger;
 
-#[cfg(not(feature = "nostd"))]
+#[cfg(feature = "std")]
 pub mod problem;
 
 /// Prelude
