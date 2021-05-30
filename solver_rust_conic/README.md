@@ -27,14 +27,27 @@ See [documentation](https://docs.rs/totsu/) for more details.
 
 ### Features
 
+#### Using [`linalg::F64LAPACK`]
+
+```toml
+[dependencies.totsu]
+version = "0.8.0"
+features = ["f64lapack"]
+```
+
+In addition you need a
+[BLAS/LAPACK source](https://github.com/blas-lapack-rs/blas-lapack-rs.github.io/wiki#sources) to link.
+
+#### Without `std`
+
 This crate can be used without the standard library (`#![no_std]`).
 Use this in `Cargo.toml`:
 
 ```toml
 [dependencies.totsu]
-version = "0.7.0"
+version = "0.8.0"
 default-features = false
-features = ["nostd"]
+features = ["libm"]
 ```
 
 Some module and structs are not availale in this case.
@@ -51,6 +64,8 @@ use float_eq::assert_float_eq;
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
 use totsu::problem::ProbQP;
+
+//env_logger::init();
 
 type LA = FloatGeneric<f64>;
 type AMatBuild = MatBuild<LA, f64>;
@@ -86,12 +101,12 @@ let s = ASolver::new().par(|p| {
    p.max_iter = Some(100_000);
 });
 let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
-let rslt = s.solve(qp.problem(), NullLogger).unwrap();
+let rslt = s.solve(qp.problem()).unwrap();
 
 assert_float_eq!(rslt.0[0..2], [2., 0.].as_ref(), abs_all <= 1e-3);
 ```
 
-### Other Examples
+### Other examples
 
 You can find other [tests](https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic/tests) of pre-defined problems.
 More practical [examples](https://github.com/convexbrain/Totsu/tree/master/examples) are also available.

@@ -57,7 +57,7 @@ This crate includes two [`linalg::LinAlgEx`] implementors:
 
 ```toml
 [dependencies.totsu]
-version = "0.7.0"
+version = "0.8.0"
 features = ["f64lapack"]
 ```
 
@@ -71,7 +71,7 @@ Use this in `Cargo.toml`:
 
 ```toml
 [dependencies.totsu]
-version = "0.7.0"
+version = "0.8.0"
 default-features = false
 features = ["libm"]
 ```
@@ -90,7 +90,6 @@ Changelog is available in [CHANGELOG.md](https://github.com/convexbrain/Totsu/bl
 ```
 # #[cfg(feature = "f64lapack")]
 # use intel_mkl_src as _;
-
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
