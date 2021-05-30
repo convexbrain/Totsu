@@ -8,8 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- Using `log` crate.
+- Feature `f64lapack` to enable `F64LAPACK`.
+- Feature `std` and `libm` for `#![no_std]` support.
 ### Deprecated
 ### Removed
+- `logger` module.
+- Feature `nostd`.
 ### Fixed
 ### Security
 
