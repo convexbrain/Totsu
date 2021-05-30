@@ -276,7 +276,7 @@ fn mat_to_vec(m: &mut[f64], v: &mut[f64], scale: bool)
 //
 
 #[cfg(test)]
-extern crate intel_mkl_src;
+use intel_mkl_src as _;
 
 #[test]
 fn test_f64lapack1()

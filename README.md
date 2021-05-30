@@ -10,6 +10,8 @@ Crate: https://crates.io/crates/totsu/
 
 Documentation: https://docs.rs/totsu/
 
+Book(ja): https://convexbrain.github.io/Totsu/book/
+
 ## examples/
 
 How to use Totsu to solve various optimization problems.
@@ -20,7 +22,7 @@ How to use Totsu to solve various optimization problems.
 
 This C++ package provides a basic **primal-dual interior-point method** solver: `PrimalDualIPM`.
 
-solver/doxygen/ documentation is [here](http://convexbrain.github.io/Totsu/PrimalDualIPM/html/).
+solver/doxygen/ documentation: http://convexbrain.github.io/Totsu/PrimalDualIPM/html/
 
 ## [obsolete] solver_rust/
 

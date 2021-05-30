@@ -1,16 +1,14 @@
-extern crate intel_mkl_src;
-
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
-use totsu::linalg::F64LAPACK;
 use totsu::operator::MatBuild;
-use totsu::logger::PrintLogger;
 use totsu::problem::ProbQCQP;
 
 //
 
 fn subtest_qcqp1<L: LinAlgEx<f64>>()
 {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let n = 2; // x0, x1
     let m = 1;
     let p = 0;
@@ -38,20 +36,28 @@ fn subtest_qcqp1<L: LinAlgEx<f64>>()
     let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
     println!("{:?}", s.par);
     let mut qp = ProbQCQP::<L, _>::new(syms_p, vecs_q, scls_r, mat_a, vec_b, s.par.eps_zero);
-    let rslt = s.solve(qp.problem(), PrintLogger).unwrap();
+    let rslt = s.solve(qp.problem()).unwrap();
     println!("{:?}", rslt);
 
     assert_float_eq!(rslt.0[0..2], [5., 4.].as_ref(), abs_all <= 1e-3);
 }
 
 #[test]
-fn test_qcqp1_1()
+fn test_qcqp1()
 {
     subtest_qcqp1::<FloatGeneric<f64>>();
 }
 
-#[test]
-fn test_qcqp1_2()
+#[cfg(feature = "f64lapack")]
+mod f64lapack
 {
-    subtest_qcqp1::<F64LAPACK>();
+    use intel_mkl_src as _;
+    use totsu::linalg::F64LAPACK;
+    use super::*;
+
+    #[test]
+    fn test_qcqp1()
+    {
+        subtest_qcqp1::<F64LAPACK>();
+    }
 }

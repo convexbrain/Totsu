@@ -1,8 +1,8 @@
 [workspace]
 
 members = [
-    "svm_qp",
     "l1reg_lp",
+    "svm_qp",
     "trajplan_qcqp",
 ]
 

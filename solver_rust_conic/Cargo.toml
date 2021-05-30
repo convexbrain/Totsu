@@ -1,6 +1,6 @@
 [package]
 name = "totsu"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2018"
 
@@ -19,20 +19,27 @@ categories = ["science"]
 license = "Unlicense"
 
 [features]
-default = ["num-traits/std", "lapacke", "cblas"]
+default = ["std"]
 
-nostd = ["num-traits/libm"]
+std = ["num-traits/std"]
+f64lapack = ["lapacke", "cblas"]
+libm = ["num-traits/libm"]
+
+[package.metadata.docs.rs]
+features = ["f64lapack"]
 
 [dependencies]
-lapacke = {version = "0.2.0", optional = true}
-cblas = {version = "0.2.0", optional = true}
+log = "0.4.14"
+lapacke = {version = "0.5.0", optional = true}
+cblas = {version = "0.3.0", optional = true}
 
 [dependencies.num-traits]
 version = "0.2.14"
 default-features = false
 
 [dev-dependencies]
-float_eq = "0.5.0"
+float_eq = "0.6.0"
+env_logger = "0.8.3"
 
 [dev-dependencies.intel-mkl-src]
 default-features = false

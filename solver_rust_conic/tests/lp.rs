@@ -1,15 +1,13 @@
-extern crate intel_mkl_src;
-
 use totsu::prelude::*;
-use totsu::linalg::F64LAPACK;
 use totsu::operator::MatBuild;
-use totsu::logger::PrintLogger;
 use totsu::problem::ProbLP;
 
 //
 
 fn subtest_lp1<L: LinAlgEx<f64>>()
 {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let n = 1;
     let m = 2;
     let p = 0;
@@ -35,28 +33,24 @@ fn subtest_lp1<L: LinAlgEx<f64>>()
     let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
     println!("{:?}", s.par);
     let mut lp = ProbLP::<L, _>::new(vec_c, mat_g, vec_h, mat_a, vec_b);
-    let rslt = s.solve(lp.problem(), PrintLogger).unwrap_err();
+    let rslt = s.solve(lp.problem()).unwrap_err();
     println!("{:?}", rslt);
     
     assert_eq!(rslt, SolverError::Infeasible);
 }
 
 #[test]
-fn test_lp1_1()
+fn test_lp1()
 {
     subtest_lp1::<FloatGeneric<f64>>();
-}
-
-#[test]
-fn test_lp1_2()
-{
-    subtest_lp1::<F64LAPACK>();
 }
 
 //
 
 fn subtest_lp2<L: LinAlgEx<f64>>()
 {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let n = 1;
     let m = 2;
     let p = 0;
@@ -82,20 +76,34 @@ fn subtest_lp2<L: LinAlgEx<f64>>()
     let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
     println!("{:?}", s.par);
     let mut lp = ProbLP::<L, _>::new(vec_c, mat_g, vec_h, mat_a, vec_b);
-    let rslt = s.solve(lp.problem(), PrintLogger).unwrap_err();
+    let rslt = s.solve(lp.problem()).unwrap_err();
     println!("{:?}", rslt);
     
     assert_eq!(rslt, SolverError::Unbounded);
 }
 
 #[test]
-fn test_lp2_1()
+fn test_lp2()
 {
     subtest_lp2::<FloatGeneric<f64>>();
 }
 
-#[test]
-fn test_lp2_2()
+#[cfg(feature = "f64lapack")]
+mod f64lapack
 {
-    subtest_lp2::<F64LAPACK>();
+    use intel_mkl_src as _;
+    use totsu::linalg::F64LAPACK;
+    use super::*;
+
+    #[test]
+    fn test_lp1()
+    {
+        subtest_lp1::<F64LAPACK>();
+    }
+    
+    #[test]
+    fn test_lp2()
+    {
+        subtest_lp2::<F64LAPACK>();
+    }
 }

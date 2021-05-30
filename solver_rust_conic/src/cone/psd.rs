@@ -59,6 +59,7 @@ where L: LinAlgEx<F>, F: Float
     fn proj(&mut self, _dual_cone: bool, x: &mut[F]) -> Result<(), ()>
     {
         if self.work.len() < L::proj_psd_worklen(x.len()) {
+            log::error!("work shortage: {} given < {} required", self.work.len(), L::proj_psd_worklen(x.len()));
             return Err(());
         }
 
