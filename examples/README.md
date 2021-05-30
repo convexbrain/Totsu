@@ -1,10 +1,10 @@
-# Example: svm_qp
-
-![](svm_qp/plot.svg)
-
 # Example: l1reg_lp
 
 ![](l1reg_lp/plot.svg)
+
+# Example: svm_qp
+
+![](svm_qp/plot.svg)
 
 # Example: trajplan_qcqp
 
