@@ -1,13 +1,14 @@
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
-use totsu::logger::PrintLogger;
 use totsu::problem::ProbQP;
 
 //
 
 fn subtest_qp1<L: LinAlgEx<f64>>()
 {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let n = 2; // x0, x1
     let m = 1;
     let p = 0;
@@ -36,7 +37,7 @@ fn subtest_qp1<L: LinAlgEx<f64>>()
     let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
     println!("{:?}", s.par);
     let mut qp = ProbQP::<L, _>::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
-    let rslt = s.solve(qp.problem(), PrintLogger).unwrap();
+    let rslt = s.solve(qp.problem()).unwrap();
     println!("{:?}", rslt);
 
     assert_float_eq!(rslt.0[0..2], [2., 0.].as_ref(), abs_all <= 1e-3);

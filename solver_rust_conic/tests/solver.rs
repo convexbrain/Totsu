@@ -9,6 +9,8 @@ use totsu::prelude::*;
 #[test]
 fn test_solver1()
 {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     type LA = FloatGeneric<f64>;
     type AMatOp<'a> = MatOp<'a, LA, f64>;
     type AConePSD<'a> = ConePSD<'a, LA, f64>;
@@ -47,7 +49,7 @@ fn test_solver1()
     let cone = AConePSD::new(&mut cone_w, s.par.eps_zero);
 
     let mut solver_w = vec![0.; ASolver::query_worklen(op_a.size())];
-    let rslt = s.solve((op_c, op_a, op_b, cone, &mut solver_w), NullLogger).unwrap();
+    let rslt = s.solve((op_c, op_a, op_b, cone, &mut solver_w)).unwrap();
     println!("{:?}", rslt);
 
     assert_float_eq!(rslt.0[0], -2., abs_all <= 1e-3);

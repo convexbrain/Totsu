@@ -29,6 +29,7 @@ libm = ["num-traits/libm"]
 features = ["f64lapack"]
 
 [dependencies]
+log = "0.4.14"
 lapacke = {version = "0.5.0", optional = true}
 cblas = {version = "0.3.0", optional = true}
 
@@ -38,6 +39,7 @@ default-features = false
 
 [dev-dependencies]
 float_eq = "0.6.0"
+env_logger = "0.8.3"
 
 [dev-dependencies.intel-mkl-src]
 default-features = false

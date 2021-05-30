@@ -78,8 +78,6 @@ features = ["libm"]
 
 Some module and structs are not availale in this case:
 * [`problem`]
-* [`logger::PrintLogger`]
-* [`logger::IoWriteLogger`]
 * [`operator::MatBuild`]
 
 ## Changelog
@@ -97,6 +95,8 @@ use float_eq::assert_float_eq;
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
 use totsu::problem::ProbQP;
+
+//env_logger::init();
 
 type LA = FloatGeneric<f64>;
 type AMatBuild = MatBuild<LA, f64>;
@@ -132,7 +132,7 @@ let s = ASolver::new().par(|p| {
    p.max_iter = Some(100_000);
 });
 let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
-let rslt = s.solve(qp.problem(), NullLogger).unwrap();
+let rslt = s.solve(qp.problem()).unwrap();
 
 assert_float_eq!(rslt.0[0..2], [2., 0.].as_ref(), abs_all <= 1e-3);
 ```
@@ -171,7 +171,6 @@ mod utils;
 pub mod linalg;
 pub mod operator;
 pub mod cone;
-pub mod logger;
 
 #[cfg(feature = "std")]
 pub mod problem;
@@ -183,7 +182,6 @@ pub mod prelude // core, Float
     pub use super::linalg::{LinAlg, LinAlgEx, FloatGeneric};
     pub use super::operator::{Operator, MatType, MatOp};
     pub use super::cone::{Cone, ConeZero, ConeRPos, ConeSOC, ConePSD};
-    pub use super::logger::NullLogger;
 }
 
 // TODO: more tests

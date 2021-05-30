@@ -25,8 +25,6 @@ pub enum SolverError
     InvalidOp,
     /// Shortage of work slice length.
     WorkShortage,
-    /// Failed to log due to I/O error.
-    LogFailure,
     /// Failure caused by [`Cone`].
     ConeFailure,
 }
@@ -45,10 +43,8 @@ pub struct SolverParam<F: Float>
     pub eps_inf: F,
     /// Tolerance of small positive value to avoid division by zero.
     pub eps_zero: F,
-    /// Period of iterations to output progress log. `None` means no periodic log.
-    pub log_period: Option<usize>,
-    /// Enables to log verbose vector status.
-    pub log_verbose: bool,
+    /// Period of iterations to output progress log(for debug/trace level).
+    pub log_period: usize,
 }
 
 impl<F: Float> Default for SolverParam<F>
@@ -62,18 +58,9 @@ impl<F: Float> Default for SolverParam<F>
             eps_acc: ten.powi(-6),
             eps_inf: ten.powi(-6),
             eps_zero: ten.powi(-12),
-            log_period: None,
-            log_verbose: false,
+            log_period: 10_000,
         }
     }
-}
-
-//
-
-macro_rules! writeln_or {
-    ( $( $arg: expr ),* ) => {
-        writeln!( $( $arg ),* ).or(Err(SolverError::LogFailure))
-    };
 }
 
 //
@@ -298,16 +285,15 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp
     /// * `op_b` is \\(b\\) as a linear [`Operator`].
     /// * `cone` is \\(\mathcal{K}\\) expressed by [`Cone`].
     /// * `work` slice is used for temporal variables. [`Solver::solve`] does not rely on dynamic heap allocation.
-    /// * `logger` outputs solver progress.
-    pub fn solve<OC, OA, OB, C, W>(self,
-        (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut[F]),
-        logger: W
+    pub fn solve<OC, OA, OB, C>(self,
+        (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut[F])
     ) -> Result<(&[F], &[F]), SolverError>
-    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>, W: core::fmt::Write
+    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
     {
         let (m, n) = op_a.size();
 
         if op_c.size() != (n, 1) || op_b.size() != (m, 1) {
+            log::error!("Size mismatch: op_c{:?}, op_a{:?}, op_b{:?}", op_c.size(), op_a.size(), op_b.size());
             return Err(SolverError::InvalidOp);
         }
     
@@ -319,7 +305,6 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp
 
         let core = SolverCore {
             par: self.par,
-            logger,
             op_k,
             cone,
         };
@@ -330,27 +315,23 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp
 
 //
 
-struct SolverCore<L, F, OC, OA, OB, C, W>
+struct SolverCore<L, F, OC, OA, OB, C>
 where L: LinAlg<F>, F: Float + Debug + LowerExp,
-      OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>,
-      W: core::fmt::Write
+      OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
 {
     par: SolverParam<F>,
-
-    logger: W,
 
     op_k: SelfDualEmbed<F, L, OC, OA, OB>,
     cone: C,
 }
 
-impl<L, F, OC, OA, OB, C, W> SolverCore<L, F, OC, OA, OB, C, W>
+impl<L, F, OC, OA, OB, C> SolverCore<L, F, OC, OA, OB, C>
 where L: LinAlg<F>, F: Float + Debug + LowerExp,
-      OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>,
-      W: core::fmt::Write
+      OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
 {
     fn solve(mut self, work: &mut[F]) -> Result<(&[F], &[F]), SolverError>
     {
-        writeln_or!(self.logger, "----- Started")?;
+        log::info!("----- Started");
         let (m, n) = self.op_k.a().size();
 
         // Calculate norms
@@ -371,18 +352,21 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                 false
             };
 
-            let log_trig = if let Some(log_period) = self.par.log_period {
-                i % log_period.max(1) == 0
+            let log_trig = if self.par.log_period > 0 {
+                i % self.par.log_period == 0
             }
             else {
+                if i == 0 && log::log_enabled!(log::Level::Debug) {
+                    log::warn!("log_period == 0: no periodic log");
+                }
                 false
             };
 
             // Update vectors
             let val_tau = self.update_vecs(x, y, dp_tau, dp_sigma, tmpw)?;
 
-            if log_trig && self.par.log_verbose {
-                writeln_or!(self.logger, "{}: state {:?} {:?}", i, x, y)?;
+            if log_trig {
+                log::trace!("{}: state {:?} {:?}", i, x, y);
             }
 
             if val_tau > self.par.eps_zero {
@@ -392,7 +376,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                 let term_conv = (cri_pri <= self.par.eps_acc) && (cri_dual <= self.par.eps_acc) && (cri_gap <= self.par.eps_acc);
 
                 if log_trig || excess_iter || term_conv {
-                    writeln_or!(self.logger, "{}: pri_dual_gap {:.2e} {:.2e} {:.2e}", i, cri_pri, cri_dual, cri_gap)?;
+                    log::debug!("{}: pri_dual_gap {:.2e} {:.2e} {:.2e}", i, cri_pri, cri_dual, cri_gap);
                 }
 
                 if excess_iter || term_conv {
@@ -400,18 +384,16 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                     L::scale(val_tau.recip(), x_x_ast);
                     L::scale(val_tau.recip(), x_y_ast);
 
-                    if self.par.log_verbose {
-                        writeln_or!(self.logger, "{}: x {:?}", i, x_x_ast)?;
-                        writeln_or!(self.logger, "{}: y {:?}", i, x_y_ast)?;
-                    }
+                    log::trace!("{}: x {:?}", i, x_x_ast);
+                    log::trace!("{}: y {:?}", i, x_y_ast);
 
                     if term_conv {
-                        writeln_or!(self.logger, "----- Converged")?;
+                        log::info!("----- Converged");
 
                         return Ok((x_x_ast, x_y_ast));
                     }
                     else {
-                        writeln_or!(self.logger, "----- ExcessIter")?;
+                        log::warn!("----- ExcessIter");
 
                         return Err(SolverError::ExcessIter);
                     }
@@ -425,29 +407,27 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                 let term_infeas = cri_infeas <= self.par.eps_inf;
 
                 if log_trig || excess_iter || term_unbdd || term_infeas {
-                    writeln_or!(self.logger, "{}: unbdd_infeas {:.2e} {:.2e}", i, cri_unbdd, cri_infeas)?;
+                    log::debug!("{}: unbdd_infeas {:.2e} {:.2e}", i, cri_unbdd, cri_infeas);
                 }
 
                 if excess_iter || term_unbdd || term_infeas {
                     let (x_x_cert, x_y_cert) = x.split2(n, m).unwrap();
 
-                    if self.par.log_verbose {
-                        writeln_or!(self.logger, "{}: x {:?}", i, x_x_cert)?;
-                        writeln_or!(self.logger, "{}: y {:?}", i, x_y_cert)?;
-                    }
+                    log::trace!("{}: x {:?}", i, x_x_cert);
+                    log::trace!("{}: y {:?}", i, x_y_cert);
 
                     if term_unbdd {
-                        writeln_or!(self.logger, "----- Unbounded")?;
+                        log::warn!("----- Unbounded");
 
                         return Err(SolverError::Unbounded);
                     }
                     else if term_infeas {
-                        writeln_or!(self.logger, "----- Infeasible")?;
+                        log::warn!("----- Infeasible");
 
                         return Err(SolverError::Infeasible);
                     }
                     else {
-                        writeln_or!(self.logger, "----- ExcessIter")?;
+                        log::warn!("----- ExcessIter");
 
                         return Err(SolverError::ExcessIter);
                     }
