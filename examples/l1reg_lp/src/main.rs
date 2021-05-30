@@ -1,7 +1,5 @@
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
-use totsu::linalg::F64LAPACK;
-use totsu::logger::PrintLogger;
 use totsu::problem::ProbLP;
 
 use rand::prelude::*;
@@ -11,11 +9,11 @@ use std::io::prelude::*;
 use std::io::BufWriter;
 use std::fs::File;
 
-extern crate intel_mkl_src;
+//extern crate intel_mkl_src;
 
-type AMatBuild = MatBuild<F64LAPACK, f64>;
-type AProbLP = ProbLP<F64LAPACK, f64>;
-type ASolver = Solver<F64LAPACK, f64>;
+type AMatBuild = MatBuild<FloatGeneric<f64>, f64>;
+type AProbLP = ProbLP<FloatGeneric<f64>, f64>;
+type ASolver = Solver<FloatGeneric<f64>, f64>;
 
 /// gaussian kernel
 fn kernel(xi: &AMatBuild, ci: usize, xj: &AMatBuild, cj: usize) -> f64
@@ -48,6 +46,7 @@ fn wx(x: &AMatBuild, alpha: &[f64], xi: &AMatBuild) -> f64
 
 /// main
 fn main() -> std::io::Result<()> {
+    env_logger::init();
 
     //----- make sample points for training
 
@@ -115,10 +114,9 @@ fn main() -> std::io::Result<()> {
 
     let s = ASolver::new().par(|p| {
         p.eps_acc = 1e-3;
-        p.log_period = Some(10000);
     });
     let mut lp = AProbLP::new(vec_c, mat_g, vec_h, mat_a, vec_b);
-    let rslt = s.solve(lp.problem(), PrintLogger).unwrap();
+    let rslt = s.solve(lp.problem()).unwrap();
     //println!("{:?}", rslt);
 
     let (_z, spl) = rslt.0.split_at(l);

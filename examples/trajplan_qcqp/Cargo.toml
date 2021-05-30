@@ -6,7 +6,8 @@ edition = "2018"
 publish = false
 
 [dependencies]
-totsu = {path = "../../solver_rust_conic"}
+totsu = {path = "../../solver_rust_conic", features = ["f64lapack"]}
+env_logger = "0.8.3"
 
 [dependencies.intel-mkl-src]
 default-features = false

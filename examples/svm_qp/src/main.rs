@@ -1,7 +1,6 @@
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
 use totsu::linalg::F64LAPACK;
-use totsu::logger::PrintLogger;
 use totsu::problem::ProbQP;
 
 use rand::prelude::*;
@@ -48,6 +47,7 @@ fn wx(x: &AMatBuild, y: &AMatBuild, alpha: &[f64], xj: &AMatBuild, cj: usize) ->
 
 /// main
 fn main() -> std::io::Result<()> {
+    env_logger::init();
 
     //----- make sample points for training
 
@@ -101,10 +101,9 @@ fn main() -> std::io::Result<()> {
 
     let s = ASolver::new().par(|p| {
         p.eps_acc = 1e-3;
-        p.log_period = Some(10000);
     });
     let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
-    let rslt = s.solve(qp.problem(), PrintLogger).unwrap();
+    let rslt = s.solve(qp.problem()).unwrap();
     //println!("{:?}", rslt);
 
     let (alpha, _) = rslt.0.split_at(l);

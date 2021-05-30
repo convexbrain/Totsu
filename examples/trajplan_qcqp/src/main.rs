@@ -1,7 +1,6 @@
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
 use totsu::linalg::F64LAPACK;
-use totsu::logger::PrintLogger;
 use totsu::problem::ProbQCQP;
 
 use std::io::prelude::*;
@@ -17,6 +16,7 @@ type ASolver = Solver<F64LAPACK, f64>;
 
 /// main
 fn main() -> std::io::Result<()> {
+    env_logger::init();
 
     //----- parameters
 
@@ -140,10 +140,9 @@ fn main() -> std::io::Result<()> {
 
     let s = ASolver::new().par(|p| {
         p.eps_acc = 1e-3;
-        p.log_period = Some(10000);
     });
     let mut qp = AProbQCQP::new(syms_p, vecs_q, scls_r, mat_a, vec_b, s.par.eps_zero);
-    let rslt = s.solve(qp.problem(), PrintLogger).unwrap();
+    let rslt = s.solve(qp.problem()).unwrap();
     //println!("{:?}", rslt);
 
     //----- file output for graph plot

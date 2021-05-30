@@ -5,12 +5,40 @@
 
 use cortex_m_rt::entry;
 use cortex_m_semihosting::debug;
-use cortex_m_semihosting::{hprint, hprintln};
+use cortex_m_semihosting::hprintln;
 use panic_semihosting as _;
+
+//
+
+use log::{Record, Level, Metadata};
+use log::LevelFilter;
+
+struct HPrintLogger;
+
+impl log::Log for HPrintLogger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= Level::Debug // compile-time log level
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            hprintln!("[{}] {}", record.level(), record.args()).unwrap();
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+static LOGGER: HPrintLogger = HPrintLogger;
+
+//
 
 #[entry]
 fn main() -> !
 {
+    log::set_logger(&LOGGER)
+        .map(|()| log::set_max_level(LevelFilter::Debug)) // run-time log level
+        .unwrap();
     hprintln!("run").unwrap();
 
     test_lp();
@@ -24,26 +52,6 @@ fn main() -> !
 
 use totsu::prelude::*;
 use num_traits::Float;
-
-//
-
-/// Logger using `hprint!` macro
-pub struct HPrintLogger;
-
-impl core::fmt::Write for HPrintLogger
-{
-    fn write_str(&mut self, s: &str) -> Result<(), core::fmt::Error>
-    {
-        if let Ok(_) = hprint!("{}", s) {
-            Ok(())
-        }
-        else {
-            Err(core::fmt::Error)
-        }
-    }
-}
-
-//
 
 fn test_lp()
 {
@@ -76,13 +84,13 @@ fn test_lp()
 
     let s = ASolver::new().par(|p| {
         p.max_iter = Some(100_000);
-        p.log_period = Some(10);
+        p.log_period = 10;
     });
 
     hprintln!("query_worklen -> {}", ASolver::query_worklen(op_a.size())).unwrap();
     let mut solver_w = [0.; 48];
 
-    let rslt = s.solve((op_c, op_a, op_b, cone, &mut solver_w), HPrintLogger).unwrap();
+    let rslt = s.solve((op_c, op_a, op_b, cone, &mut solver_w)).unwrap();
     hprintln!("solve -> {:?}", rslt.0).unwrap();
 
     assert!((rslt.0[0] - 2.).abs() <= 1e-3);
