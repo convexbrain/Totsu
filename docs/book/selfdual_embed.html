@@ -1,323 +1,461 @@
+
 <!DOCTYPE HTML>
-<html lang="ja" class="sidebar-visible no-js light">
+<html lang="" >
     <head>
-        <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Homogeneous Self-dual Embedding - TotsuBook (ja)</title>
-        
-        
-
-
-        <!-- Custom HTML head -->
-        
-
-
-        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <title>Homogeneous Self-dual Embedding · TotsuBook (ja)</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" content="#ffffff" />
+        <meta name="generator" content="HonKit 3.6.20">
+        <meta name="author" content="convexbrain">
+        
+        
+    
+    <link rel="stylesheet" href="gitbook/style.css">
 
-        
-        <link rel="icon" href="favicon.svg">
-        
-        
-        <link rel="shortcut icon" href="favicon.png">
-        
-        <link rel="stylesheet" href="css/variables.css">
-        <link rel="stylesheet" href="css/general.css">
-        <link rel="stylesheet" href="css/chrome.css">
-        
-        <link rel="stylesheet" href="css/print.css" media="print">
-        
-
-        <!-- Fonts -->
-        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
-        
-        <link rel="stylesheet" href="fonts/fonts.css">
-        
-
-        <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" href="highlight.css">
-        <link rel="stylesheet" href="tomorrow-night.css">
-        <link rel="stylesheet" href="ayu-highlight.css">
-
-        <!-- Custom theme stylesheets -->
+    
+            
+                
+                <link rel="stylesheet" href="gitbook/gitbook-plugin-katex/katex.min.css">
+                
+            
+                
+                <link rel="stylesheet" href="gitbook/gitbook-plugin-search-plus/search.css">
+                
+            
+                
+                <link rel="stylesheet" href="gitbook/gitbook-plugin-highlight/website.css">
+                
+            
+                
+                <link rel="stylesheet" href="gitbook/gitbook-plugin-fontsettings/website.css">
+                
+            
         
 
+    
+
+    
         
-        <!-- MathJax -->
-        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
         
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+        
+<!-- -->
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-57046411-1"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() {
+        dataLayer.push(arguments);
+    }
+    gtag('js', new Date());
+    gtag('config', 'UA-57046411-1');
+</script>
+ 
     </head>
     <body>
-        <!-- Provide site root to javascript -->
-        <script type="text/javascript">
-            var path_to_root = "";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
-        </script>
-
-        <!-- Work around some values being stored in localStorage wrapped in quotes -->
-        <script type="text/javascript">
-            try {
-                var theme = localStorage.getItem('mdbook-theme');
-                var sidebar = localStorage.getItem('mdbook-sidebar');
-
-                if (theme.startsWith('"') && theme.endsWith('"')) {
-                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
-                }
-
-                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
-                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
-                }
-            } catch (e) { }
-        </script>
-
-        <!-- Set the theme before any content is loaded, prevents flash -->
-        <script type="text/javascript">
-            var theme;
-            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
-            if (theme === null || theme === undefined) { theme = default_theme; }
-            var html = document.querySelector('html');
-            html.classList.remove('no-js')
-            html.classList.remove('light')
-            html.classList.add(theme);
-            html.classList.add('js');
-        </script>
-
-        <!-- Hide / unhide sidebar before it is displayed -->
-        <script type="text/javascript">
-            var html = document.querySelector('html');
-            var sidebar = 'hidden';
-            if (document.body.clientWidth >= 1080) {
-                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
-                sidebar = sidebar || 'visible';
-            }
-            html.classList.remove('sidebar-visible');
-            html.classList.add("sidebar-" + sidebar);
-        </script>
-
-        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="totsu_book.html">TotsuBook 日本語</a></li><li class="chapter-item expanded "><a href="solver_form.html"><strong aria-hidden="true">1.</strong> ソルバーの定式化</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="conic_lp.html"><strong aria-hidden="true">1.1.</strong> 錐線形計画問題</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="selfdual_embed.html" class="active"><strong aria-hidden="true">1.1.1.</strong> Homogeneous Self-dual Embedding</a></li></ol></li><li class="chapter-item expanded "><a href="separable_problem.html"><strong aria-hidden="true">1.2.</strong> 線形合成項を含み、滑らかでない関数からなる、分離可能な凸最適化問題</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="pock_chambolle.html"><strong aria-hidden="true">1.2.1.</strong> Pock/Chambolleの一次法</a></li></ol></li><li class="chapter-item expanded "><a href="combine.html"><strong aria-hidden="true">1.3.</strong> 二手法の組合せ</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="init_term_cri.html"><strong aria-hidden="true">1.3.1.</strong> 初期値と終了基準</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="reference.html">参考文献</a></li></ol>
-            </div>
-            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
-        </nav>
-
-        <div id="page-wrapper" class="page-wrapper">
-
-            <div class="page">
-                
-                <div id="menu-bar-hover-placeholder"></div>
-                <div id="menu-bar" class="menu-bar sticky bordered">
-                    <div class="left-buttons">
-                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
-                            <i class="fa fa-bars"></i>
-                        </button>
-                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
-                            <i class="fa fa-paint-brush"></i>
-                        </button>
-                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
-                        </ul>
-                        
-                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
-                            <i class="fa fa-search"></i>
-                        </button>
-                        
-                    </div>
-
-                    <h1 class="menu-title">TotsuBook (ja)</h1>
-
-                    <div class="right-buttons">
-                        
-                        <a href="print.html" title="Print this book" aria-label="Print this book">
-                            <i id="print-button" class="fa fa-print"></i>
-                        </a>
-                        
-                        
-                        <a href="https://github.com/convexbrain/Totsu" title="Git repository" aria-label="Git repository">
-                            <i id="git-repository-button" class="fa fa-github"></i>
-                        </a>
-                        
-                    </div>
-                </div>
-
-                
-                <div id="search-wrapper" class="hidden">
-                    <form id="searchbar-outer" class="searchbar-outer">
-                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
-                    </form>
-                    <div id="searchresults-outer" class="searchresults-outer hidden">
-                        <div id="searchresults-header" class="searchresults-header"></div>
-                        <ul id="searchresults">
-                        </ul>
-                    </div>
-                </div>
-                
-
-                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
-                <script type="text/javascript">
-                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
-                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
-                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
-                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
-                    });
-                </script>
-
-                <div id="content" class="content">
-                    <main>
-                        <h1><a class="header" href="#homogeneous-self-dual-embedding" id="homogeneous-self-dual-embedding">Homogeneous Self-dual Embedding</a></h1>
-<p><a href="./conic_lp.html#%E6%9C%80%E9%81%A9%E6%80%A7%E6%9D%A1%E4%BB%B6">錐線形計画問題の最適性条件</a>を線形方程式系として書くと
-\[
-\left[ \begin{matrix}
-0 &amp; A^T &amp; 0 \\
--A &amp; 0 &amp; -I \\
-c^T &amp; b^T &amp; 0
-\end{matrix} \right]
-\left[ \begin{matrix}
-x \\ y \\ s
-\end{matrix} \right]
-+
-\left[ \begin{matrix}
-c \\ b \\ 0
-\end{matrix} \right]
-= 0, \qquad
-s \in \mathcal{K}, \quad
-y \in \mathcal{K}^*
-\]
-となるが、主問題・双対問題が実行可能でない場合には解をもたない。
-そこで Homogeneous Self-dual Embedding（<a href="./reference.html">参考文献</a>[1]を参照）に倣い、新たな変数 \(\tau,\kappa\) を導入して、
-\[
-\left[ \begin{matrix}
-0 &amp; A^T &amp; 0 &amp; c\\
--A &amp; 0 &amp; -I &amp; b \\
--c^T &amp; -b^T &amp; 0 &amp; 0
-\end{matrix} \right]
-\left[ \begin{matrix}
-x \\ y \\ s \\ \tau
-\end{matrix} \right]
-=
-\left[ \begin{matrix}
-0 \\ 0 \\ \kappa
-\end{matrix} \right]
-, \qquad
-s \in \mathcal{K}, \quad
-y \in \mathcal{K}^*, \quad
-\tau \in {\bf R}_+, \quad
-\kappa \in {\bf R}_+
-\]
-とおく。
-特に \(\tau=1,\kappa=0\) の場合は元の線形方程式に戻る。
-また
-\[
-\begin{array}{ll}
-&amp;-c^Tx -b^Ty = \kappa \\
-\Longrightarrow &amp; -\tau c^Tx -\tau b^Ty = \tau\kappa \\
-\Longrightarrow &amp; (A^Ty)^Tx -(Ax+s)^Ty = \tau\kappa \\
-\Longrightarrow &amp; -s^Ty = \tau\kappa \\
-\end{array}
-\]
-と計算でき、双対錐の定義から \(s^Ty\ge0\) なので \(\tau\kappa\le0\) となり、
-\(\tau,\kappa \in {\bf R}_+\) から少なくともいずれかは \(0\) となる。</p>
-<h2><a class="header" href="#tau0kappa0-の場合" id="tau0kappa0-の場合">\(\tau&gt;0,\kappa=0\) の場合</a></h2>
-<p>\(x/\tau,y/\tau,s/\tau\) が最適性条件を満たすことがわかるので、これらは錐線形計画問題（主問題・双対問題）の解となる。</p>
-<h2><a class="header" href="#tau0kappa0-の場合-1" id="tau0kappa0-の場合-1">\(\tau=0,\kappa&gt;0\) の場合</a></h2>
-<p>主問題または双対問題が実行可能解をもたない。
-<a href="./reference.html">参考文献</a>[1]を参照。</p>
-<h2><a class="header" href="#tau0kappa0-の場合-2" id="tau0kappa0-の場合-2">\(\tau=0,\kappa=0\) の場合</a></h2>
-<p>実行可能解をもたないか、あるいは解について何も言えることがない状況である。
-<a href="./reference.html">参考文献</a>[1]を参照<sup class="footnote-reference"><a href="#totsu1">1</a></sup>。</p>
-<hr />
-<div class="footnote-definition" id="totsu1"><sup class="footnote-definition-label">1</sup>
-<p>自明な解（オールゼロ）に向かわないことが証明されている。<code>Totsu</code>では、<a href="./pock_chambolle.html">Pock/Chambolleの一次法</a>を適用しているが、この場合にも自明な解に向かわないことを示す必要があり、今後の課題のひとつ。</p>
+        
+<div class="book honkit-cloak">
+    <div class="book-summary">
+        
+            
+<div id="book-search-input" role="search">
+    <input type="text" placeholder="Type to search" />
 </div>
 
-                    </main>
+            
+                <nav role="navigation">
+                
 
-                    <nav class="nav-wrapper" aria-label="Page navigation">
-                        <!-- Mobile navigation buttons -->
-                        
-                            <a rel="prev" href="conic_lp.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                                <i class="fa fa-angle-left"></i>
-                            </a>
-                        
 
-                        
-                            <a rel="next" href="separable_problem.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                                <i class="fa fa-angle-right"></i>
-                            </a>
-                        
+<ul class="summary">
+    
+    
 
-                        <div style="clear: both"></div>
-                    </nav>
-                </div>
+    
+
+    
+        
+        
+    
+        <li class="chapter " data-level="1.1" data-path="./">
+            
+                <a href="./">
+            
+                    
+                    TotsuBook 日本語
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">ソルバーの定式化</li>
+        
+        
+    
+        <li class="chapter " data-level="2.1" data-path="conic_lp.html">
+            
+                <a href="conic_lp.html">
+            
+                    
+                    錐線形計画問題
+            
+                </a>
+            
+
+            
+            <ul class="articles">
+                
+    
+        <li class="chapter active" data-level="2.1.1" data-path="selfdual_embed.html">
+            
+                <a href="selfdual_embed.html">
+            
+                    
+                    Homogeneous Self-dual Embedding
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+            </ul>
+            
+        </li>
+    
+        <li class="chapter " data-level="2.2" data-path="separable_problem.html">
+            
+                <a href="separable_problem.html">
+            
+                    
+                    線形合成項を含み、滑らかでない関数からなる、分離可能な凸最適化問題
+            
+                </a>
+            
+
+            
+            <ul class="articles">
+                
+    
+        <li class="chapter " data-level="2.2.1" data-path="pock_chambolle.html">
+            
+                <a href="pock_chambolle.html">
+            
+                    
+                    Pock/Chambolleの一次法
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+            </ul>
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="combine.html">
+            
+                <a href="combine.html">
+            
+                    
+                    二手法の組合せ
+            
+                </a>
+            
+
+            
+            <ul class="articles">
+                
+    
+        <li class="chapter " data-level="2.3.1" data-path="init_term_cri.html">
+            
+                <a href="init_term_cri.html">
+            
+                    
+                    初期値と終了基準
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+            </ul>
+            
+        </li>
+    
+        <li class="chapter " data-level="2.4" data-path="reference.html">
+            
+                <a href="reference.html">
+            
+                    
+                    参考文献
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="divider"></li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" >
+            
+                <a target="_blank" href="https://github.com/convexbrain/Totsu">
+            
+                    
+                    Totsu GitHubリポジトリ
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+
+    <li class="divider"></li>
+
+    <li>
+        <a href="https://github.com/honkit/honkit" target="blank" class="gitbook-link">
+            Published with HonKit
+        </a>
+    </li>
+</ul>
+
+
+                </nav>
+            
+        
+    </div>
+
+    <div class="book-body">
+        
+            <div class="body-inner">
+                
+                    
+
+<div class="book-header" role="navigation">
+    
+
+    <!-- Title -->
+    <h1>
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <a href="." >Homogeneous Self-dual Embedding</a>
+    </h1>
+</div>
+
+
+
+
+                    <div class="page-wrapper" tabindex="-1" role="main">
+                        <div class="page-inner">
+                            
+<div class="search-plus" id="book-search-results">
+    <div class="search-noresults">
+    
+                                <section class="normal markdown-section">
+                                
+                                <h1 id="homogeneous-self-dual-embedding">Homogeneous Self-dual Embedding</h1>
+<p><a href="conic_lp.html#最適性条件">錐線形計画問題の最適性条件</a>を線形方程式系として書くと
+<span class="katex-display"><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mrow><mo fence="true">[</mo><mtable><mtr><mtd><mrow><mn>0</mn></mrow></mtd><mtd><mrow><msup><mi>A</mi><mi>T</mi></msup></mrow></mtd><mtd><mrow><mn>0</mn></mrow></mtd></mtr><mtr><mtd><mrow><mo>−</mo><mi>A</mi></mrow></mtd><mtd><mrow><mn>0</mn></mrow></mtd><mtd><mrow><mo>−</mo><mi>I</mi></mrow></mtd></mtr><mtr><mtd><mrow><msup><mi>c</mi><mi>T</mi></msup></mrow></mtd><mtd><mrow><msup><mi>b</mi><mi>T</mi></msup></mrow></mtd><mtd><mrow><mn>0</mn></mrow></mtd></mtr></mtable><mo fence="true">]</mo></mrow><mrow><mo fence="true">[</mo><mtable><mtr><mtd><mrow><mi>x</mi></mrow></mtd></mtr><mtr><mtd><mrow><mi>y</mi></mrow></mtd></mtr><mtr><mtd><mrow><mi>s</mi></mrow></mtd></mtr></mtable><mo fence="true">]</mo></mrow><mo>+</mo><mrow><mo fence="true">[</mo><mtable><mtr><mtd><mrow><mi>c</mi></mrow></mtd></mtr><mtr><mtd><mrow><mi>b</mi></mrow></mtd></mtr><mtr><mtd><mrow><mn>0</mn></mrow></mtd></mtr></mtable><mo fence="true">]</mo></mrow><mo>=</mo><mn>0</mn><mo separator="true">,</mo><mspace width="2em"></mspace><mi>s</mi><mo>∈</mo><mrow><mi mathvariant="script">K</mi></mrow><mo separator="true">,</mo><mspace width="1em"></mspace><mi>y</mi><mo>∈</mo><msup><mrow><mi mathvariant="script">K</mi></mrow><mo>∗</mo></msup></mrow><annotation encoding="application/x-tex">
+    \left[ \begin{matrix}
+    0 &amp; A^T &amp; 0 \\
+    -A &amp; 0 &amp; -I \\
+    c^T &amp; b^T &amp; 0
+    \end{matrix} \right]
+    \left[ \begin{matrix}
+    x \\ y \\ s
+    \end{matrix} \right]
+    +
+    \left[ \begin{matrix}
+    c \\ b \\ 0
+    \end{matrix} \right]
+    = 0, \qquad
+    s \in \mathcal{K}, \quad
+    y \in \mathcal{K}^*
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:2.101331em;"></span><span class="strut bottom" style="height:3.702662em;vertical-align:-1.601331em;"></span><span class="base displaystyle textstyle uncramped"><span class="minner displaystyle textstyle uncramped"><span class="mopen style-wrap reset-textstyle textstyle uncramped"><span class="delimsizing mult"><span class="vlist"><span style="top:0.9049999999999999em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎣</span></span></span><span style="top:-0.89502em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎡</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord"><span class="mtable"><span class="col-align-c"><span class="vlist"><span style="top:-1.2100000000000002em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathrm">0</span></span></span><span style="top:-0.00999999999999951em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord">−</span><span class="mord mathit">A</span></span></span><span style="top:1.241331em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord"><span class="mord mathit">c</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span><span class="arraycolsep" style="width:0.5em;"></span><span class="arraycolsep" style="width:0.5em;"></span><span class="col-align-c"><span class="vlist"><span style="top:-1.2100000000000002em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord"><span class="mord mathit">A</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span><span style="top:-0.00999999999999951em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathrm">0</span></span></span><span style="top:1.241331em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord"><span class="mord mathit">b</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span><span class="arraycolsep" style="width:0.5em;"></span><span class="arraycolsep" style="width:0.5em;"></span><span class="col-align-c"><span class="vlist"><span style="top:-1.2100000000000002em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathrm">0</span></span></span><span style="top:-0.00999999999999951em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord">−</span><span class="mord mathit" style="margin-right:0.07847em;">I</span></span></span><span style="top:1.241331em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathrm">0</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span><span class="mclose style-wrap reset-textstyle textstyle uncramped"><span class="delimsizing mult"><span class="vlist"><span style="top:0.9049999999999999em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎦</span></span></span><span style="top:-0.89502em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎤</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span><span class="minner displaystyle textstyle uncramped"><span class="mopen style-wrap reset-textstyle textstyle uncramped"><span class="delimsizing mult"><span class="vlist"><span style="top:0.9049999999999999em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎣</span></span></span><span style="top:-0.89502em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎡</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord"><span class="mtable"><span class="col-align-c"><span class="vlist"><span style="top:-1.2099999999999997em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathit">x</span></span></span><span style="top:-0.00999999999999951em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathit" style="margin-right:0.03588em;">y</span></span></span><span style="top:1.1900000000000006em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathit">s</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span><span class="mclose style-wrap reset-textstyle textstyle uncramped"><span class="delimsizing mult"><span class="vlist"><span style="top:0.9049999999999999em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎦</span></span></span><span style="top:-0.89502em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎤</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span><span class="mbin">+</span><span class="minner displaystyle textstyle uncramped"><span class="mopen style-wrap reset-textstyle textstyle uncramped"><span class="delimsizing mult"><span class="vlist"><span style="top:0.9049999999999999em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎣</span></span></span><span style="top:-0.89502em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎡</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord"><span class="mtable"><span class="col-align-c"><span class="vlist"><span style="top:-1.2099999999999997em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathit">c</span></span></span><span style="top:-0.00999999999999951em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathit">b</span></span></span><span style="top:1.1900000000000006em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathrm">0</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span><span class="mclose style-wrap reset-textstyle textstyle uncramped"><span class="delimsizing mult"><span class="vlist"><span style="top:0.9049999999999999em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎦</span></span></span><span style="top:-0.89502em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎤</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span><span class="mrel">=</span><span class="mord mathrm">0</span><span class="mpunct">,</span><span class="mord mathit"><span class="mspace qquad"></span><span class="mord mathit">s</span></span><span class="mrel">∈</span><span class="mord displaystyle textstyle uncramped"><span class="mord mathcal" style="margin-right:0.01445em;">K</span></span><span class="mpunct">,</span><span class="mord mathit"><span class="mspace quad"></span><span class="mord mathit" style="margin-right:0.03588em;">y</span></span><span class="mrel">∈</span><span class="mord"><span class="mord displaystyle textstyle uncramped"><span class="mord mathcal" style="margin-right:0.01445em;">K</span></span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mbin mtight">∗</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span></span></span>
+となるが、主問題・双対問題が実行可能でない場合には解をもたない。
+そこで Homogeneous Self-dual Embedding（<a href="reference.html">参考文献</a>[1]を参照）に倣い、新たな変数 <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>τ</mi><mo separator="true">,</mo><mi>κ</mi></mrow><annotation encoding="application/x-tex">\tau,\kappa</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.43056em;"></span><span class="strut bottom" style="height:0.625em;vertical-align:-0.19444em;"></span><span class="base textstyle uncramped"><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mpunct">,</span><span class="mord mathit">κ</span></span></span></span> を導入して、
+<span class="katex-display"><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mrow><mo fence="true">[</mo><mtable><mtr><mtd><mrow><mn>0</mn></mrow></mtd><mtd><mrow><msup><mi>A</mi><mi>T</mi></msup></mrow></mtd><mtd><mrow><mn>0</mn></mrow></mtd><mtd><mrow><mi>c</mi></mrow></mtd></mtr><mtr><mtd><mrow><mo>−</mo><mi>A</mi></mrow></mtd><mtd><mrow><mn>0</mn></mrow></mtd><mtd><mrow><mo>−</mo><mi>I</mi></mrow></mtd><mtd><mrow><mi>b</mi></mrow></mtd></mtr><mtr><mtd><mrow><mo>−</mo><msup><mi>c</mi><mi>T</mi></msup></mrow></mtd><mtd><mrow><mo>−</mo><msup><mi>b</mi><mi>T</mi></msup></mrow></mtd><mtd><mrow><mn>0</mn></mrow></mtd><mtd><mrow><mn>0</mn></mrow></mtd></mtr></mtable><mo fence="true">]</mo></mrow><mrow><mo fence="true">[</mo><mtable><mtr><mtd><mrow><mi>x</mi></mrow></mtd></mtr><mtr><mtd><mrow><mi>y</mi></mrow></mtd></mtr><mtr><mtd><mrow><mi>s</mi></mrow></mtd></mtr><mtr><mtd><mrow><mi>τ</mi></mrow></mtd></mtr></mtable><mo fence="true">]</mo></mrow><mo>=</mo><mrow><mo fence="true">[</mo><mtable><mtr><mtd><mrow><mn>0</mn></mrow></mtd></mtr><mtr><mtd><mrow><mn>0</mn></mrow></mtd></mtr><mtr><mtd><mrow><mi>κ</mi></mrow></mtd></mtr></mtable><mo fence="true">]</mo></mrow><mo separator="true">,</mo><mspace width="2em"></mspace><mi>s</mi><mo>∈</mo><mrow><mi mathvariant="script">K</mi></mrow><mo separator="true">,</mo><mspace width="1em"></mspace><mi>y</mi><mo>∈</mo><msup><mrow><mi mathvariant="script">K</mi></mrow><mo>∗</mo></msup><mo separator="true">,</mo><mspace width="1em"></mspace><mi>τ</mi><mo>∈</mo><msub><mrow><mi mathvariant="double-struck">R</mi></mrow><mo>+</mo></msub><mo separator="true">,</mo><mspace width="1em"></mspace><mi>κ</mi><mo>∈</mo><msub><mrow><mi mathvariant="double-struck">R</mi></mrow><mo>+</mo></msub></mrow><annotation encoding="application/x-tex">
+    \left[ \begin{matrix}
+    0 &amp; A^T &amp; 0 &amp; c\\
+    -A &amp; 0 &amp; -I &amp; b \\
+    -c^T &amp; -b^T &amp; 0 &amp; 0
+    \end{matrix} \right]
+    \left[ \begin{matrix}
+    x \\ y \\ s \\ \tau
+    \end{matrix} \right]
+    =
+    \left[ \begin{matrix}
+    0 \\ 0 \\ \kappa
+    \end{matrix} \right]
+    , \qquad
+    s \in \mathcal{K}, \quad
+    y \in \mathcal{K}^*, \quad
+    \tau \in \mathbb{R}_+, \quad
+    \kappa \in \mathbb{R}_+
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:2.6520099999999998em;"></span><span class="strut bottom" style="height:4.80204em;vertical-align:-2.15003em;"></span><span class="base displaystyle textstyle uncramped"><span class="minner displaystyle textstyle uncramped"><span class="mopen style-wrap reset-textstyle textstyle uncramped"><span class="delimsizing mult"><span class="vlist"><span style="top:0.9049999999999999em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎣</span></span></span><span style="top:-0.89502em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎡</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord"><span class="mtable"><span class="col-align-c"><span class="vlist"><span style="top:-1.2100000000000002em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathrm">0</span></span></span><span style="top:-0.00999999999999951em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord">−</span><span class="mord mathit">A</span></span></span><span style="top:1.241331em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord">−</span><span class="mord"><span class="mord mathit">c</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span><span class="arraycolsep" style="width:0.5em;"></span><span class="arraycolsep" style="width:0.5em;"></span><span class="col-align-c"><span class="vlist"><span style="top:-1.2100000000000002em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord"><span class="mord mathit">A</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span><span style="top:-0.00999999999999951em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathrm">0</span></span></span><span style="top:1.241331em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord">−</span><span class="mord"><span class="mord mathit">b</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span><span class="arraycolsep" style="width:0.5em;"></span><span class="arraycolsep" style="width:0.5em;"></span><span class="col-align-c"><span class="vlist"><span style="top:-1.2100000000000002em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathrm">0</span></span></span><span style="top:-0.00999999999999951em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord">−</span><span class="mord mathit" style="margin-right:0.07847em;">I</span></span></span><span style="top:1.241331em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathrm">0</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span><span class="arraycolsep" style="width:0.5em;"></span><span class="arraycolsep" style="width:0.5em;"></span><span class="col-align-c"><span class="vlist"><span style="top:-1.2100000000000002em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathit">c</span></span></span><span style="top:-0.00999999999999951em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathit">b</span></span></span><span style="top:1.241331em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathrm">0</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span><span class="mclose style-wrap reset-textstyle textstyle uncramped"><span class="delimsizing mult"><span class="vlist"><span style="top:0.9049999999999999em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎦</span></span></span><span style="top:-0.89502em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎤</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span><span class="minner displaystyle textstyle uncramped"><span class="mopen style-wrap reset-textstyle textstyle uncramped"><span class="delimsizing mult"><span class="vlist"><span style="top:1.50501em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎣</span></span></span><span style="top:0.35001000000000015em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎢</span></span></span><span style="top:-0.2509899999999998em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎢</span></span></span><span style="top:-1.49701em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎡</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord"><span class="mtable"><span class="col-align-c"><span class="vlist"><span style="top:-1.8100000000000003em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathit">x</span></span></span><span style="top:-0.6100000000000001em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathit" style="margin-right:0.03588em;">y</span></span></span><span style="top:0.5900000000000001em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathit">s</span></span></span><span style="top:1.7900000000000003em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathit" style="margin-right:0.1132em;">τ</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span><span class="mclose style-wrap reset-textstyle textstyle uncramped"><span class="delimsizing mult"><span class="vlist"><span style="top:1.50501em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎦</span></span></span><span style="top:0.35001000000000015em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎥</span></span></span><span style="top:-0.2509899999999998em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎥</span></span></span><span style="top:-1.49701em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎤</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span><span class="mrel">=</span><span class="minner displaystyle textstyle uncramped"><span class="mopen style-wrap reset-textstyle textstyle uncramped"><span class="delimsizing mult"><span class="vlist"><span style="top:0.9049999999999999em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎣</span></span></span><span style="top:-0.89502em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎡</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord"><span class="mtable"><span class="col-align-c"><span class="vlist"><span style="top:-1.2099999999999997em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathrm">0</span></span></span><span style="top:-0.00999999999999951em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathrm">0</span></span></span><span style="top:1.1900000000000006em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord mathit">κ</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span><span class="mclose style-wrap reset-textstyle textstyle uncramped"><span class="delimsizing mult"><span class="vlist"><span style="top:0.9049999999999999em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎦</span></span></span><span style="top:-0.89502em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="delimsizinginner delim-size4"><span>⎤</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span><span class="mpunct">,</span><span class="mord mathit"><span class="mspace qquad"></span><span class="mord mathit">s</span></span><span class="mrel">∈</span><span class="mord displaystyle textstyle uncramped"><span class="mord mathcal" style="margin-right:0.01445em;">K</span></span><span class="mpunct">,</span><span class="mord mathit"><span class="mspace quad"></span><span class="mord mathit" style="margin-right:0.03588em;">y</span></span><span class="mrel">∈</span><span class="mord"><span class="mord displaystyle textstyle uncramped"><span class="mord mathcal" style="margin-right:0.01445em;">K</span></span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mbin mtight">∗</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mpunct">,</span><span class="mord mathit"><span class="mspace quad"></span><span class="mord mathit" style="margin-right:0.1132em;">τ</span></span><span class="mrel">∈</span><span class="mord"><span class="mord displaystyle textstyle uncramped"><span class="mord mathbb">R</span></span><span class="msupsub"><span class="vlist"><span style="top:0.15em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle cramped mtight"><span class="mbin mtight">+</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mpunct">,</span><span class="mord mathit"><span class="mspace quad"></span><span class="mord mathit">κ</span></span><span class="mrel">∈</span><span class="mord"><span class="mord displaystyle textstyle uncramped"><span class="mord mathbb">R</span></span><span class="msupsub"><span class="vlist"><span style="top:0.15em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle cramped mtight"><span class="mbin mtight">+</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span></span></span>
+とおく。
+特に <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>τ</mi><mo>=</mo><mn>1</mn><mo separator="true">,</mo><mi>κ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau=1,\kappa=0</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.64444em;"></span><span class="strut bottom" style="height:0.8388800000000001em;vertical-align:-0.19444em;"></span><span class="base textstyle uncramped"><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mrel">=</span><span class="mord mathrm">1</span><span class="mpunct">,</span><span class="mord mathit">κ</span><span class="mrel">=</span><span class="mord mathrm">0</span></span></span></span> の場合は元の線形方程式に戻る。
+また
+<span class="katex-display"><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mtable><mtr><mtd><mrow></mrow></mtd><mtd><mrow><mo>−</mo><msup><mi>c</mi><mi>T</mi></msup><mi>x</mi><mo>−</mo><msup><mi>b</mi><mi>T</mi></msup><mi>y</mi><mo>=</mo><mi>κ</mi></mrow></mtd></mtr><mtr><mtd><mrow><mo>⟹</mo></mrow></mtd><mtd><mrow><mo>−</mo><mi>τ</mi><msup><mi>c</mi><mi>T</mi></msup><mi>x</mi><mo>−</mo><mi>τ</mi><msup><mi>b</mi><mi>T</mi></msup><mi>y</mi><mo>=</mo><mi>τ</mi><mi>κ</mi></mrow></mtd></mtr><mtr><mtd><mrow><mo>⟹</mo></mrow></mtd><mtd><mrow><mo>(</mo><msup><mi>A</mi><mi>T</mi></msup><mi>y</mi><msup><mo>)</mo><mi>T</mi></msup><mi>x</mi><mo>−</mo><mo>(</mo><mi>A</mi><mi>x</mi><mo>+</mo><mi>s</mi><msup><mo>)</mo><mi>T</mi></msup><mi>y</mi><mo>=</mo><mi>τ</mi><mi>κ</mi></mrow></mtd></mtr><mtr><mtd><mrow><mo>⟹</mo></mrow></mtd><mtd><mrow><mo>−</mo><msup><mi>s</mi><mi>T</mi></msup><mi>y</mi><mo>=</mo><mi>τ</mi><mi>κ</mi></mrow></mtd></mtr><mtr><mtd><mrow></mrow></mtd></mtr></mtable></mrow><annotation encoding="application/x-tex">
+    \begin{array}{ll}
+    &amp;-c^Tx -b^Ty = \kappa \\
+    \Longrightarrow &amp; -\tau c^Tx -\tau b^Ty = \tau\kappa \\
+    \Longrightarrow &amp; (A^Ty)^Tx -(Ax+s)^Ty = \tau\kappa \\
+    \Longrightarrow &amp; -s^Ty = \tau\kappa \\
+    \end{array}
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:3.3526619999999996em;"></span><span class="strut bottom" style="height:6.205323999999999em;vertical-align:-2.8526619999999996em;"></span><span class="base displaystyle textstyle uncramped"><span class="mord"><span class="mtable"><span class="arraycolsep" style="width:0.5em;"></span><span class="col-align-l"><span class="vlist"><span style="top:-2.4613309999999995em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"></span></span><span style="top:-1.2099999999999997em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mrel">⟹</span></span></span><span style="top:0.04133099999999984em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mrel">⟹</span></span></span><span style="top:1.2926619999999993em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mrel">⟹</span></span></span><span style="top:2.4926619999999997em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span><span class="arraycolsep" style="width:0.5em;"></span><span class="arraycolsep" style="width:0.5em;"></span><span class="col-align-l"><span class="vlist"><span style="top:-2.4613309999999995em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord">−</span><span class="mord"><span class="mord mathit">c</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord mathit">x</span><span class="mbin">−</span><span class="mord"><span class="mord mathit">b</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord mathit" style="margin-right:0.03588em;">y</span><span class="mrel">=</span><span class="mord mathit">κ</span></span></span><span style="top:-1.2099999999999997em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord">−</span><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mord"><span class="mord mathit">c</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord mathit">x</span><span class="mbin">−</span><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mord"><span class="mord mathit">b</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord mathit" style="margin-right:0.03588em;">y</span><span class="mrel">=</span><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mord mathit">κ</span></span></span><span style="top:0.04133099999999984em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mopen">(</span><span class="mord"><span class="mord mathit">A</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord mathit" style="margin-right:0.03588em;">y</span><span class="mclose"><span class="mclose">)</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord mathit">x</span><span class="mbin">−</span><span class="mopen">(</span><span class="mord mathit">A</span><span class="mord mathit">x</span><span class="mbin">+</span><span class="mord mathit">s</span><span class="mclose"><span class="mclose">)</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord mathit" style="margin-right:0.03588em;">y</span><span class="mrel">=</span><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mord mathit">κ</span></span></span><span style="top:1.2926619999999993em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="mord displaystyle textstyle uncramped"><span class="mord">−</span><span class="mord"><span class="mord mathit">s</span><span class="msupsub"><span class="vlist"><span style="top:-0.413em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord mathit" style="margin-right:0.03588em;">y</span><span class="mrel">=</span><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mord mathit">κ</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span><span class="arraycolsep" style="width:0.5em;"></span></span></span></span></span></span></span>
+と計算でき、双対錐の定義から <span class="katex"><span class="katex-mathml"><math><semantics><mrow><msup><mi>s</mi><mi>T</mi></msup><mi>y</mi><mo>≥</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">s^Ty\ge0</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.8413309999999999em;"></span><span class="strut bottom" style="height:1.035771em;vertical-align:-0.19444em;"></span><span class="base textstyle uncramped"><span class="mord"><span class="mord mathit">s</span><span class="msupsub"><span class="vlist"><span style="top:-0.363em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped mtight"><span class="mord mathit mtight" style="margin-right:0.13889em;">T</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span><span class="mord mathit" style="margin-right:0.03588em;">y</span><span class="mrel">≥</span><span class="mord mathrm">0</span></span></span></span> なので <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>τ</mi><mi>κ</mi><mo>≤</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau\kappa\le0</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.64444em;"></span><span class="strut bottom" style="height:0.78041em;vertical-align:-0.13597em;"></span><span class="base textstyle uncramped"><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mord mathit">κ</span><span class="mrel">≤</span><span class="mord mathrm">0</span></span></span></span> となり、
+<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>τ</mi><mo separator="true">,</mo><mi>κ</mi><mo>∈</mo><mrow><mi mathvariant="double-struck">R</mi></mrow><mi mathvariant="normal">_</mi><mo>+</mo></mrow><annotation encoding="application/x-tex">\tau,\kappa \in \mathbb{R}\_+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.68889em;"></span><span class="strut bottom" style="height:0.9988900000000001em;vertical-align:-0.31em;"></span><span class="base textstyle uncramped"><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mpunct">,</span><span class="mord mathit">κ</span><span class="mrel">∈</span><span class="mord textstyle uncramped"><span class="mord mathbb">R</span></span><span class="mord mathrm" style="margin-right:0.02778em;">_</span><span class="mord">+</span></span></span></span> から少なくともいずれかは <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mn>0</mn></mrow><annotation encoding="application/x-tex">0</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.64444em;"></span><span class="strut bottom" style="height:0.64444em;vertical-align:0em;"></span><span class="base textstyle uncramped"><span class="mord mathrm">0</span></span></span></span> となる。</p>
+<h2 id="τ0κ0tau0kappa0τ0κ0-の場合"><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>τ</mi><mo>&gt;</mo><mn>0</mn><mo separator="true">,</mo><mi>κ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau&gt;0,\kappa=0</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.64444em;"></span><span class="strut bottom" style="height:0.8388800000000001em;vertical-align:-0.19444em;"></span><span class="base textstyle uncramped"><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mrel">&gt;</span><span class="mord mathrm">0</span><span class="mpunct">,</span><span class="mord mathit">κ</span><span class="mrel">=</span><span class="mord mathrm">0</span></span></span></span> の場合</h2>
+<p><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>x</mi><mi mathvariant="normal">/</mi><mi>τ</mi><mo separator="true">,</mo><mi>y</mi><mi mathvariant="normal">/</mi><mi>τ</mi><mo separator="true">,</mo><mi>s</mi><mi mathvariant="normal">/</mi><mi>τ</mi></mrow><annotation encoding="application/x-tex">x/\tau,y/\tau,s/\tau</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.75em;"></span><span class="strut bottom" style="height:1em;vertical-align:-0.25em;"></span><span class="base textstyle uncramped"><span class="mord mathit">x</span><span class="mord mathrm">/</span><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mpunct">,</span><span class="mord mathit" style="margin-right:0.03588em;">y</span><span class="mord mathrm">/</span><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mpunct">,</span><span class="mord mathit">s</span><span class="mord mathrm">/</span><span class="mord mathit" style="margin-right:0.1132em;">τ</span></span></span></span> が最適性条件を満たすことがわかるので、これらは錐線形計画問題（主問題・双対問題）の解となる。</p>
+<h2 id="τ0κ0tau0kappa0τ0κ0-の場合"><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>τ</mi><mo>=</mo><mn>0</mn><mo separator="true">,</mo><mi>κ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau=0,\kappa&gt;0</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.64444em;"></span><span class="strut bottom" style="height:0.8388800000000001em;vertical-align:-0.19444em;"></span><span class="base textstyle uncramped"><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mrel">=</span><span class="mord mathrm">0</span><span class="mpunct">,</span><span class="mord mathit">κ</span><span class="mrel">&gt;</span><span class="mord mathrm">0</span></span></span></span> の場合</h2>
+<p>主問題または双対問題が実行可能解をもたない。
+<a href="reference.html">参考文献</a>[1]を参照。</p>
+<h2 id="τ0κ0tau0kappa0τ0κ0-の場合"><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>τ</mi><mo>=</mo><mn>0</mn><mo separator="true">,</mo><mi>κ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\tau=0,\kappa=0</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.64444em;"></span><span class="strut bottom" style="height:0.8388800000000001em;vertical-align:-0.19444em;"></span><span class="base textstyle uncramped"><span class="mord mathit" style="margin-right:0.1132em;">τ</span><span class="mrel">=</span><span class="mord mathrm">0</span><span class="mpunct">,</span><span class="mord mathit">κ</span><span class="mrel">=</span><span class="mord mathrm">0</span></span></span></span> の場合</h2>
+<p>実行可能解をもたないか、あるいは解について何も言えることがない状況である。
+<a href="reference.html">参考文献</a>[1]を参照<sup><a href="#fn_1" id="reffn_1">1</a></sup>。</p>
+<blockquote id="fn_1">
+<sup>1</sup>. 自明な解（オールゼロ）に向かわないことが証明されている。<code>Totsu</code>では、<a href="pock_chambolle.html">Pock/Chambolleの一次法</a>を適用しているが、この場合にも自明な解に向かわないことを示す必要があり、今後の課題のひとつ。<a href="#reffn_1" title="Jump back to footnote [1] in the text."> ↩</a>
+</blockquote>
+
+                                
+                                </section>
+                            
+    </div>
+    <div class="search-results">
+        <div class="has-results">
+            
+            <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+            <ul class="search-results-list"></ul>
+            
+        </div>
+        <div class="no-results">
+            
+            <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+            
+        </div>
+    </div>
+</div>
+
+                        </div>
+                    </div>
+                
             </div>
 
-            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+            
                 
-                    <a rel="prev" href="conic_lp.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                        <i class="fa fa-angle-left"></i>
-                    </a>
+                <a href="conic_lp.html" class="navigation navigation-prev " aria-label="Previous page: 錐線形計画問題">
+                    <i class="fa fa-angle-left"></i>
+                </a>
                 
+                
+                <a href="separable_problem.html" class="navigation navigation-next " aria-label="Next page: 線形合成項を含み、滑らかでない関数からなる、分離可能な凸最適化問題">
+                    <i class="fa fa-angle-right"></i>
+                </a>
+                
+            
+        
+    </div>
 
-                
-                    <a rel="next" href="separable_problem.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                        <i class="fa fa-angle-right"></i>
-                    </a>
-                
-            </nav>
-
-        </div>
+    <script>
+        var gitbook = gitbook || [];
+        gitbook.push(function() {
+            gitbook.page.hasChanged({"page":{"title":"Homogeneous Self-dual Embedding","level":"2.1.1","depth":2,"next":{"title":"線形合成項を含み、滑らかでない関数からなる、分離可能な凸最適化問題","level":"2.2","depth":1,"path":"separable_problem.md","ref":"./separable_problem.md","articles":[{"title":"Pock/Chambolleの一次法","level":"2.2.1","depth":2,"path":"pock_chambolle.md","ref":"./pock_chambolle.md","articles":[]}]},"previous":{"title":"錐線形計画問題","level":"2.1","depth":1,"path":"conic_lp.md","ref":"./conic_lp.md","articles":[{"title":"Homogeneous Self-dual Embedding","level":"2.1.1","depth":2,"path":"selfdual_embed.md","ref":"./selfdual_embed.md","articles":[]}]},"dir":"ltr"},"config":{"plugins":["katex","honkit-plugin-google-analytics","sitemap","-lunr","-search","search-plus"],"root":"./src","styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"analytics":{"uid":"UA-57046411-1"},"sitemap":{"url":"https://convexbrain.github.io","pathSuffix":"/Totsu/book/"},"katex":{},"honkit-plugin-google-analytics":{},"search-plus":{},"highlight":{},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"convexbrain","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"TotsuBook (ja)","gitbook":"*"},"file":{"path":"selfdual_embed.md","mtime":"2021-07-18T14:48:22.963Z","type":"markdown"},"gitbook":{"version":"3.6.20","time":"2021-07-18T15:43:24.757Z"},"basePath":".","book":{"language":""}});
+        });
+    </script>
+</div>
 
         
-
-        
-        <!-- Google Analytics Tag -->
-        <script type="text/javascript">
-            var localAddrs = ["localhost", "127.0.0.1", ""];
-
-            // make sure we don't activate google analytics if the developer is
-            // inspecting the book locally...
-            if (localAddrs.indexOf(document.location.hostname) === -1) {
-                (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-                (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-                m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-                })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-
-                ga('create', 'UA-57046411-1', 'auto');
-                ga('send', 'pageview');
+    <noscript>
+        <style>
+            .honkit-cloak {
+                display: block !important;
             }
-        </script>
-        
+        </style>
+    </noscript>
+    <script>
+        // Restore sidebar state as critical path for prevent layout shift
+        function __init__getSidebarState(defaultValue){
+            var baseKey = "";
+            var key = baseKey + ":sidebar";
+            try {
+                var value = localStorage[key];
+                if (value === undefined) {
+                    return defaultValue;
+                }
+                var parsed = JSON.parse(value);
+                return parsed == null ? defaultValue : parsed;
+            } catch (e) {
+                return defaultValue;
+            }
+        }
+        function __init__restoreLastSidebarState() {
+            var isMobile = window.matchMedia("(max-width: 600px)").matches;
+            if (isMobile) {
+                // Init last state if not mobile
+                return;
+            }
+            var sidebarState = __init__getSidebarState(true);
+            var book = document.querySelector(".book");
+            // Show sidebar if it enabled
+            if (sidebarState && book) {
+                book.classList.add("without-animation", "with-summary");
+            }
+        }
 
+        try {
+            __init__restoreLastSidebarState();
+        } finally {
+            var book = document.querySelector(".book");
+            book.classList.remove("honkit-cloak");
+        }
+    </script>
+    <script src="gitbook/gitbook.js"></script>
+    <script src="gitbook/theme.js"></script>
+    
         
-
+        <script src="gitbook/gitbook-plugin-search-plus/jquery.mark.min.js"></script>
         
-        <script type="text/javascript">
-            window.playground_copyable = true;
-        </script>
+    
         
-
+        <script src="gitbook/gitbook-plugin-search-plus/search.js"></script>
         
-
+    
         
-        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="gitbook/gitbook-plugin-fontsettings/fontsettings.js"></script>
         
-
-        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
-        <script src="book.js" type="text/javascript" charset="utf-8"></script>
-
-        <!-- Custom JS scripts -->
-        
-
-        
+    
 
     </body>
 </html>
+
