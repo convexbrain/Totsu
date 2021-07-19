@@ -18,9 +18,9 @@ Each of those problems can be represented as a conic linear program:
 \end{array}
 \\]
 where
-* variables \\( x \in {\bf R}^n,\ s \in {\bf R}^m \\)
-* \\( c \in {\bf R}^n \\) as an objective linear operator 
-* \\( A \in {\bf R}^{m \times n} \\) and \\( b \in {\bf R}^m \\) as constraint linear operators 
+* variables \\( x \in \mathbb{R}^n,\ s \in \mathbb{R}^m \\)
+* \\( c \in \mathbb{R}^n \\) as an objective linear operator 
+* \\( A \in \mathbb{R}^{m \times n} \\) and \\( b \in \mathbb{R}^m \\) as constraint linear operators 
 * a nonempty, closed, convex cone \\( \mathcal{K} \\).
 
 # Algorithm and design concepts

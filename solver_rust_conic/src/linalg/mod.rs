@@ -95,7 +95,7 @@ pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
     /// * `sn` is a number of variables, that is a length of `x` of [`LinAlgEx::proj_psd`].
     fn proj_psd_worklen(sn: usize) -> usize;
 
-    /// Euclidean projection \\(x\\) onto \\({\rm vec}({\bf S}\_+^k)\\).
+    /// Euclidean projection \\(x\\) onto \\({\rm vec}(\mathcal{S}\_+^k)\\).
     /// 
     /// * `x` is \\(x\\), a vector to be projected before entry, and shall be replaced with the projected vector on exit.
     ///   The length of `x` shall be \\(\frac12k(k+1)\\)
@@ -110,7 +110,7 @@ pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
     fn sqrt_spmat_worklen(n: usize) -> usize;
 
     /// Calculate \\(S^{\frac12}\\),
-    /// where \\(S \in {\bf S}\_+^n\\), supplied in packed form.
+    /// where \\(S \in \mathcal{S}\_+^n\\), supplied in packed form.
     /// 
     /// * `mat` is a matrix \\(S\\) before entry, \\(S^{\frac12}\\) on exit.
     ///   It shall be stored in packed form (the upper-triangular part in column-wise).

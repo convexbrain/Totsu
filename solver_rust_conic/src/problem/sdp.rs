@@ -203,10 +203,10 @@ where L: LinAlgEx<F>, F: Float
 /// \end{array}
 /// \\]
 /// where
-/// - variables \\( x \in {\bf R}^n \\)
-/// - \\( c \in {\bf R}^n \\)
-/// - \\( F_j \in {\bf S}^k \\) for \\( j = 0, \ldots, n \\)
-/// - \\( A \in {\bf R}^{p \times n},\ b \in {\bf R}^p \\).
+/// - variables \\( x \in \mathbb{R}^n \\)
+/// - \\( c \in \mathbb{R}^n \\)
+/// - \\( F_j \in \mathcal{S}^k \\) for \\( j = 0, \ldots, n \\)
+/// - \\( A \in \mathbb{R}^{p \times n},\ b \in \mathbb{R}^p \\).
 /// 
 /// This is already a conic problem and can be reformulated as follows:
 /// \\[
@@ -222,13 +222,13 @@ where L: LinAlgEx<F>, F: Float
 ///   \left[ \begin{array}{c}
 ///   -{\rm vec}(F_n) \\\\ b
 ///   \end{array} \right] \\\\
-/// & s \in {\rm vec}({\bf S}_+^k) \times \lbrace 0 \rbrace^p.
+/// & s \in {\rm vec}(\mathcal{S}_+^k) \times \lbrace 0 \rbrace^p.
 /// \end{array}
 /// \\]
 /// 
 /// \\( {\rm vec}(X) = (X_{11}\ \sqrt2 X_{12}\ X_{22}\ \sqrt2 X_{13}\ \sqrt2 X_{23}\ X_{33}\ \cdots)^T \\)
 /// which extracts and scales the upper-triangular part of a symmetric matrix X in column-wise.
-/// [`ConePSD`] is used for \\( {\rm vec}({\bf S}_+^k) \\).
+/// [`ConePSD`] is used for \\( {\rm vec}(\mathcal{S}_+^k) \\).
 pub struct ProbSDP<L, F>
 where L: LinAlgEx<F>, F: Float
 {

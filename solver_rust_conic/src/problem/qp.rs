@@ -251,10 +251,10 @@ where L: LinAlgEx<F>, F: Float
 /// \end{array}
 /// \\]
 /// where
-/// - variables \\( x \in {\bf R}^n \\)
-/// - \\( P \in {\bf S}_{+}^n,\ q \in {\bf R}^n,\ r \in {\bf R} \\)
-/// - \\( G \in {\bf R}^{m \times n},\ h \in {\bf R}^m \\)
-/// - \\( A \in {\bf R}^{p \times n},\ b \in {\bf R}^p \\).
+/// - variables \\( x \in \mathbb{R}^n \\)
+/// - \\( P \in \mathcal{S}_{+}^n,\ q \in \mathbb{R}^n,\ r \in \mathbb{R} \\)
+/// - \\( G \in \mathbb{R}^{m \times n},\ h \in \mathbb{R}^m \\)
+/// - \\( A \in \mathbb{R}^{p \times n},\ b \in \mathbb{R}^p \\).
 /// 
 /// In the following, \\( r \\) does not appear since it does not matter.
 /// 
@@ -277,7 +277,7 @@ where L: LinAlgEx<F>, F: Float
 ///   \left[ \begin{array}{c}
 ///   1 \\\\ 0 \\\\ 0 \\\\ h \\\\ b
 ///   \end{array} \right] \\\\
-/// & s \in \mathcal{Q}_r^{2 + n} \times {\bf R}\_+^m \times \lbrace 0 \rbrace^p.
+/// & s \in \mathcal{Q}_r^{2 + n} \times \mathbb{R}\_+^m \times \lbrace 0 \rbrace^p.
 /// \end{array}
 /// \\]
 /// 

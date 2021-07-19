@@ -273,10 +273,10 @@ where L: LinAlgEx<F>, F: Float
 /// \end{array}
 /// \\]
 /// where
-/// - variables \\( x \in {\bf R}^n \\)
-/// - \\( f \in {\bf R}^n \\)
-/// - \\( G_i \in {\bf R}^{n_i \times n},\ h_i \in {\bf R}^{n_i},\ c_i \in {\bf R}^n,\ d_i \in {\bf R} \\)
-/// - \\( A \in {\bf R}^{p \times n},\ b \in {\bf R}^p \\).
+/// - variables \\( x \in \mathbb{R}^n \\)
+/// - \\( f \in \mathbb{R}^n \\)
+/// - \\( G_i \in \mathbb{R}^{n_i \times n},\ h_i \in \mathbb{R}^{n_i},\ c_i \in \mathbb{R}^n,\ d_i \in \mathbb{R} \\)
+/// - \\( A \in \mathbb{R}^{p \times n},\ b \in \mathbb{R}^p \\).
 /// 
 /// The representation as a conic linear program is as follows:
 /// \\[
