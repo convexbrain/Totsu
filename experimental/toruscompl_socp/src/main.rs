@@ -109,19 +109,21 @@ fn main() -> std::io::Result<()> {
 
     //----- make members and nodes
 
-    let x_num: u16 = 2;
-    let y_num: u16 = 2;
+    let x_num: u16 = 3;
+    let y_num: u16 = 3;
 
     let (mut nodes, nodeidx) = make_nodes(x_num, y_num);
     let members = make_torus(&nodeidx, x_num, y_num);
 
+    // fixed DOF of nodes
     for y in 0..y_num {
         let node = &mut nodes[nodeidx[&(0, y)]];
-        node.p = (None, None) // fixed
+        node.p = (None, None)
     }
+    // external force on nodes
     {
         let node = &mut nodes[nodeidx[&(x_num - 1, y_num - 1)]];
-        node.p = (Some(1.), Some(0.)); // external force
+        node.p = (Some(1.), Some(-1.));
     }
 
     let l = members.len();
@@ -192,19 +194,19 @@ fn main() -> std::io::Result<()> {
 
         let mut dof_idx = head.dof_idx.unwrap();
         if head.p.0.is_some() {
-            mat_a[(dof_idx, l + i/*q_i*/)] = -beta.0;
+            mat_a[(dof_idx, l + i/*q_i*/)] += -beta.0;
             dof_idx += 1;
         }
         if head.p.1.is_some() {
-            mat_a[(dof_idx, l + i/*q_i*/)] = -beta.1;
+            mat_a[(dof_idx, l + i/*q_i*/)] += -beta.1;
         }
         let mut dof_idx = tail.dof_idx.unwrap();
-        if head.p.0.is_some() {
-            mat_a[(dof_idx, l + i/*q_i*/)] = beta.0;
+        if tail.p.0.is_some() {
+            mat_a[(dof_idx, l + i/*q_i*/)] += beta.0;
             dof_idx += 1;
         }
-        if head.p.0.is_some() {
-            mat_a[(dof_idx, l + i/*q_i*/)] = beta.1;
+        if tail.p.1.is_some() {
+            mat_a[(dof_idx, l + i/*q_i*/)] += beta.1;
         }
     }
     //println!("{}", mat_a);
@@ -229,7 +231,7 @@ fn main() -> std::io::Result<()> {
     });
     let mut socp = AProbSOCP::new(vec_f, mats_g, vecs_h, vecs_c, scls_d, mat_a, vec_b);
     let rslt = s.solve(socp.problem()).unwrap();
-    println!("{:?}", rslt);
+    //println!("{:?}", rslt);
 
 /*
     //----- file output for graph plot
