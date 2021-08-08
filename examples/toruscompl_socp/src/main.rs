@@ -119,7 +119,7 @@ fn make_socp(nodes: &[Node], members: &[Member], dof: usize, vol_ratio: f64) -> 
     let p = dof;
 
     let vec_f = AMatBuild::new(MatType::General(n, 1))
-                .by_fn(|r, _| if r < l * 2 {0./*x,q*/} else {2./*w*/});
+                .by_fn(|r, _| if r < l * 2 {0./*x,q*/} else {1./*w*/});
     //println!("{}", vec_f);
 
     let mut mats_g = Vec::<AMatBuild>::new();
@@ -249,7 +249,7 @@ fn main() -> std::io::Result<()> {
 
     //----- formulate compliance minimization as SOCP
 
-    let vol_ratio = 0.25;
+    let vol_ratio = 0.2;
     let mut socp = make_socp(&nodes, &members, dof, vol_ratio);
 
     //----- solve SOCP

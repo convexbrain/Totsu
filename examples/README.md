@@ -9,3 +9,7 @@
 # Example: trajplan_qcqp
 
 ![](trajplan_qcqp/plot1.svg)
+
+# Example: toruscompl_socp
+
+![](toruscompl_socp/plot.svg)
