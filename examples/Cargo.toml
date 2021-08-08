@@ -4,6 +4,7 @@ members = [
     "l1reg_lp",
     "svm_qp",
     "trajplan_qcqp",
+    "toruscompl_socp",
 ]
 
 exclude = [
