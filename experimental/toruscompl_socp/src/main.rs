@@ -104,7 +104,7 @@ fn make_socp(nodes: &[Node], members: &[Member], dof: usize, vol_ratio: f64) -> 
 {
     let l = members.len();
     let n = l * 3/*x,q,w*/;
-    let m = l * 2 + 1;
+    let m = l * 3 + 1;
     let p = dof;
 
     let vec_f = AMatBuild::new(MatType::General(n, 1))
@@ -145,6 +145,11 @@ fn make_socp(nodes: &[Node], members: &[Member], dof: usize, vol_ratio: f64) -> 
         vec_c[(i/*x_i*/, 0)] = 1.;
         vecs_c.push(vec_c);
     }
+    for i in 0..l {
+        let mut vec_c = AMatBuild::new(MatType::General(n, 1));
+        vec_c[(i/*x_i*/, 0)] = -1.;
+        vecs_c.push(vec_c);
+    }
     {
         let vec_c = AMatBuild::new(MatType::General(n, 1))
                         .by_fn(|r, _| if r < l {-members[r].v(nodes)} else {0.});
@@ -153,6 +158,9 @@ fn make_socp(nodes: &[Node], members: &[Member], dof: usize, vol_ratio: f64) -> 
     //println!("{}", vecs_c.len());
 
     let mut scls_d = vec![0.; m];
+    for i in 0..l {
+        scls_d[l * 2 + i] = 1.;
+    }
     scls_d[m - 1] = members.iter().fold(0., |acc, member| acc + member.v(nodes)) * vol_ratio;
     //println!("{:?}", scls_d);
 
@@ -207,8 +215,8 @@ fn main() -> std::io::Result<()> {
 
     //----- make members and nodes
 
-    let x_num: u16 = 5;
-    let y_num: u16 = 5;
+    let x_num: u16 = 8 + 1;
+    let y_num: u16 = 4 + 1;
 
     // make nodes and torus members
     let (mut nodes, nodeidx) = make_nodes(x_num, y_num);
@@ -222,7 +230,7 @@ fn main() -> std::io::Result<()> {
     // set external force on nodes
     {
         let node = &mut nodes[nodeidx[&(x_num - 1, 0)]];
-        node.p = (Some(0.), Some(-1.));
+        node.p = (Some(1.), Some(0.));
     }
 
     // calcurate dof of nodes
@@ -230,7 +238,7 @@ fn main() -> std::io::Result<()> {
 
     //----- formulate compliance minimization as SOCP
 
-    let vol_ratio = 0.75;
+    let vol_ratio = 0.5;
     let mut socp = make_socp(&nodes, &members, dof, vol_ratio);
 
     //----- solve SOCP
@@ -251,8 +259,8 @@ fn main() -> std::io::Result<()> {
         .x_label_area_size(30)
         .y_label_area_size(30)
         .build_cartesian_2d(
-            -0.5..(0.5 + x_num as f64),
-            -0.5..(0.5 + y_num as f64)
+            -0.5..(-0.5 + x_num as f64),
+            -0.5..(-0.5 + y_num as f64)
         ).unwrap();
 
     chart.configure_mesh()
@@ -261,18 +269,22 @@ fn main() -> std::io::Result<()> {
         .disable_mesh()
         .draw().unwrap();
     
-    for (i, member) in members.iter().enumerate() {
-        let x = rslt.0[i];
+    for member in members.iter() {
         chart
             .draw_series(LineSeries::new(
                 [nodes[member.head_idx].r, nodes[member.tail_idx].r],
-                RGBColor(127, 127, 127).stroke_width(1)
+                RGBColor(200, 200, 200).stroke_width(1)
             )).unwrap();
-        chart
+    }
+    for (i, member) in members.iter().enumerate() {
+        let x = rslt.0[i];
+        if x > 0. {
+            chart
             .draw_series(LineSeries::new(
                 [nodes[member.head_idx].r, nodes[member.tail_idx].r],
                 BLUE.stroke_width((x * 5.) as u32)
             )).unwrap();
+        }
     }
 
     Ok(())
