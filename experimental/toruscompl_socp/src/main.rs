@@ -70,7 +70,14 @@ fn make_torus(nodeidx: &HashMap<(i32, i32), usize>, x_num: i32, y_num: i32) -> V
         if let Some(&head_idx) = nodeidx.get(&(hx, hy)) {
             //println!("  {}", head_idx);
 
-            for (dx, dy) in [(1, 0), (0, 1), (1, 1)] {
+            let dxdy: &[_] = if hx % 2 == 1 && hy % 2 == 0 {
+                &[(1, 0), (0, 1), (1, 1), (-1, 1), (1, -1), (-1, -1)]
+            }
+            else {
+                &[(1, 0), (0, 1)]
+            };
+
+            for (dx, dy) in dxdy {
                 let tx = hx + dx;
                 let ty = hy + dy;
 
@@ -220,7 +227,7 @@ fn main() -> std::io::Result<()> {
     //----- make members and nodes
 
     let x_num = 8 + 1;
-    let y_num = 4 + 1;
+    let y_num = 6 + 1;
 
     // make nodes and torus members
     let (mut nodes, nodeidx) = make_nodes(x_num, y_num);
@@ -229,12 +236,12 @@ fn main() -> std::io::Result<()> {
     // set fixed DOF of nodes
     for y in 0..y_num {
         let node = &mut nodes[nodeidx[&(0, y)]];
-        node.p = (None, None)
+        node.p = (None, None);
     }
     // set external force on nodes
     {
-        let node = &mut nodes[nodeidx[&(x_num - 1, 0)]];
-        node.p = (Some(1.), Some(0.));
+        let node = &mut nodes[nodeidx[&(x_num - 1, y_num / 2)]];
+        node.p = (Some(0.), Some(-1.));
     }
 
     // calcurate dof of nodes
@@ -242,7 +249,7 @@ fn main() -> std::io::Result<()> {
 
     //----- formulate compliance minimization as SOCP
 
-    let vol_ratio = 0.5;
+    let vol_ratio = 0.25;
     let mut socp = make_socp(&nodes, &members, dof, vol_ratio);
 
     //----- solve SOCP
@@ -274,20 +281,40 @@ fn main() -> std::io::Result<()> {
         .draw().unwrap();
     
     for member in members.iter() {
-        chart
-            .draw_series(LineSeries::new(
-                [nodes[member.head_idx].r, nodes[member.tail_idx].r],
-                RGBColor(200, 200, 200).stroke_width(1)
-            )).unwrap();
+        chart.draw_series(LineSeries::new(
+            [nodes[member.head_idx].r, nodes[member.tail_idx].r],
+            RGBColor(223, 223, 223).stroke_width(10)
+        )).unwrap();
     }
     for (i, member) in members.iter().enumerate() {
         let x = rslt.0[i];
         if x > 0. {
-            chart
-            .draw_series(LineSeries::new(
+            chart.draw_series(LineSeries::new(
                 [nodes[member.head_idx].r, nodes[member.tail_idx].r],
-                BLUE.stroke_width((x * 5.) as u32)
+                BLUE.stroke_width((x.sqrt() * 10.) as u32)
             )).unwrap();
+        }
+    }
+    for node in nodes {
+        if let (Some(p0), Some(p1)) = node.p {
+            if p0 != 0. || p1 != 0. {
+                let k = 0.1;
+                chart.draw_series(LineSeries::new(
+                    [
+                        node.r,
+                        (node.r.0 + p0, node.r.1 + p1),
+                    ],
+                    RED.stroke_width(2)
+                )).unwrap();
+                chart.draw_series(std::iter::once(Polygon::new(
+                    [
+                        (node.r.0 + p0 * (1. + k), node.r.1 + p1 * (1. + k)),
+                        (node.r.0 + p0 * (1. - k) + p1 * k, node.r.1 + p1 * (1. - k) - p0 * k),
+                        (node.r.0 + p0 * (1. - k) - p1 * k, node.r.1 + p1 * (1. - k) + p0 * k),
+                    ],
+                    &RED
+            ))).unwrap();
+            }
         }
     }
 
