@@ -4,12 +4,9 @@ use totsu::linalg::F64LAPACK;
 use totsu::problem::ProbSOCP;
 
 use std::collections::HashMap;
-use std::io::prelude::*;
-use std::io::BufWriter;
-use std::fs::File;
 
 use itertools::iproduct;
-
+use plotters::prelude::*;
 use intel_mkl_src as _;
 
 type AMatBuild = MatBuild<F64LAPACK, f64>;
@@ -32,7 +29,7 @@ struct Node
 
 impl Member
 {
-    fn v(&self, nodes: &Vec<Node>) -> f64
+    fn v(&self, nodes: &[Node]) -> f64
     {
         let head = &nodes[self.head_idx];
         let tail = &nodes[self.tail_idx];
@@ -92,7 +89,7 @@ fn make_torus(nodeidx: &HashMap<(u16, u16), usize>, x_num: u16, y_num: u16) -> V
     members
 }
 
-fn nodes_dof(nodes: &mut Vec<Node>) -> usize
+fn calc_dof(nodes: &mut [Node]) -> usize
 {
     let mut dof = 0;
     for n in nodes {
@@ -103,37 +100,12 @@ fn nodes_dof(nodes: &mut Vec<Node>) -> usize
     dof
 }
 
-/// main
-fn main() -> std::io::Result<()> {
-    env_logger::init();
-
-    //----- make members and nodes
-
-    let x_num: u16 = 3;
-    let y_num: u16 = 3;
-
-    let (mut nodes, nodeidx) = make_nodes(x_num, y_num);
-    let members = make_torus(&nodeidx, x_num, y_num);
-
-    // fixed DOF of nodes
-    for y in 0..y_num {
-        let node = &mut nodes[nodeidx[&(0, y)]];
-        node.p = (None, None)
-    }
-    // external force on nodes
-    {
-        let node = &mut nodes[nodeidx[&(x_num - 1, y_num - 1)]];
-        node.p = (Some(1.), Some(-1.));
-    }
-
+fn make_socp(nodes: &[Node], members: &[Member], dof: usize, vol_ratio: f64) -> AProbSOCP
+{
     let l = members.len();
-    let vol_ratio = 0.5;
-
-    //----- formulate compliance minimization as SOCP
-
     let n = l * 3/*x,q,w*/;
     let m = l * 2 + 1;
-    let p = nodes_dof(&mut nodes);
+    let p = dof;
 
     let vec_f = AMatBuild::new(MatType::General(n, 1))
                 .by_fn(|r, _| if r < l * 2 {0./*x,q*/} else {2./*w*/});
@@ -144,7 +116,7 @@ fn main() -> std::io::Result<()> {
         let mut mat_g = AMatBuild::new(MatType::General(2, n));
         mat_g[(0, i/*x_i*/)] = -1.;
         mat_g[(0, l * 2 + i/*w_i*/)] = 1.;
-        mat_g[(1, l + i/*q_i*/)] = (2. * members[i].v(&nodes) / members[i].e).sqrt();
+        mat_g[(1, l + i/*q_i*/)] = (2. * members[i].v(nodes) / members[i].e).sqrt();
         mats_g.push(mat_g);
     }
     for _ in l..m {
@@ -175,13 +147,13 @@ fn main() -> std::io::Result<()> {
     }
     {
         let vec_c = AMatBuild::new(MatType::General(n, 1))
-                        .by_fn(|r, _| if r < l {-members[r].v(&nodes)} else {0.});
+                        .by_fn(|r, _| if r < l {-members[r].v(nodes)} else {0.});
         vecs_c.push(vec_c);
     }
     //println!("{}", vecs_c.len());
 
     let mut scls_d = vec![0.; m];
-    scls_d[m - 1] = members.iter().fold(0., |acc, member| acc + member.v(&nodes)) * vol_ratio;
+    scls_d[m - 1] = members.iter().fold(0., |acc, member| acc + member.v(nodes)) * vol_ratio;
     //println!("{:?}", scls_d);
 
     let mut mat_a = AMatBuild::new(MatType::General(p, n));
@@ -224,43 +196,84 @@ fn main() -> std::io::Result<()> {
     }
     //println!("{}", vec_b);
 
+    //----- make SOCP
+
+    AProbSOCP::new(vec_f, mats_g, vecs_h, vecs_c, scls_d, mat_a, vec_b)
+}
+
+/// main
+fn main() -> std::io::Result<()> {
+    env_logger::init();
+
+    //----- make members and nodes
+
+    let x_num: u16 = 5;
+    let y_num: u16 = 5;
+
+    // make nodes and torus members
+    let (mut nodes, nodeidx) = make_nodes(x_num, y_num);
+    let members = make_torus(&nodeidx, x_num, y_num);
+
+    // set fixed DOF of nodes
+    for y in 0..y_num {
+        let node = &mut nodes[nodeidx[&(0, y)]];
+        node.p = (None, None)
+    }
+    // set external force on nodes
+    {
+        let node = &mut nodes[nodeidx[&(x_num - 1, 0)]];
+        node.p = (Some(0.), Some(-1.));
+    }
+
+    // calcurate dof of nodes
+    let dof = calc_dof(&mut nodes);
+
+    //----- formulate compliance minimization as SOCP
+
+    let vol_ratio = 0.75;
+    let mut socp = make_socp(&nodes, &members, dof, vol_ratio);
+
     //----- solve SOCP
 
     let s = ASolver::new().par(|p| {
         p.eps_acc = 1e-3;
     });
-    let mut socp = AProbSOCP::new(vec_f, mats_g, vecs_h, vecs_c, scls_d, mat_a, vec_b);
     let rslt = s.solve(socp.problem()).unwrap();
     //println!("{:?}", rslt);
 
-/*
-    //----- file output for graph plot
-    // TODO: use some plotting crate
+    //----- graph plot
 
-    let mut dat_point = BufWriter::new(File::create("dat_point")?);
+    let root = SVGBackend::new("plot.svg", (480, 360)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
 
-    for smp in 0 .. l {
-        writeln!(dat_point, "{} {} {} {}", x[(0, smp)], x[(1, smp)], y[(smp, 0)], alpha[smp])?;
+    let mut chart = ChartBuilder::on(&root)
+        .margin(30)
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_cartesian_2d(
+            -0.5..(0.5 + x_num as f64),
+            -0.5..(0.5 + y_num as f64)
+        ).unwrap();
+
+    chart.configure_mesh()
+        .x_labels(1 + x_num as usize)
+        .y_labels(1 + y_num as usize)
+        .disable_mesh()
+        .draw().unwrap();
+    
+    for (i, member) in members.iter().enumerate() {
+        let x = rslt.0[i];
+        chart
+            .draw_series(LineSeries::new(
+                [nodes[member.head_idx].r, nodes[member.tail_idx].r],
+                RGBColor(127, 127, 127).stroke_width(1)
+            )).unwrap();
+        chart
+            .draw_series(LineSeries::new(
+                [nodes[member.head_idx].r, nodes[member.tail_idx].r],
+                BLUE.stroke_width((x * 5.) as u32)
+            )).unwrap();
     }
-
-    let mut dat_grid = BufWriter::new(File::create("dat_grid")?);
-
-    let grid = 20;
-    for iy in 0 .. grid {
-        for ix in 0 .. grid {
-            let xi = AMatBuild::new(MatType::General(2, 1))
-                     .iter_colmaj(&[
-                         ix as f64 / (grid - 1) as f64,
-                         iy as f64 / (grid - 1) as f64
-                     ]);
-
-            let f = wx(&x, &y, alpha, &xi, 0) + bias;
-
-            write!(dat_grid, " {}", f)?;
-        }
-        writeln!(dat_grid)?;
-    }
-*/
 
     Ok(())
 }
