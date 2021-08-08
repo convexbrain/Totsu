@@ -37,10 +37,12 @@ impl Member
     }
 }
 
-fn make_nodes(x_num: u16, y_num: u16) -> (Vec<Node>, HashMap<(u16, u16), usize>)
+fn make_nodes(x_num: i32, y_num: i32) -> (Vec<Node>, HashMap<(i32, i32), usize>)
 {
+    assert!(x_num > 0);
+    assert!(y_num > 0);
     let mut nodes = Vec::<Node>::new();
-    let mut nodeidx = HashMap::<(u16, u16), usize>::new();
+    let mut nodeidx = HashMap::<(i32, i32), usize>::new();
 
     for (x, y) in iproduct!(0..x_num, 0..y_num) {
         let idx = nodes.len();
@@ -56,8 +58,10 @@ fn make_nodes(x_num: u16, y_num: u16) -> (Vec<Node>, HashMap<(u16, u16), usize>)
     (nodes, nodeidx)
 }
 
-fn make_torus(nodeidx: &HashMap<(u16, u16), usize>, x_num: u16, y_num: u16) -> Vec<Member>
+fn make_torus(nodeidx: &HashMap<(i32, i32), usize>, x_num: i32, y_num: i32) -> Vec<Member>
 {
+    assert!(x_num > 0);
+    assert!(y_num > 0);
     let mut members = Vec::<Member>::new();
 
     for (hx, hy) in iproduct!(0..x_num, 0..y_num) {
@@ -215,8 +219,8 @@ fn main() -> std::io::Result<()> {
 
     //----- make members and nodes
 
-    let x_num: u16 = 8 + 1;
-    let y_num: u16 = 4 + 1;
+    let x_num = 8 + 1;
+    let y_num = 4 + 1;
 
     // make nodes and torus members
     let (mut nodes, nodeidx) = make_nodes(x_num, y_num);
