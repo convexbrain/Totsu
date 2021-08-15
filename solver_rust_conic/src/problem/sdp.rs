@@ -323,7 +323,7 @@ where L: LinAlgEx<F>, F: Float
             vec_b: &self.vec_b,
         };
 
-        self.w_cone_psd.resize(ConePSD::<L, _>::query_worklen(sk + p), f0);
+        self.w_cone_psd.resize(ConePSD::<L, _>::query_worklen(sk), f0);
         let cone = ProbSDPCone {
             sk, p,
             cone_psd: ConePSD::new(self.w_cone_psd.as_mut(), self.eps_zero),
