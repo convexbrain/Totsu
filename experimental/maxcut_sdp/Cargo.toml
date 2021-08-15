@@ -1,0 +1,21 @@
+[package]
+name = "maxcut_sdp"
+version = "0.1.0"
+authors = ["convexbrain <convexbrain@gmail.com>"]
+edition = "2018"
+publish = false
+
+[dependencies]
+totsu = {path = "../../solver_rust_conic", features = ["f64lapack"]}
+rand_distr = "0.4.1"
+rand = "0.8.4"
+itertools = "0.10.1"
+rand_xoshiro = "0.6.0"
+env_logger = "0.9.0"
+
+[dependencies.intel-mkl-src]
+default-features = false
+version = "0.6.0+mkl2020.1"
+features = ["mkl-static-lp64-seq"]
+#path = "../../../../others/intel-mkl-src/intel-mkl-src"
+#features = ["mkl-static-lp64-iomp"]
