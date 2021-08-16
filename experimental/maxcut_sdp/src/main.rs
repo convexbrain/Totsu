@@ -173,7 +173,7 @@ fn main() -> std::io::Result<()> {
             0..y_num
         ).unwrap();
 
-    let scale = 2.;
+    let scale = 5.;
     for i in 0..sym_w.size().0 {
         let x = i / y_num;
         let y = i % y_num;
@@ -198,7 +198,7 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    let radius = 4;
+    let radius = 10;
     for i in 0..sym_w.size().0 {
         let x = i / y_num;
         let y = i % y_num;
