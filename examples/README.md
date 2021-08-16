@@ -13,3 +13,7 @@
 # Example: toruscompl_socp
 
 ![](toruscompl_socp/plot.svg)
+
+# Example: partitioning_sdp
+
+![](partitioning_sdp/plot.svg)

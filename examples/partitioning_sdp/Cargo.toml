@@ -1,5 +1,5 @@
 [package]
-name = "maxcut_sdp"
+name = "partitioning_sdp"
 version = "0.1.0"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2018"

@@ -143,7 +143,7 @@ fn main() -> std::io::Result<()> {
     let y_num = 6;
     let sym_w = make_adj_matrix(x_num, y_num, 10000);
 
-    //----- formulate max-cut as SDP
+    //----- formulate partitioning problem as SDP
 
     let mut sdp = make_sdp(&sym_w);
 

@@ -5,6 +5,7 @@ members = [
     "svm_qp",
     "trajplan_qcqp",
     "toruscompl_socp",
+    "partitioning_sdp",
 ]
 
 exclude = [
