@@ -317,9 +317,9 @@ where L: LinAlgEx<F>, F: Float
 /// \end{array}
 /// \\]
 /// where
-/// - variables \\( x \in {\bf R}^n \\)
-/// - \\( P_j \in {\bf S}_{+}^n,\ q_j \in {\bf R}^n,\ r_j \in {\bf R} \\) for \\( j = 0, \ldots, m \\)
-/// - \\( A \in {\bf R}^{p \times n},\ b \in {\bf R}^p \\).
+/// - variables \\( x \in \mathbb{R}^n \\)
+/// - \\( P_j \in \mathcal{S}_{+}^n,\ q_j \in \mathbb{R}^n,\ r_j \in \mathbb{R} \\) for \\( j = 0, \ldots, m \\)
+/// - \\( A \in \mathbb{R}^{p \times n},\ b \in \mathbb{R}^p \\).
 /// 
 /// The representation as a conic linear program is as follows:
 /// \\[

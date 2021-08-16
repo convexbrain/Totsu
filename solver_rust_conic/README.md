@@ -27,7 +27,7 @@ See [documentation](https://docs.rs/totsu/) for more details.
 
 ### Features
 
-#### Using [`linalg::F64LAPACK`]
+#### Using `linalg::F64LAPACK`
 
 ```toml
 [dependencies.totsu]

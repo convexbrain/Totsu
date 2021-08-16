@@ -196,9 +196,9 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
 /// \end{array}
 /// \\]
 /// where
-/// * variables \\( x \in {\bf R}^n,\ s \in {\bf R}^m \\)
-/// * \\( c \in {\bf R}^n \\) as an objective linear operator 
-/// * \\( A \in {\bf R}^{m \times n} \\) and \\( b \in {\bf R}^m \\) as constraint linear operators 
+/// * variables \\( x \in \mathbb{R}^n,\ s \in \mathbb{R}^m \\)
+/// * \\( c \in \mathbb{R}^n \\) as an objective linear operator 
+/// * \\( A \in \mathbb{R}^{m \times n} \\) and \\( b \in \mathbb{R}^m \\) as constraint linear operators 
 /// * a nonempty, closed, convex cone \\( \mathcal{K} \\).
 /// 
 /// The solution gives optimal values of primal variables \\(x\\)
@@ -211,7 +211,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
 /// \end{array}
 /// \\]
 /// where
-/// * variables \\( y \in {\bf R}^m \\)
+/// * variables \\( y \in \mathbb{R}^m \\)
 /// * \\( \mathcal{K}^* \\) is the dual cone of \\( \mathcal{K} \\).
 pub struct Solver<L: LinAlg<F>, F: Float>
 {

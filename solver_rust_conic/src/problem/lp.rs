@@ -203,10 +203,10 @@ where F: Float
 /// \end{array}
 /// \\]
 /// where
-/// - variables \\( x \in {\bf R}^n \\)
-/// - \\( c \in {\bf R}^n,\ d \in {\bf R} \\)
-/// - \\( G \in {\bf R}^{m \times n},\ h \in {\bf R}^m \\)
-/// - \\( A \in {\bf R}^{p \times n},\ b \in {\bf R}^p \\).
+/// - variables \\( x \in \mathbb{R}^n \\)
+/// - \\( c \in \mathbb{R}^n,\ d \in \mathbb{R} \\)
+/// - \\( G \in \mathbb{R}^{m \times n},\ h \in \mathbb{R}^m \\)
+/// - \\( A \in \mathbb{R}^{p \times n},\ b \in \mathbb{R}^p \\).
 /// 
 /// In the following, \\( d \\) does not appear since it does not matter.
 /// 
@@ -224,7 +224,7 @@ where F: Float
 ///   h \\\\
 ///   b
 ///   \end{array} \right] \\\\
-/// & s \in {\bf R}_+^m \times \lbrace 0 \rbrace^n.
+/// & s \in \mathbb{R}_+^m \times \lbrace 0 \rbrace^n.
 /// \end{array}
 /// \\]
 pub struct ProbLP<L, F>

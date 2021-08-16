@@ -11,7 +11,7 @@ use super::Cone;
 /// 
 /// \\[
 /// \lbrace 0 \rbrace^n = \lbrace 0 \rbrace \times \cdots \times \lbrace 0 \rbrace =
-/// \left\lbrace x \in {\bf R}^n
+/// \left\lbrace x \in \mathbb{R}^n
 /// \ \middle|\ x=0
 /// \right\rbrace
 /// \\]

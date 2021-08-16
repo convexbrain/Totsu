@@ -11,7 +11,7 @@ use super::{Cone, ConeSOC};
 /// 
 /// \\[
 /// \mathcal{Q}\_r^n =
-/// \left\lbrace x \in {\bf R}^n
+/// \left\lbrace x \in \mathbb{R}^n
 /// \ \middle|\ x_3^2+\cdots+x_n^2 \le 2x_1x_2, x_1\ge0, x_2\ge0
 /// \right\rbrace
 /// \\]

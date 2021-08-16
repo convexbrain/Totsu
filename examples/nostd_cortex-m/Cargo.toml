@@ -7,8 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cortex-m = "0.7.1"
-cortex-m-rt = "0.6.13"
+cortex-m = "0.7.3"
+cortex-m-rt = "0.6.15"
 cortex-m-semihosting = "0.3.7"
 panic-semihosting = {version = "0.5.6", features = ["exit"]}
 log = "0.4.14"

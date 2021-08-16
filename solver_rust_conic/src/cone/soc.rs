@@ -12,7 +12,7 @@ use super::Cone;
 /// 
 /// \\[
 /// \mathcal{Q}^n =
-/// \left\lbrace x \in {\bf R}^n
+/// \left\lbrace x \in \mathbb{R}^n
 /// \ \middle|\ \sqrt{x_2^2+\cdots+x_n^2} \le x_1
 /// \right\rbrace
 /// \\]

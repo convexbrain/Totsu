@@ -1,0 +1,15 @@
+{
+    "title": "TotsuBook (ja)",
+    "author": "convexbrain",
+    "root": "./src",
+    "plugins": ["katex", "honkit-plugin-google-analytics", "sitemap", "-lunr", "-search", "search-plus"],
+    "pluginsConfig": {
+        "analytics": {
+            "uid": "UA-57046411-1"
+        },
+        "sitemap": {
+            "url": "https://convexbrain.github.io",
+            "pathSuffix": "/Totsu/book/"
+        }
+    }
+}
