@@ -6,6 +6,7 @@ use totsu::problem::ProbSDP;
 use rand::prelude::*;
 use rand_distr::StandardNormal;
 use rand_xoshiro::Xoshiro256StarStar;
+use plotters::prelude::*;
 
 extern crate intel_mkl_src;
 
@@ -13,7 +14,8 @@ type AMatBuild = MatBuild<F64LAPACK, f64>;
 type AProbSDP = ProbSDP<F64LAPACK, f64>;
 type ASolver = Solver<F64LAPACK, f64>;
 
-const EPS_ZERO: f64 = 1e-3;
+const EPS_ACC: f64 = 1e-3;
+const EPS_ZERO: f64 = 1e-12;
 
 fn make_adj_matrix(x_num: usize, y_num: usize, seed: u64) -> AMatBuild
 {
@@ -90,7 +92,7 @@ fn sample_feasible(rslt_x: &[f64], sym_w: &AMatBuild, seed: u64) -> (f64, AMatBu
         }
     }
     //println!("{:?}", sym_x);
-    sym_x.set_sqrt(1e-3);
+    sym_x.set_sqrt(EPS_ZERO);
     //println!("{:?}", sym_x);
 
     let mut tmpx = AMatBuild::new(MatType::General(l, 1));
@@ -137,8 +139,8 @@ fn main() -> std::io::Result<()> {
 
     //----- make adjacent matrix
 
-    let x_num = 4;
-    let y_num = 4;
+    let x_num = 8;
+    let y_num = 6;
     let sym_w = make_adj_matrix(x_num, y_num, 10000);
 
     //----- formulate max-cut as SDP
@@ -148,7 +150,8 @@ fn main() -> std::io::Result<()> {
     //----- solve SDP
 
     let s = ASolver::new().par(|p| {
-        p.eps_acc = EPS_ZERO;
+        p.eps_acc = EPS_ACC;
+        p.eps_zero = EPS_ZERO;
     });
     let rslt = s.solve(sdp.problem()).unwrap();
     //println!("{:?}", rslt);
@@ -156,7 +159,61 @@ fn main() -> std::io::Result<()> {
     //----- random sampling to find the best feasible point
 
     let (_, x_feas) = sample_feasible(&rslt.0, &sym_w, 20000);
-    println!("{:?}", x_feas);    
+    //println!("{:?}", x_feas);
+
+    //----- visualize
+
+    let root = SVGBackend::new("plot.svg", (480, 360)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let mut chart = ChartBuilder::on(&root)
+        .margin(30)
+        .build_cartesian_2d(
+            0..x_num,
+            0..y_num
+        ).unwrap();
+
+    let scale = 2.;
+    for i in 0..sym_w.size().0 {
+        let x = i / y_num;
+        let y = i % y_num;
+
+        if x < x_num - 1 {
+            let a = sym_w[(i, i + y_num)];
+
+            let style = if a > 0. {RED} else {BLUE}.stroke_width((a.abs() * scale) as u32);
+
+            chart.draw_series(LineSeries::new(
+                [(x, y), (x + 1, y)], style
+            )).unwrap();
+        }
+        if y < y_num - 1 {
+            let a = sym_w[(i, i + 1)];
+
+            let style = if a > 0. {RED} else {BLUE}.stroke_width((a.abs() * scale) as u32);
+
+            chart.draw_series(LineSeries::new(
+                [(x, y), (x, y + 1)], style
+            )).unwrap();
+        }
+    }
+
+    let radius = 4;
+    for i in 0..sym_w.size().0 {
+        let x = i / y_num;
+        let y = i % y_num;
+
+        if x_feas[(i, 0)] > 0. {
+            chart.draw_series(
+                [Circle::new((x, y), radius, BLACK.filled())]
+            ).unwrap();
+        } else {
+            chart.draw_series(
+                [Circle::new((x, y), radius, WHITE.filled()), Circle::new((x, y), radius, &BLACK)]
+            ).unwrap();
+        }
+
+    }
 
     Ok(())
 }
