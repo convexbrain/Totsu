@@ -31,7 +31,7 @@ See [documentation](https://docs.rs/totsu/) for more details.
 
 ```toml
 [dependencies.totsu]
-version = "0.8.0"
+version = "0.8.1"
 features = ["f64lapack"]
 ```
 
@@ -45,7 +45,7 @@ Use this in `Cargo.toml`:
 
 ```toml
 [dependencies.totsu]
-version = "0.8.0"
+version = "0.8.1"
 default-features = false
 features = ["libm"]
 ```

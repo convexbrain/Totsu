@@ -2,7 +2,7 @@
 name = "totsu"
 version = "0.8.1"
 authors = ["convexbrain <convexbrain@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 description = "A first-order conic solver for continuous scalar convex optimization problems."
 
