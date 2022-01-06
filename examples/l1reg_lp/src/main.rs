@@ -5,11 +5,8 @@ use totsu::problem::ProbLP;
 use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256StarStar;
-use std::io::prelude::*;
-use std::io::BufWriter;
-use std::fs::File;
 
-//extern crate intel_mkl_src;
+use plotters::prelude::*;
 
 type AMatBuild = MatBuild<FloatGeneric<f64>, f64>;
 type AProbLP = ProbLP<FloatGeneric<f64>, f64>;
@@ -124,31 +121,81 @@ fn main() -> std::io::Result<()> {
     let (_beta, spl) = spl.split_at(l);
     let (bias, _) = spl.split_at(1);
 
-    //----- file output for graph plot
-    // TODO: use some plotting crate
+    //----- graph plot
 
-    let mut dat_point = BufWriter::new(File::create("dat_point")?);
+    let area = SVGBackend::new("plot.svg", (480, 360)).into_drawing_area();
+    area.fill(&WHITE).unwrap();
 
-    for smp in 0 .. l {
-        writeln!(dat_point, "{} {} {} {}", x[(0, smp)], x[(1, smp)], y[(smp, 0)], alpha[smp])?;
-    }
+    let mut chart = ChartBuilder::on(&area)
+        .margin(30)
+        .build_cartesian_3d(
+            (0.0..1.1).step(0.2),
+            (-1.0..1.25).step(0.5),
+            (0.0..1.1).step(0.2),
+        ).unwrap();
 
-    let mut dat_grid = BufWriter::new(File::create("dat_grid")?);
+    chart.with_projection(|mut pb| {
+        pb.yaw = 0.5;
+        pb.pitch = 0.3;
+        pb.scale = 0.8;
+        pb.into_matrix()
+    });
+
+    chart.configure_axes().draw().unwrap();
 
     let grid = 20;
-    for iy in 0 .. grid {
-        for ix in 0 .. grid {
-            let xi = AMatBuild::new(MatType::General(2, 1))
-                     .iter_colmaj(&[
-                         ix as f64 / (grid - 1) as f64,
-                         iy as f64 / (grid - 1) as f64
-                     ]);
+    chart
+        .draw_series(
+            SurfaceSeries::xoz(
+                (0..grid).map(|f| f as f64 / (grid - 1) as f64),
+                (0..grid).map(|f| f as f64 / (grid - 1) as f64),
+                |x0, x1| {
+                    let xi = AMatBuild::new(MatType::General(2, 1))
+                        .iter_colmaj(&[x0, x1]);
+                    
+                    wx(&x, alpha, &xi) + bias[0]
+                }
+            )
+            .style(RGBColor(0, 127, 0).mix(0.1).filled()),
+        ).unwrap();
+    for x0 in 0 .. grid {
+        chart
+            .draw_series(LineSeries::new(
+                (0..grid).map(|x1| {
+                    let x0 = x0 as f64 / (grid - 1) as f64;
+                    let x1 = x1 as f64 / (grid - 1) as f64;
+                    let xi = AMatBuild::new(MatType::General(2, 1))
+                        .iter_colmaj(&[x0, x1]);
 
-            let f = wx(&x, alpha, &xi) + bias[0];
+                    (x0, wx(&x, alpha, &xi) + bias[0], x1)
+                }), RGBColor(0, 127, 0).mix(0.5),
+            )).unwrap();
+    }
+    for x1 in 0 .. grid {
+        chart
+            .draw_series(LineSeries::new(
+                (0..grid).map(|x0| {
+                    let x0 = x0 as f64 / (grid - 1) as f64;
+                    let x1 = x1 as f64 / (grid - 1) as f64;
+                    let xi = AMatBuild::new(MatType::General(2, 1))
+                        .iter_colmaj(&[x0, x1]);
 
-            write!(dat_grid, " {}", f)?;
-        }
-        writeln!(dat_grid)?;
+                    (x0, wx(&x, alpha, &xi) + bias[0], x1)
+                }), RGBColor(0, 127, 0).mix(0.5),
+            )).unwrap();
+    }
+
+    for smp in 0 .. l {
+        chart
+        .draw_series(PointSeries::of_element(
+            [(x[(0, smp)], y[(smp, 0)], x[(1, smp)])],
+            if alpha[smp].abs() > 0.001 {5} else {2},
+            RED.mix(0.8).filled(),
+            &|coord, size, style| {
+                EmptyElement::at(coord)
+                    + Circle::new((0, 0), size, style)
+            },
+        )).unwrap();
     }
 
     Ok(())

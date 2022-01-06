@@ -482,6 +482,7 @@ version = "0.1.0"
 dependencies = [
  "env_logger",
  "itertools",
+ "plotters",
  "rand",
  "rand_xoshiro",
  "totsu",
