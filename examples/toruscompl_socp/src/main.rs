@@ -3,6 +3,8 @@ use totsu::operator::MatBuild;
 use totsu::linalg::F64LAPACK;
 use totsu::problem::ProbSOCP;
 
+use utils;
+
 use std::collections::HashMap;
 
 use itertools::iproduct;
@@ -256,6 +258,7 @@ fn main() -> std::io::Result<()> {
 
     let s = ASolver::new().par(|p| {
         p.eps_acc = 1e-3;
+        utils::set_par_by_env(p);
     });
     let rslt = s.solve(socp.problem()).unwrap();
     //println!("{:?}", rslt);

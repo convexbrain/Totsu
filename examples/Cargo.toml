@@ -6,6 +6,8 @@ members = [
     "trajplan_qcqp",
     "toruscompl_socp",
     "partitioning_sdp",
+    
+    "utils",
 ]
 
 exclude = [

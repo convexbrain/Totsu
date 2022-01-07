@@ -3,14 +3,13 @@ use totsu::operator::MatBuild;
 use totsu::linalg::F64LAPACK;
 use totsu::problem::ProbQP;
 
+use utils;
+
 use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256StarStar;
 
 use plotters::prelude::*;
-
-mod contour_series;
-use contour_series::ContourSeries;
 
 use intel_mkl_src as _;
 
@@ -103,6 +102,7 @@ fn main() -> std::io::Result<()> {
 
     let s = ASolver::new().par(|p| {
         p.eps_acc = 1e-3;
+        utils::set_par_by_env(p);
     });
     let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
     let rslt = s.solve(qp.problem()).unwrap();
@@ -142,7 +142,7 @@ fn main() -> std::io::Result<()> {
     
     let grid = 20;
     chart.draw_series(
-        ContourSeries::new(
+        utils::ContourSeries::new(
             (0..grid).map(|f| f as f64 / (grid - 1) as f64),
             (0..grid).map(|f| f as f64 / (grid - 1) as f64),
             |x0, x1| {

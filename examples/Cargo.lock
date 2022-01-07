@@ -486,6 +486,7 @@ dependencies = [
  "rand",
  "rand_xoshiro",
  "totsu",
+ "utils",
 ]
 
 [[package]]
@@ -612,6 +613,7 @@ dependencies = [
  "rand_distr",
  "rand_xoshiro",
  "totsu",
+ "utils",
 ]
 
 [[package]]
@@ -893,6 +895,7 @@ dependencies = [
  "rand",
  "rand_xoshiro",
  "totsu",
+ "utils",
 ]
 
 [[package]]
@@ -935,6 +938,7 @@ dependencies = [
  "itertools",
  "plotters",
  "totsu",
+ "utils",
 ]
 
 [[package]]
@@ -954,6 +958,7 @@ dependencies = [
  "env_logger",
  "intel-mkl-src",
  "totsu",
+ "utils",
 ]
 
 [[package]]
@@ -973,6 +978,15 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+
+[[package]]
+name = "utils"
+version = "0.1.0"
+dependencies = [
+ "num-traits",
+ "plotters",
+ "totsu",
+]
 
 [[package]]
 name = "walkdir"

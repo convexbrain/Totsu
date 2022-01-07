@@ -3,12 +3,14 @@ use totsu::operator::MatBuild;
 use totsu::linalg::F64LAPACK;
 use totsu::problem::ProbQCQP;
 
+use utils;
+
 use std::io::prelude::*;
 use std::io::BufWriter;
 use std::fs::File;
 use std::str::FromStr;
 
-extern crate intel_mkl_src;
+use intel_mkl_src as _;
 
 type AMatBuild = MatBuild<F64LAPACK, f64>;
 type AProbQCQP = ProbQCQP<F64LAPACK, f64>;
@@ -140,6 +142,7 @@ fn main() -> std::io::Result<()> {
 
     let s = ASolver::new().par(|p| {
         p.eps_acc = 1e-3;
+        utils::set_par_by_env(p);
     });
     let mut qp = AProbQCQP::new(syms_p, vecs_q, scls_r, mat_a, vec_b, s.par.eps_zero);
     let rslt = s.solve(qp.problem()).unwrap();

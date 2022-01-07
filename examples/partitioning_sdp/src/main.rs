@@ -3,6 +3,8 @@ use totsu::operator::MatBuild;
 use totsu::linalg::F64LAPACK;
 use totsu::problem::ProbSDP;
 
+use utils;
+
 use rand::prelude::*;
 use rand_distr::StandardNormal;
 use rand_xoshiro::Xoshiro256StarStar;
@@ -152,6 +154,7 @@ fn main() -> std::io::Result<()> {
     let s = ASolver::new().par(|p| {
         p.eps_acc = EPS_ACC;
         p.eps_zero = EPS_ZERO;
+        utils::set_par_by_env(p);
     });
     let rslt = s.solve(sdp.problem()).unwrap();
     //println!("{:?}", rslt);

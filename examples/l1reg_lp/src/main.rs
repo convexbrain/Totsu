@@ -2,6 +2,8 @@ use totsu::prelude::*;
 use totsu::operator::MatBuild;
 use totsu::problem::ProbLP;
 
+use utils;
+
 use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256StarStar;
@@ -111,6 +113,7 @@ fn main() -> std::io::Result<()> {
 
     let s = ASolver::new().par(|p| {
         p.eps_acc = 1e-3;
+        utils::set_par_by_env(p);
     });
     let mut lp = AProbLP::new(vec_c, mat_g, vec_h, mat_a, vec_b);
     let rslt = s.solve(lp.problem()).unwrap();
