@@ -8,7 +8,6 @@
 
 ```
 $ cargo run --release
-$ python plot.py
 ```
 
 ![](plot.svg)

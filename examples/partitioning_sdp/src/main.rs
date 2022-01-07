@@ -8,7 +8,7 @@ use rand_distr::StandardNormal;
 use rand_xoshiro::Xoshiro256StarStar;
 use plotters::prelude::*;
 
-extern crate intel_mkl_src;
+use intel_mkl_src as _;
 
 type AMatBuild = MatBuild<F64LAPACK, f64>;
 type AProbSDP = ProbSDP<F64LAPACK, f64>;

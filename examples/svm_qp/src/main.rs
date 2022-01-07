@@ -6,11 +6,13 @@ use totsu::problem::ProbQP;
 use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256StarStar;
-use std::io::prelude::*;
-use std::io::BufWriter;
-use std::fs::File;
 
-extern crate intel_mkl_src;
+use plotters::prelude::*;
+
+mod contour_series;
+use contour_series::ContourSeries;
+
+use intel_mkl_src as _;
 
 type AMatBuild = MatBuild<F64LAPACK, f64>;
 type AProbQP = ProbQP<F64LAPACK, f64>;
@@ -120,31 +122,50 @@ fn main() -> std::io::Result<()> {
     }
     bias = bias / cnt as f64;
 
-    //----- file output for graph plot
-    // TODO: use some plotting crate
+    //----- graph plot
 
-    let mut dat_point = BufWriter::new(File::create("dat_point")?);
+    let root = SVGBackend::new("plot.svg", (480, 360)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let mut chart = ChartBuilder::on(&root)
+        .margin(30)
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_cartesian_2d(
+            (0.0..1.1).step(0.2),
+            (0.0..1.1).step(0.2),
+        ).unwrap();
+
+    chart.configure_mesh()
+        .disable_mesh()
+        .draw().unwrap();
+    
+    let grid = 20;
+    chart.draw_series(
+        ContourSeries::new(
+            (0..grid).map(|f| f as f64 / (grid - 1) as f64),
+            (0..grid).map(|f| f as f64 / (grid - 1) as f64),
+            |x0, x1| {
+                let xi = AMatBuild::new(MatType::General(2, 1))
+                    .iter_colmaj(&[x0, x1]);
+                
+                wx(&x, &y, alpha, &xi, 0) + bias
+            },
+            BLACK
+        )
+    ).unwrap();
 
     for smp in 0 .. l {
-        writeln!(dat_point, "{} {} {} {}", x[(0, smp)], x[(1, smp)], y[(smp, 0)], alpha[smp])?;
-    }
-
-    let mut dat_grid = BufWriter::new(File::create("dat_grid")?);
-
-    let grid = 20;
-    for iy in 0 .. grid {
-        for ix in 0 .. grid {
-            let xi = AMatBuild::new(MatType::General(2, 1))
-                     .iter_colmaj(&[
-                         ix as f64 / (grid - 1) as f64,
-                         iy as f64 / (grid - 1) as f64
-                     ]);
-
-            let f = wx(&x, &y, alpha, &xi, 0) + bias;
-
-            write!(dat_grid, " {}", f)?;
-        }
-        writeln!(dat_grid)?;
+        chart
+        .draw_series(PointSeries::of_element(
+            [(x[(0, smp)], x[(1, smp)])],
+            if alpha[smp].abs() > 0.001 {4} else {2},
+            if y[(smp, 0)] > 0. {RED.filled()} else {BLUE.filled()},
+            &|coord, size, style| {
+                EmptyElement::at(coord)
+                    + Circle::new((0, 0), size, style)
+            },
+        )).unwrap();
     }
 
     Ok(())
