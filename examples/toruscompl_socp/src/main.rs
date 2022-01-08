@@ -316,7 +316,7 @@ fn main() -> std::io::Result<()> {
                         (node.r.0 + p0 * (1. - k) - p1 * k, node.r.1 + p1 * (1. - k) + p0 * k),
                     ],
                     &RED
-            ))).unwrap();
+                ))).unwrap();
             }
         }
     }
