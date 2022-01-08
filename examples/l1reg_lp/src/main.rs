@@ -132,9 +132,9 @@ fn main() -> std::io::Result<()> {
     let mut chart = ChartBuilder::on(&area)
         .margin(30)
         .build_cartesian_3d(
-            (0.0..1.1).step(0.2),
-            (-1.0..1.25).step(0.5),
-            (0.0..1.1).step(0.2),
+            -0.1..1.1,
+            -1.25..1.25,
+            -0.1..1.1
         ).unwrap();
 
     chart.with_projection(|mut pb| {
@@ -144,53 +144,53 @@ fn main() -> std::io::Result<()> {
         pb.into_matrix()
     });
 
-    chart.configure_axes().draw().unwrap();
+    chart.configure_axes()
+        .x_labels(5 + 1/*adj*/)
+        .y_labels(5)
+        .z_labels(5 + 1/*adj*/)
+        .draw().unwrap();
 
     let grid = 20;
-    chart
-        .draw_series(
-            SurfaceSeries::xoz(
-                (0..grid).map(|f| f as f64 / (grid - 1) as f64),
-                (0..grid).map(|f| f as f64 / (grid - 1) as f64),
-                |x0, x1| {
-                    let xi = AMatBuild::new(MatType::General(2, 1))
-                        .iter_colmaj(&[x0, x1]);
-                    
-                    wx(&x, alpha, &xi) + bias[0]
-                }
-            )
-            .style(RGBColor(0, 127, 0).mix(0.1).filled()),
-        ).unwrap();
+    chart.draw_series(
+        SurfaceSeries::xoz(
+            (0..grid).map(|f| f as f64 / (grid - 1) as f64),
+            (0..grid).map(|f| f as f64 / (grid - 1) as f64),
+            |x0, x1| {
+                let xi = AMatBuild::new(MatType::General(2, 1))
+                         .iter_colmaj(&[x0, x1]);
+                
+                wx(&x, alpha, &xi) + bias[0]
+            }
+        )
+        .style(RGBColor(0, 127, 0).mix(0.1).filled()),
+    ).unwrap();
     for x0 in 0 .. grid {
-        chart
-            .draw_series(LineSeries::new(
-                (0..grid).map(|x1| {
-                    let x0 = x0 as f64 / (grid - 1) as f64;
-                    let x1 = x1 as f64 / (grid - 1) as f64;
-                    let xi = AMatBuild::new(MatType::General(2, 1))
-                        .iter_colmaj(&[x0, x1]);
+        chart.draw_series(LineSeries::new(
+            (0..grid).map(|x1| {
+                let x0 = x0 as f64 / (grid - 1) as f64;
+                let x1 = x1 as f64 / (grid - 1) as f64;
+                let xi = AMatBuild::new(MatType::General(2, 1))
+                         .iter_colmaj(&[x0, x1]);
 
-                    (x0, wx(&x, alpha, &xi) + bias[0], x1)
-                }), RGBColor(0, 127, 0).mix(0.5),
-            )).unwrap();
+                (x0, wx(&x, alpha, &xi) + bias[0], x1)
+            }), RGBColor(0, 127, 0).mix(0.5),
+        )).unwrap();
     }
     for x1 in 0 .. grid {
-        chart
-            .draw_series(LineSeries::new(
-                (0..grid).map(|x0| {
-                    let x0 = x0 as f64 / (grid - 1) as f64;
-                    let x1 = x1 as f64 / (grid - 1) as f64;
-                    let xi = AMatBuild::new(MatType::General(2, 1))
-                        .iter_colmaj(&[x0, x1]);
+        chart.draw_series(LineSeries::new(
+            (0..grid).map(|x0| {
+                let x0 = x0 as f64 / (grid - 1) as f64;
+                let x1 = x1 as f64 / (grid - 1) as f64;
+                let xi = AMatBuild::new(MatType::General(2, 1))
+                         .iter_colmaj(&[x0, x1]);
 
-                    (x0, wx(&x, alpha, &xi) + bias[0], x1)
-                }), RGBColor(0, 127, 0).mix(0.5),
-            )).unwrap();
+                (x0, wx(&x, alpha, &xi) + bias[0], x1)
+            }), RGBColor(0, 127, 0).mix(0.5),
+        )).unwrap();
     }
 
     for smp in 0 .. l {
-        chart
-        .draw_series(PointSeries::of_element(
+        chart.draw_series(PointSeries::of_element(
             [(x[(0, smp)], y[(smp, 0)], x[(1, smp)])],
             if alpha[smp].abs() > 0.001 {5} else {2},
             RED.mix(0.8).filled(),
