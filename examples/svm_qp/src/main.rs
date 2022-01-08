@@ -132,11 +132,13 @@ fn main() -> std::io::Result<()> {
         .x_label_area_size(30)
         .y_label_area_size(30)
         .build_cartesian_2d(
-            (0.0..1.1).step(0.2),
-            (0.0..1.1).step(0.2),
+            -0.05..1.05,
+            -0.05..1.05,
         ).unwrap();
 
     chart.configure_mesh()
+        .x_labels(6)
+        .y_labels(6)
         .disable_mesh()
         .draw().unwrap();
     
@@ -147,7 +149,7 @@ fn main() -> std::io::Result<()> {
             (0..grid).map(|f| f as f64 / (grid - 1) as f64),
             |x0, x1| {
                 let xi = AMatBuild::new(MatType::General(2, 1))
-                    .iter_colmaj(&[x0, x1]);
+                         .iter_colmaj(&[x0, x1]);
                 
                 wx(&x, &y, alpha, &xi, 0) + bias
             },
@@ -156,8 +158,7 @@ fn main() -> std::io::Result<()> {
     ).unwrap();
 
     for smp in 0 .. l {
-        chart
-        .draw_series(PointSeries::of_element(
+        chart.draw_series(PointSeries::of_element(
             [(x[(0, smp)], x[(1, smp)])],
             if alpha[smp].abs() > 0.001 {4} else {2},
             if y[(smp, 0)] > 0. {RED.filled()} else {BLUE.filled()},
