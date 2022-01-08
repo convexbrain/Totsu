@@ -1,0 +1,24 @@
+QEMU 2.8.0-8 monitor - type 'help' for more information
+(qemu) run
+query_worklen -> 48
+[INFO] ----- Started
+[DEBUG] 0: pri_dual_gap 8.95e-1 5.00e-1 0.00e0
+[DEBUG] 10: pri_dual_gap 5.72e-2 1.22e-1 9.31e-2
+[DEBUG] 20: pri_dual_gap 8.42e-3 1.21e-1 5.73e-2
+[DEBUG] 30: pri_dual_gap 3.38e-3 9.72e-2 3.99e-2
+[DEBUG] 40: pri_dual_gap 1.89e-3 5.88e-2 2.11e-2
+[DEBUG] 50: pri_dual_gap 1.02e-2 2.22e-2 9.49e-3
+[DEBUG] 60: pri_dual_gap 1.84e-3 2.18e-2 7.36e-3
+[DEBUG] 70: pri_dual_gap 8.22e-4 1.89e-2 6.09e-3
+[DEBUG] 80: pri_dual_gap 5.92e-4 1.54e-2 4.88e-3
+[DEBUG] 90: pri_dual_gap 4.36e-4 1.16e-2 3.62e-3
+[DEBUG] 100: pri_dual_gap 2.79e-4 7.42e-3 2.30e-3
+[DEBUG] 110: pri_dual_gap 1.12e-4 2.97e-3 9.10e-4
+[DEBUG] 120: pri_dual_gap 3.03e-3 2.32e-3 6.25e-4
+[DEBUG] 130: pri_dual_gap 5.21e-4 3.67e-4 1.09e-4
+[DEBUG] 140: pri_dual_gap 8.03e-5 4.77e-5 1.71e-5
+[DEBUG] 150: pri_dual_gap 1.09e-5 6.02e-6 2.34e-6
+[DEBUG] 159: pri_dual_gap 3.85e-7 1.60e-7 3.91e-8
+[INFO] ----- Converged
+solve -> [1.9999994251590176, 2.0000004472430635]
+exit

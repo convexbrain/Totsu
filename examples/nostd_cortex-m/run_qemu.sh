@@ -1,3 +1,3 @@
-QEMU='/c/NoInstaller/xPack/QEMU ARM/2.8.0-8/bin/qemu-system-gnuarmeclipse'
+QEMU='qemu-system-gnuarmeclipse'  # xPack/QEMU ARM/2.8.0-8/bin/
 
-"$QEMU" -board NUCLEO-F103RB -nographic -image $1
+"$QEMU" -board NUCLEO-F103RB -nographic -image $1 | tee log_qemu.txt
