@@ -148,106 +148,108 @@ fn main() -> std::io::Result<()> {
     //println!("{:?}", rslt);
 
     //----- graph plot 1
-    {
-        let root = SVGBackend::new("plot1.svg", (480, 360)).into_drawing_area();
-        root.fill(&WHITE).unwrap();
-    
-        let mut chart = ChartBuilder::on(&root)
-            .margin(30)
-            .x_label_area_size(35)
-            .y_label_area_size(45)
-            .build_cartesian_2d(-0.1..1.1, -1.7..1.7).unwrap();
-    
-        chart.configure_mesh()
-            .x_labels(6)
-            .y_labels(7)
-            .x_desc("x0")
-            .y_desc("x1")
-            .disable_mesh()
-            .draw().unwrap();
-        
-        chart.draw_series(
-            LineSeries::new(
-                (0..t_cap).map(|i| (rslt.0[i], rslt.0[t_cap + i])),
-                BLUE.stroke_width(2).filled()
-            ).point_size(3)
+
+    let root = SVGBackend::new("plot1.svg", (480, 360)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let mut chart = ChartBuilder::on(&root)
+        .margin(30)
+        .x_label_area_size(35)
+        .y_label_area_size(45)
+        .build_cartesian_2d(
+            -0.1..1.1,
+            -1.7..1.7,
         ).unwrap();
+
+    chart.configure_mesh()
+        .x_labels(6)
+        .y_labels(7)
+        .x_desc("x0")
+        .y_desc("x1")
+        .disable_mesh()
+        .draw().unwrap();
     
-        chart.draw_series(
-            PointSeries::of_element(
-                [x_s, x_m1, x_m2, x_t],
-                7,
-                RED.mix(0.5).stroke_width(4),
-                &|coord, size, style| {
-                    EmptyElement::at(coord)
-                        + Cross::new((0, 0), size, style)
-                }
-            )
-        ).unwrap();
-    }
+    chart.draw_series(
+        LineSeries::new(
+            (0..t_cap).map(|i| (rslt.0[i], rslt.0[t_cap + i])),
+            BLUE.stroke_width(2).filled()
+        ).point_size(3)
+    ).unwrap();
+
+    chart.draw_series(
+        PointSeries::of_element(
+            [x_s, x_m1, x_m2, x_t],
+            7,
+            RED.mix(0.5).stroke_width(4),
+            &|coord, size, style| {
+                EmptyElement::at(coord)
+                    + Cross::new((0, 0), size, style)
+            }
+        )
+    ).unwrap();
 
     //----- graph plot 2
-    {
-        let root = SVGBackend::new("plot2.svg", (480, 360)).into_drawing_area();
-        root.fill(&WHITE).unwrap();
 
-        let (upper, lower) = root.split_vertically(360/2);
-        {
-            let mut chart = ChartBuilder::on(&upper)
-                .margin(20)
-                .margin_bottom(0)
-                .x_label_area_size(35)
-                .y_label_area_size(45)
-                .build_cartesian_2d(0.0..1.0, -1.0..12.0).unwrap();
-        
-            chart.configure_mesh()
-                .x_labels(6)
-                .y_labels(5)
-                .y_desc("velocity mag.")
-                .disable_mesh()
-                .draw().unwrap();
-            
-            chart.draw_series(
-                LineSeries::new(
-                    (0..t_cap - 1).map(|i| {
-                        let v0 = rslt.0[i + 1] - rslt.0[i];
-                        let v1 = rslt.0[t_cap + i + 1] - rslt.0[t_cap + i];
-                        let v = v0.hypot(v1) / dt;
-                        (i as f64 * dt, v)
-                    }),
-                    BLUE.stroke_width(1).filled()
-                ).point_size(2)
-            ).unwrap();
-        }
-        {
-            let mut chart = ChartBuilder::on(&lower)
-                .margin(20)
-                .margin_top(0)
-                .x_label_area_size(35)
-                .y_label_area_size(45)
-                .build_cartesian_2d(0.0..1.0, -5.0..95.0).unwrap();
-        
-            chart.configure_mesh()
-                .x_labels(6)
-                .y_labels(5)
-                .x_desc("time")
-                .y_desc("acceleration mag.")
-                .disable_mesh()
-                .draw().unwrap();
-            
-            chart.draw_series(
-                LineSeries::new(
-                    (0..t_cap - 2).map(|i| {
-                        let a0 = rslt.0[i + 2] - 2.0 * rslt.0[i + 1] + rslt.0[i];
-                        let a1 = rslt.0[t_cap + i + 2] - 2.0 * rslt.0[t_cap + i + 1] + rslt.0[t_cap + i];
-                        let a = a0.hypot(a1) / dt / dt;
-                        (i as f64 * dt, a)
-                    }),
-                    BLUE.stroke_width(1).filled()
-                ).point_size(2)
-            ).unwrap();
-        }
-    }
+    let root = SVGBackend::new("plot2.svg", (480, 360)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let (upper, lower) = root.split_vertically(360/2);
+
+    let mut chart = ChartBuilder::on(&upper)
+        .margin(20)
+        .margin_bottom(0)
+        .x_label_area_size(35)
+        .y_label_area_size(45)
+        .build_cartesian_2d(0.0..1.0, -1.0..12.0).unwrap();
+
+    chart.configure_mesh()
+        .x_labels(6)
+        .y_labels(5)
+        .y_desc("velocity mag.")
+        .disable_mesh()
+        .draw().unwrap();
+    
+    chart.draw_series(
+        LineSeries::new(
+            (0..t_cap - 1).map(|i| {
+                let v0 = rslt.0[i + 1] - rslt.0[i];
+                let v1 = rslt.0[t_cap + i + 1] - rslt.0[t_cap + i];
+                let v = v0.hypot(v1) / dt;
+                (i as f64 * dt, v)
+            }),
+            BLUE.stroke_width(1).filled()
+        ).point_size(2)
+    ).unwrap();
+    
+    let mut chart = ChartBuilder::on(&lower)
+        .margin(20)
+        .margin_top(0)
+        .x_label_area_size(35)
+        .y_label_area_size(45)
+        .build_cartesian_2d(
+             0.0..1.0,
+            -5.0..95.0,
+        ).unwrap();
+
+    chart.configure_mesh()
+        .x_labels(6)
+        .y_labels(5)
+        .x_desc("time")
+        .y_desc("acceleration mag.")
+        .disable_mesh()
+        .draw().unwrap();
+    
+    chart.draw_series(
+        LineSeries::new(
+            (0..t_cap - 2).map(|i| {
+                let a0 = rslt.0[i + 2] - 2.0 * rslt.0[i + 1] + rslt.0[i];
+                let a1 = rslt.0[t_cap + i + 2] - 2.0 * rslt.0[t_cap + i + 1] + rslt.0[t_cap + i];
+                let a = a0.hypot(a1) / dt / dt;
+                (i as f64 * dt, a)
+            }),
+            BLUE.stroke_width(1).filled()
+        ).point_size(2)
+    ).unwrap();
 
     Ok(())
 }
