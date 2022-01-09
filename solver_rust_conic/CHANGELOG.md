@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Implement Display and Error trait for SolverError
 ### Changed
 - Update Rust edition to 2021.
 ### Deprecated

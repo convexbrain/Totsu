@@ -2,7 +2,7 @@
 
 use num_traits::Float;
 use core::marker::PhantomData;
-use core::fmt::{Debug, LowerExp};
+use core::fmt::{Debug, Display, LowerExp};
 use crate::linalg::LinAlg;
 use crate::operator::Operator;
 use crate::cone::Cone;
@@ -27,6 +27,19 @@ pub enum SolverError
     WorkShortage,
     /// Failure caused by [`Cone`].
     ConeFailure,
+}
+
+impl Display for SolverError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", match &self {
+            SolverError::Unbounded    => "Unbounded: found an unbounded certificate",
+            SolverError::Infeasible   => "Infeasible: found an infeasibile certificate",
+            SolverError::ExcessIter   => "ExcessIter: exceed max iterations",
+            SolverError::InvalidOp    => "InvalidOp: invalid Operator",
+            SolverError::WorkShortage => "WorkShortage: shortage of work slice length",
+            SolverError::ConeFailure  => "ConeFailure: failure caused by Cone",
+        })
+    }
 }
 
 //

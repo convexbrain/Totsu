@@ -167,6 +167,9 @@ extern crate std;
 pub mod solver; // core, Float
 mod utils;
 
+#[cfg(feature = "std")]
+mod solver_error;
+
 pub mod linalg;
 pub mod operator;
 pub mod cone;

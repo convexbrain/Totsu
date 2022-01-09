@@ -1,6 +1,3 @@
-#[cfg(feature = "f64lapack")]
-use intel_mkl_src as _;
-
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
 
