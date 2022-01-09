@@ -8,10 +8,9 @@ use utils;
 use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256StarStar;
-
 use plotters::prelude::*;
-
 use intel_mkl_src as _;
+use anyhow::Result;
 
 type AMatBuild = MatBuild<F64LAPACK, f64>;
 type AProbQP = ProbQP<F64LAPACK, f64>;
@@ -47,7 +46,7 @@ fn wx(x: &AMatBuild, y: &AMatBuild, alpha: &[f64], xj: &AMatBuild, cj: usize) ->
 }
 
 /// main
-fn main() -> std::io::Result<()> {
+fn main() -> Result<()> {
     env_logger::init();
 
     //----- make sample points for training
@@ -105,7 +104,7 @@ fn main() -> std::io::Result<()> {
         utils::set_par_by_env(p);
     });
     let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
-    let rslt = s.solve(qp.problem()).unwrap();
+    let rslt = s.solve(qp.problem())?;
     //println!("{:?}", rslt);
 
     let (alpha, _) = rslt.0.split_at(l);
@@ -125,7 +124,7 @@ fn main() -> std::io::Result<()> {
     //----- graph plot
 
     let root = SVGBackend::new("plot.svg", (480, 360)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
+    root.fill(&WHITE)?;
 
     let mut chart = ChartBuilder::on(&root)
         .margin(30)
@@ -134,13 +133,13 @@ fn main() -> std::io::Result<()> {
         .build_cartesian_2d(
             -0.05..1.05,
             -0.05..1.05,
-        ).unwrap();
+        )?;
 
     chart.configure_mesh()
         .x_labels(6)
         .y_labels(6)
         .disable_mesh()
-        .draw().unwrap();
+        .draw()?;
     
     let grid = 20;
     chart.draw_series(
@@ -155,7 +154,7 @@ fn main() -> std::io::Result<()> {
             },
             BLACK
         )
-    ).unwrap();
+    )?;
 
     for smp in 0 .. l {
         chart.draw_series(PointSeries::of_element(
@@ -166,7 +165,7 @@ fn main() -> std::io::Result<()> {
                 EmptyElement::at(coord)
                     + Circle::new((0, 0), size, style)
             },
-        )).unwrap();
+        ))?;
     }
 
     Ok(())

@@ -9,8 +9,8 @@ use rand::prelude::*;
 use rand_distr::StandardNormal;
 use rand_xoshiro::Xoshiro256StarStar;
 use plotters::prelude::*;
-
 use intel_mkl_src as _;
+use anyhow::Result;
 
 type AMatBuild = MatBuild<F64LAPACK, f64>;
 type AProbSDP = ProbSDP<F64LAPACK, f64>;
@@ -136,7 +136,7 @@ fn sample_feasible(rslt_x: &[f64], sym_w: &AMatBuild, seed: u64) -> (f64, AMatBu
 }
 
 /// main
-fn main() -> std::io::Result<()> {
+fn main() -> Result<()> {
     env_logger::init();
 
     //----- make adjacent matrix
@@ -156,7 +156,7 @@ fn main() -> std::io::Result<()> {
         p.eps_zero = EPS_ZERO;
         utils::set_par_by_env(p);
     });
-    let rslt = s.solve(sdp.problem()).unwrap();
+    let rslt = s.solve(sdp.problem())?;
     //println!("{:?}", rslt);
 
     //----- random sampling to find the best feasible point
@@ -167,14 +167,14 @@ fn main() -> std::io::Result<()> {
     //----- visualize
 
     let root = SVGBackend::new("plot.svg", (480, 360)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
+    root.fill(&WHITE)?;
 
     let mut chart = ChartBuilder::on(&root)
         .margin(30)
         .build_cartesian_2d(
             0..x_num,
             0..y_num
-        ).unwrap();
+        )?;
 
     let scale = 5.;
     for i in 0..sym_w.size().0 {
@@ -188,7 +188,7 @@ fn main() -> std::io::Result<()> {
 
             chart.draw_series(LineSeries::new(
                 [(x, y), (x + 1, y)], style
-            )).unwrap();
+            ))?;
         }
         if y < y_num - 1 {
             let a = sym_w[(i, i + 1)];
@@ -197,7 +197,7 @@ fn main() -> std::io::Result<()> {
 
             chart.draw_series(LineSeries::new(
                 [(x, y), (x, y + 1)], style
-            )).unwrap();
+            ))?;
         }
     }
 
@@ -209,11 +209,11 @@ fn main() -> std::io::Result<()> {
         if x_feas[(i, 0)] > 0. {
             chart.draw_series(
                 [Circle::new((x, y), radius, BLACK.filled())]
-            ).unwrap();
+            )?;
         } else {
             chart.draw_series(
                 [Circle::new((x, y), radius, WHITE.filled()), Circle::new((x, y), radius, &BLACK)]
-            ).unwrap();
+            )?;
         }
 
     }

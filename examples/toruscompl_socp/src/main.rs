@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use itertools::iproduct;
 use plotters::prelude::*;
 use intel_mkl_src as _;
+use anyhow::Result;
 
 type AMatBuild = MatBuild<F64LAPACK, f64>;
 type AProbSOCP = ProbSOCP<F64LAPACK, f64>;
@@ -223,7 +224,7 @@ fn make_socp(nodes: &[Node], members: &[Member], dof: usize, vol_ratio: f64) -> 
 }
 
 /// main
-fn main() -> std::io::Result<()> {
+fn main() -> Result<()> {
     env_logger::init();
 
     //----- make members and nodes
@@ -260,13 +261,13 @@ fn main() -> std::io::Result<()> {
         p.eps_acc = 1e-3;
         utils::set_par_by_env(p);
     });
-    let rslt = s.solve(socp.problem()).unwrap();
+    let rslt = s.solve(socp.problem())?;
     //println!("{:?}", rslt);
 
     //----- graph plot
 
     let root = SVGBackend::new("plot.svg", (480, 360)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
+    root.fill(&WHITE)?;
 
     let mut chart = ChartBuilder::on(&root)
         .margin(30)
@@ -275,19 +276,19 @@ fn main() -> std::io::Result<()> {
         .build_cartesian_2d(
             -0.5..(-0.5 + x_num as f64),
             -0.5..(-0.5 + y_num as f64)
-        ).unwrap();
+        )?;
 
     chart.configure_mesh()
         .x_labels(1 + x_num as usize)
         .y_labels(1 + y_num as usize)
         .disable_mesh()
-        .draw().unwrap();
+        .draw()?;
     
     for member in members.iter() {
         chart.draw_series(LineSeries::new(
             [nodes[member.head_idx].r, nodes[member.tail_idx].r],
             RGBColor(223, 223, 223).stroke_width(10)
-        )).unwrap();
+        ))?;
     }
     for (i, member) in members.iter().enumerate() {
         let x = rslt.0[i];
@@ -295,7 +296,7 @@ fn main() -> std::io::Result<()> {
             chart.draw_series(LineSeries::new(
                 [nodes[member.head_idx].r, nodes[member.tail_idx].r],
                 BLUE.stroke_width((x.sqrt() * 10.) as u32)
-            )).unwrap();
+            ))?;
         }
     }
     for node in nodes {
@@ -308,7 +309,7 @@ fn main() -> std::io::Result<()> {
                         (node.r.0 + p0, node.r.1 + p1),
                     ],
                     RED.stroke_width(2)
-                )).unwrap();
+                ))?;
                 chart.draw_series(std::iter::once(Polygon::new(
                     [
                         (node.r.0 + p0 * (1. + k), node.r.1 + p1 * (1. + k)),
@@ -316,7 +317,7 @@ fn main() -> std::io::Result<()> {
                         (node.r.0 + p0 * (1. - k) - p1 * k, node.r.1 + p1 * (1. - k) + p0 * k),
                     ],
                     &RED
-                ))).unwrap();
+                )))?;
             }
         }
     }

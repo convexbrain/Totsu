@@ -8,15 +8,15 @@ use utils;
 use std::str::FromStr;
 
 use plotters::prelude::*;
-
 use intel_mkl_src as _;
+use anyhow::Result;
 
 type AMatBuild = MatBuild<F64LAPACK, f64>;
 type AProbQCQP = ProbQCQP<F64LAPACK, f64>;
 type ASolver = Solver<F64LAPACK, f64>;
 
 /// main
-fn main() -> std::io::Result<()> {
+fn main() -> Result<()> {
     env_logger::init();
 
     //----- parameters
@@ -144,13 +144,13 @@ fn main() -> std::io::Result<()> {
         utils::set_par_by_env(p);
     });
     let mut qp = AProbQCQP::new(syms_p, vecs_q, scls_r, mat_a, vec_b, s.par.eps_zero);
-    let rslt = s.solve(qp.problem()).unwrap();
+    let rslt = s.solve(qp.problem())?;
     //println!("{:?}", rslt);
 
     //----- graph plot 1
 
     let root = SVGBackend::new("plot1.svg", (480, 360)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
+    root.fill(&WHITE)?;
 
     let mut chart = ChartBuilder::on(&root)
         .margin(30)
@@ -159,7 +159,7 @@ fn main() -> std::io::Result<()> {
         .build_cartesian_2d(
             -0.1..1.1,
             -1.7..1.7,
-        ).unwrap();
+        )?;
 
     chart.configure_mesh()
         .x_labels(6)
@@ -167,14 +167,14 @@ fn main() -> std::io::Result<()> {
         .x_desc("x0")
         .y_desc("x1")
         .disable_mesh()
-        .draw().unwrap();
+        .draw()?;
     
     chart.draw_series(
         LineSeries::new(
             (0..t_cap).map(|i| (rslt.0[i], rslt.0[t_cap + i])),
             BLUE.stroke_width(2).filled()
         ).point_size(3)
-    ).unwrap();
+    )?;
 
     chart.draw_series(
         PointSeries::of_element(
@@ -186,12 +186,12 @@ fn main() -> std::io::Result<()> {
                     + Cross::new((0, 0), size, style)
             }
         )
-    ).unwrap();
+    )?;
 
     //----- graph plot 2
 
     let root = SVGBackend::new("plot2.svg", (480, 360)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
+    root.fill(&WHITE)?;
 
     let (upper, lower) = root.split_vertically(360/2);
 
@@ -200,14 +200,14 @@ fn main() -> std::io::Result<()> {
         .margin_bottom(0)
         .x_label_area_size(35)
         .y_label_area_size(45)
-        .build_cartesian_2d(0.0..1.0, -1.0..12.0).unwrap();
+        .build_cartesian_2d(0.0..1.0, -1.0..12.0)?;
 
     chart.configure_mesh()
         .x_labels(6)
         .y_labels(5)
         .y_desc("velocity mag.")
         .disable_mesh()
-        .draw().unwrap();
+        .draw()?;
     
     chart.draw_series(
         LineSeries::new(
@@ -219,7 +219,7 @@ fn main() -> std::io::Result<()> {
             }),
             BLUE.stroke_width(1).filled()
         ).point_size(2)
-    ).unwrap();
+    )?;
     
     let mut chart = ChartBuilder::on(&lower)
         .margin(20)
@@ -229,7 +229,7 @@ fn main() -> std::io::Result<()> {
         .build_cartesian_2d(
              0.0..1.0,
             -5.0..95.0,
-        ).unwrap();
+        )?;
 
     chart.configure_mesh()
         .x_labels(6)
@@ -237,7 +237,7 @@ fn main() -> std::io::Result<()> {
         .x_desc("time")
         .y_desc("acceleration mag.")
         .disable_mesh()
-        .draw().unwrap();
+        .draw()?;
     
     chart.draw_series(
         LineSeries::new(
@@ -249,7 +249,7 @@ fn main() -> std::io::Result<()> {
             }),
             BLUE.stroke_width(1).filled()
         ).point_size(2)
-    ).unwrap();
+    )?;
 
     Ok(())
 }

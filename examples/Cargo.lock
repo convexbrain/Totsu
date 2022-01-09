@@ -480,6 +480,7 @@ dependencies = [
 name = "l1reg_lp"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "env_logger",
  "itertools",
  "plotters",
@@ -606,6 +607,7 @@ dependencies = [
 name = "partitioning_sdp"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "env_logger",
  "intel-mkl-src",
  "plotters",
@@ -888,6 +890,7 @@ dependencies = [
 name = "svm_qp"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "env_logger",
  "intel-mkl-src",
  "num-traits",
@@ -933,6 +936,7 @@ dependencies = [
 name = "toruscompl_socp"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "env_logger",
  "intel-mkl-src",
  "itertools",
@@ -955,6 +959,7 @@ dependencies = [
 name = "trajplan_qcqp"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "env_logger",
  "intel-mkl-src",
  "plotters",

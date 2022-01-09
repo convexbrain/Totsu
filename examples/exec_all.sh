@@ -7,6 +7,7 @@
 
 (cd nostd_cortex-m && cargo build --release && sh run_qemu.sh target/thumbv7m-none-eabi/release/nostd_cortex-m) || exit
 
-echo "==="
-echo "End"
-echo "==="
+echo
+echo "=================="
+echo "End of exec_all.sh"
+echo "=================="

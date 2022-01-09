@@ -7,7 +7,7 @@ use utils;
 use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256StarStar;
-
+use anyhow::Result;
 use plotters::prelude::*;
 
 type AMatBuild = MatBuild<FloatGeneric<f64>, f64>;
@@ -44,7 +44,7 @@ fn wx(x: &AMatBuild, alpha: &[f64], xi: &AMatBuild) -> f64
 }
 
 /// main
-fn main() -> std::io::Result<()> {
+fn main() -> Result<()> {
     env_logger::init();
 
     //----- make sample points for training
@@ -116,7 +116,7 @@ fn main() -> std::io::Result<()> {
         utils::set_par_by_env(p);
     });
     let mut lp = AProbLP::new(vec_c, mat_g, vec_h, mat_a, vec_b);
-    let rslt = s.solve(lp.problem()).unwrap();
+    let rslt = s.solve(lp.problem())?;
     //println!("{:?}", rslt);
 
     let (_z, spl) = rslt.0.split_at(l);
@@ -127,7 +127,7 @@ fn main() -> std::io::Result<()> {
     //----- graph plot
 
     let area = SVGBackend::new("plot.svg", (480, 360)).into_drawing_area();
-    area.fill(&WHITE).unwrap();
+    area.fill(&WHITE)?;
 
     let mut chart = ChartBuilder::on(&area)
         .margin(30)
@@ -135,7 +135,7 @@ fn main() -> std::io::Result<()> {
             -0.1..1.1,
             -1.25..1.25,
             -0.1..1.1
-        ).unwrap();
+        )?;
 
     chart.with_projection(|mut pb| {
         pb.yaw = 0.5;
@@ -148,7 +148,7 @@ fn main() -> std::io::Result<()> {
         .x_labels(5 + 1/*adj*/)
         .y_labels(5)
         .z_labels(5 + 1/*adj*/)
-        .draw().unwrap();
+        .draw()?;
 
     let grid = 20;
     chart.draw_series(
@@ -163,7 +163,7 @@ fn main() -> std::io::Result<()> {
             }
         )
         .style(RGBColor(0, 127, 0).mix(0.1).filled()),
-    ).unwrap();
+    )?;
     for x0 in 0 .. grid {
         chart.draw_series(LineSeries::new(
             (0..grid).map(|x1| {
@@ -174,7 +174,7 @@ fn main() -> std::io::Result<()> {
 
                 (x0, wx(&x, alpha, &xi) + bias[0], x1)
             }), RGBColor(0, 127, 0).mix(0.5),
-        )).unwrap();
+        ))?;
     }
     for x1 in 0 .. grid {
         chart.draw_series(LineSeries::new(
@@ -186,7 +186,7 @@ fn main() -> std::io::Result<()> {
 
                 (x0, wx(&x, alpha, &xi) + bias[0], x1)
             }), RGBColor(0, 127, 0).mix(0.5),
-        )).unwrap();
+        ))?;
     }
 
     for smp in 0 .. l {
@@ -198,7 +198,7 @@ fn main() -> std::io::Result<()> {
                 EmptyElement::at(coord)
                     + Circle::new((0, 0), size, style)
             },
-        )).unwrap();
+        ))?;
     }
 
     Ok(())
