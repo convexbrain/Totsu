@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement Display and Error trait for SolverError
 ### Changed
 - Update Rust edition to 2021.
+- Update version of `float_eq`.
+- Tentative patch for `intel-mkl-src`.
 ### Deprecated
 ### Removed
 ### Fixed
