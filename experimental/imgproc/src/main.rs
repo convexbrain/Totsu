@@ -40,8 +40,9 @@ impl Operator<f64> for Laplacian
 
     fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
     {
-        let fc1 = -0.125;
-        let fc2 = -0.125;
+        let fc0 = 1.0 - 4.0 / 16.0;
+        let fc1 = -2.0 / 16.0;
+        let fc2 = -1.0/ 16.0;
 
         LA::scale(beta, y);
 
@@ -63,7 +64,7 @@ impl Operator<f64> for Laplacian
             let x_11 = x_1.split_at(1).1.split_at(self.w - 2).0;
             let x_12 = x_1.split_at(2).1.split_at(self.w - 2).0;
             LA::add(alpha * fc1, x_10, y_line);
-            LA::add(alpha * 1.0, x_11, y_line);
+            LA::add(alpha * fc0, x_11, y_line);
             LA::add(alpha * fc1, x_12, y_line);
 
             let x_2 = x.split_at((cy + 2) * self.w).1;
@@ -78,8 +79,9 @@ impl Operator<f64> for Laplacian
 
     fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
     {
-        let fc1 = -0.125;
-        let fc2 = -0.125;
+        let fc0 = 1.0 - 4.0 / 16.0;
+        let fc1 = -2.0 / 16.0;
+        let fc2 = -1.0/ 16.0;
 
         LA::scale(beta, y);
         
@@ -100,7 +102,7 @@ impl Operator<f64> for Laplacian
             let y_10 = y_1.split_at_mut(self.w - 2).0;
             LA::add(alpha * fc1, x_line, y_10);
             let y_11 = y_1.split_at_mut(1).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * 1.0, x_line, y_11);
+            LA::add(alpha * fc0, x_line, y_11);
             let y_12 = y_1.split_at_mut(2).1.split_at_mut(self.w - 2).0;
             LA::add(alpha * fc1, x_line, y_12);
 
@@ -259,12 +261,13 @@ impl<'a> ProbOpB<'a>
     {
         let mut lxh = vec![0.0; (width - 2) * (height - 2)];
         Laplacian::new(width, height).op(1.0, vec_xh, 0.0, &mut lxh);
-        let lambda_lxh_norm1 = lambda * LA::abssum(&lxh);
+        let lxh_norm1 = LA::abssum(&lxh);
+        log::info!("lxh_norm1: {}", lxh_norm1);
 
         ProbOpB {
             x_sz: width * height,
             t_sz: (width - 2) * (height - 2),
-            lambda_lxh_norm1,
+            lambda_lxh_norm1: lambda * lxh_norm1,
             one: MatBuild::new(MatType::General(width * height, 1))
                  .by_fn(|_, _| 1.0),
             xh: MatOp::new(MatType::General(width * height, 1), vec_xh),
@@ -366,7 +369,7 @@ fn main() -> Result<()> {
     //----- read input image
 
     let in_img_file = std::env::args().nth(1).context("no input image filename")?;
-    println!("{}", in_img_file);
+    log::info!("file: {}", in_img_file);
     let in_img = ImageReader::open(in_img_file)?.decode()?;
 
     let in_mono = in_img.to_luma8();
@@ -377,7 +380,7 @@ fn main() -> Result<()> {
                            .flat_map(|p| p.channels())
                            .map(|p| {*p as f64 / 255.0})
                            .collect();
-    println!("{}x{}={}", width, height, vec_xh.len());
+    log::info!("size: {}x{}={}", width, height, vec_xh.len());
 
     //-----
 
@@ -386,7 +389,7 @@ fn main() -> Result<()> {
     //----- solve user-defined problem
 
     let s = ASolver::new().par(|p| {
-        p.eps_acc = 1e-3;
+        p.eps_acc = 1.0 / 256.0;
         utils::set_par_by_env(p);
     });
     let op_c = ProbOpC::new(width as usize, height as usize);
