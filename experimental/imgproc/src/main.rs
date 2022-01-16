@@ -40,6 +40,9 @@ impl Operator<f64> for Laplacian
 
     fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
     {
+        let fc1 = -0.125;
+        let fc2 = -0.125;
+
         LA::scale(beta, y);
 
         let mut y_rest = y;
@@ -51,30 +54,33 @@ impl Operator<f64> for Laplacian
             let x_00 = x_0.split_at(self.w - 2).0;
             let x_01 = x_0.split_at(1).1.split_at(self.w - 2).0;
             let x_02 = x_0.split_at(2).1.split_at(self.w - 2).0;
-            LA::add(alpha * -0.125, x_00, y_line);
-            LA::add(alpha * -0.125, x_01, y_line);
-            LA::add(alpha * -0.125, x_02, y_line);
+            LA::add(alpha * fc2, x_00, y_line);
+            LA::add(alpha * fc1, x_01, y_line);
+            LA::add(alpha * fc2, x_02, y_line);
 
             let x_1 = x.split_at((cy + 1) * self.w).1;
             let x_10 = x_1.split_at(self.w - 2).0;
             let x_11 = x_1.split_at(1).1.split_at(self.w - 2).0;
             let x_12 = x_1.split_at(2).1.split_at(self.w - 2).0;
-            LA::add(alpha * -0.125, x_10, y_line);
-            LA::add(alpha *  1.0  , x_11, y_line);
-            LA::add(alpha * -0.125, x_12, y_line);
+            LA::add(alpha * fc1, x_10, y_line);
+            LA::add(alpha * 1.0, x_11, y_line);
+            LA::add(alpha * fc1, x_12, y_line);
 
             let x_2 = x.split_at((cy + 2) * self.w).1;
             let x_20 = x_2.split_at(self.w - 2).0;
             let x_21 = x_2.split_at(1).1.split_at(self.w - 2).0;
             let x_22 = x_2.split_at(2).1.split_at(self.w - 2).0;
-            LA::add(alpha * -0.125, x_20, y_line);
-            LA::add(alpha * -0.125, x_21, y_line);
-            LA::add(alpha * -0.125, x_22, y_line);
+            LA::add(alpha * fc2, x_20, y_line);
+            LA::add(alpha * fc1, x_21, y_line);
+            LA::add(alpha * fc2, x_22, y_line);
         }
     }
 
     fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
     {
+        let fc1 = -0.125;
+        let fc2 = -0.125;
+
         LA::scale(beta, y);
         
         let mut x_rest = x;
@@ -84,27 +90,27 @@ impl Operator<f64> for Laplacian
 
             let y_0 = y.split_at_mut(cy * self.w).1;
             let y_00 = y_0.split_at_mut(self.w - 2).0;
-            LA::add(alpha * -0.125, x_line, y_00);
+            LA::add(alpha * fc2, x_line, y_00);
             let y_01 = y_0.split_at_mut(1).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * -0.125, x_line, y_01);
+            LA::add(alpha * fc1, x_line, y_01);
             let y_02 = y_0.split_at_mut(2).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * -0.125, x_line, y_02);
+            LA::add(alpha * fc2, x_line, y_02);
 
             let y_1 = y.split_at_mut((cy + 1) * self.w).1;
             let y_10 = y_1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * -0.125, x_line, y_10);
+            LA::add(alpha * fc1, x_line, y_10);
             let y_11 = y_1.split_at_mut(1).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha *  1.0  , x_line, y_11);
+            LA::add(alpha * 1.0, x_line, y_11);
             let y_12 = y_1.split_at_mut(2).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * -0.125, x_line, y_12);
+            LA::add(alpha * fc1, x_line, y_12);
 
             let y_2 = y.split_at_mut((cy + 2) * self.w).1;
             let y_20 = y_2.split_at_mut(self.w - 2).0;
-            LA::add(alpha * -0.125, x_line, y_20);
+            LA::add(alpha * fc2, x_line, y_20);
             let y_21 = y_2.split_at_mut(1).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * -0.125, x_line, y_21);
+            LA::add(alpha * fc1, x_line, y_21);
             let y_22 = y_2.split_at_mut(2).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * -0.125, x_line, y_22);
+            LA::add(alpha * fc2, x_line, y_22);
         }
     }
 }
