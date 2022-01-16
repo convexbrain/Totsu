@@ -432,7 +432,7 @@ dependencies = [
 [[package]]
 name = "intel-mkl-src"
 version = "0.6.0+mkl2020.1"
-source = "git+https://github.com/convexbrain/intel-mkl-src?branch=branch_from_0.6.0+mkl2020.1#45f37d5bcb7bb7d4a5db80a54fdfa1616677af92"
+source = "git+https://github.com/convexbrain/intel-mkl-src?branch=branch_from_0.6.0+mkl2020.1#178c60f9059865b6f4450d6056d0ae27762680fe"
 dependencies = [
  "anyhow",
  "intel-mkl-tool",
@@ -441,7 +441,7 @@ dependencies = [
 [[package]]
 name = "intel-mkl-tool"
 version = "0.2.0+mkl2020.1"
-source = "git+https://github.com/convexbrain/intel-mkl-src?branch=branch_from_0.6.0+mkl2020.1#45f37d5bcb7bb7d4a5db80a54fdfa1616677af92"
+source = "git+https://github.com/convexbrain/intel-mkl-src?branch=branch_from_0.6.0+mkl2020.1#178c60f9059865b6f4450d6056d0ae27762680fe"
 dependencies = [
  "anyhow",
  "derive_more",

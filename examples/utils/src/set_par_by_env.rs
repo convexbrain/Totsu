@@ -2,26 +2,22 @@ use totsu::solver::SolverParam;
 use num_traits::Float;
 use num_traits::Num;
 
+pub fn num_by_env<N: Num>(e: &str) -> Option<N>
+{
+    if let Some(v) = std::env::var(e).ok()
+                     .and_then(|s| {N::from_str_radix(&s, 10).ok()}) {
+        Some(v)
+    }
+    else {
+        None
+    }
+}
+
 pub fn set_par_by_env<F: Float>(p: &mut SolverParam<F>)
 {
-    if let Some(v) = std::env::var("MAX_ITER").ok()
-                     .and_then(|s| {s.parse().ok()}) {
-        p.max_iter = Some(v);
-    }
-    if let Some(v) = std::env::var("EPS_ACC").ok()
-                     .and_then(|s| {<F as Num>::from_str_radix(&s, 10).ok()}) {
-        p.eps_acc = v;
-    }
-    if let Some(v) = std::env::var("EPS_INF").ok()
-                     .and_then(|s| {<F as Num>::from_str_radix(&s, 10).ok()}) {
-        p.eps_inf = v;
-    }
-    if let Some(v) = std::env::var("EPS_ZERO").ok()
-                     .and_then(|s| {<F as Num>::from_str_radix(&s, 10).ok()}) {
-        p.eps_zero = v;
-    }
-    if let Some(v) = std::env::var("LOG_PERIOD").ok()
-                     .and_then(|s| {s.parse().ok()}) {
-        p.log_period = v;
-    }
+    p.max_iter = num_by_env("MAX_ITER").or(p.max_iter);
+    p.eps_acc = num_by_env("EPS_ACC").unwrap_or(p.eps_acc);
+    p.eps_inf = num_by_env("EPS_INF").unwrap_or(p.eps_inf);
+    p.eps_zero = num_by_env("EPS_ZERO").unwrap_or(p.eps_zero);
+    p.log_period = num_by_env("LOG_PERIOD").unwrap_or(p.log_period);
 }
