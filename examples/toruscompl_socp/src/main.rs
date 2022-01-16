@@ -3,8 +3,6 @@ use totsu::operator::MatBuild;
 use totsu::linalg::F64LAPACK;
 use totsu::problem::ProbSOCP;
 
-use utils;
-
 use std::collections::HashMap;
 
 use itertools::iproduct;

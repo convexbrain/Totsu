@@ -9,3 +9,4 @@ publish = false
 totsu = {path = "../../solver_rust_conic"}
 num-traits = "0.2.14"
 plotters = "0.3.1"
+log = "0.4.14"

@@ -3,8 +3,6 @@ use totsu::operator::MatBuild;
 use totsu::linalg::F64LAPACK;
 use totsu::problem::ProbQP;
 
-use utils;
-
 use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256StarStar;

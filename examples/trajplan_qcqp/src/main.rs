@@ -3,8 +3,6 @@ use totsu::operator::MatBuild;
 use totsu::linalg::F64LAPACK;
 use totsu::problem::ProbQCQP;
 
-use utils;
-
 use std::str::FromStr;
 
 use plotters::prelude::*;

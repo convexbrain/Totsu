@@ -2,8 +2,6 @@ use totsu::prelude::*;
 use totsu::operator::MatBuild;
 use totsu::problem::ProbLP;
 
-use utils;
-
 use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256StarStar;
