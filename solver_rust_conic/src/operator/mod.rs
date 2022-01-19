@@ -36,6 +36,10 @@ pub trait Operator<F: Float>
     ///   \\(\alpha K^T x + \beta y\\) on exit.
     ///   The length of `y` shall be \\(n\\).
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]);
+
+    fn abssum_cols(&self, tau: &mut[F]);
+
+    fn abssum_rows(&self, sigma: &mut[F]);
 }
 
 //
@@ -49,3 +53,6 @@ pub use matop::*;
 
 #[cfg(feature = "std")]
 pub use matbuild::*;
+
+#[cfg(feature = "std")]
+pub mod reffn; // std,  Float

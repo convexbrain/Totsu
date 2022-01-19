@@ -35,6 +35,24 @@ where L: LinAlgEx<F>, F: Float
         // y = a*vec_f^T*x + b*y;
         self.vec_f.trans_op(alpha, x, beta, y);
     }
+
+    fn abssum_cols(&self, tau: &mut[F])
+    {
+        crate::operator::reffn::abssum_cols::<L, _, _>(
+            self.size(),
+            |x, y| self.op(F::one(), x, F::zero(), y),
+            tau
+        );
+    }
+
+    fn abssum_rows(&self, sigma: &mut[F])
+    {
+        crate::operator::reffn::abssum_rows::<L, _, _>(
+            self.size(),
+            |x, y| self.trans_op(F::one(), x, F::zero(), y),
+            sigma
+        );
+    }
 }
 
 //
@@ -121,6 +139,24 @@ where L: LinAlgEx<F>, F: Float
         // y = ... + a*mat_a^T*x_p
         self.mat_a.trans_op(alpha, x_p, f1, y);
     }
+
+    fn abssum_cols(&self, tau: &mut[F])
+    {
+        crate::operator::reffn::abssum_cols::<L, _, _>(
+            self.size(),
+            |x, y| self.op(F::one(), x, F::zero(), y),
+            tau
+        );
+    }
+
+    fn abssum_rows(&self, sigma: &mut[F])
+    {
+        crate::operator::reffn::abssum_rows::<L, _, _>(
+            self.size(),
+            |x, y| self.trans_op(F::one(), x, F::zero(), y),
+            sigma
+        );
+    }
 }
 
 //
@@ -205,6 +241,24 @@ where L: LinAlgEx<F>, F: Float
 
         // y = ... + a*vec_b^T*x_p
         self.vec_b.trans_op(alpha, x_p, f1, y);
+    }
+
+    fn abssum_cols(&self, tau: &mut[F])
+    {
+        crate::operator::reffn::abssum_cols::<L, _, _>(
+            self.size(),
+            |x, y| self.op(F::one(), x, F::zero(), y),
+            tau
+        );
+    }
+
+    fn abssum_rows(&self, sigma: &mut[F])
+    {
+        crate::operator::reffn::abssum_rows::<L, _, _>(
+            self.size(),
+            |x, y| self.trans_op(F::one(), x, F::zero(), y),
+            sigma
+        );
     }
 }
 
