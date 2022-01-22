@@ -95,6 +95,44 @@ where L: LinAlgEx<F>, F: Float
             },
         }
     }
+
+    fn abssum_impl(&self, colwise: bool, beta: F, y: &mut[F])
+    {
+        match self.typ {
+            MatType::General(nr, _) => {
+                if colwise {
+                    let mut array = self.array;
+                    for e in y {
+                        let (col, rest) = array.split_at(nr);
+                        array = rest;
+                        *e = L::abssum(col, 1) + beta * *e;
+                    }
+                }
+                else {
+                    let mut array = self.array;
+                    for e in y {
+                        *e = L::abssum(array, nr) + beta * *e;
+                        let (_, rest) = array.split_at(1);
+                        array = rest;
+                    }
+                }
+            },
+            MatType::SymPack(_) => {
+                let mut array = self.array;
+                for n in 0.. {
+                    let (col, rest) = array.split_at(n + 1);
+                    y[n] = L::abssum(col, 1) + beta * y[n];
+                    for i in 0.. n {
+                        y[i] = y[i] + col[i].abs();
+                    }
+                    array = rest;
+                    if array.len() == 0 {
+                        break;
+                    }
+                }
+            },
+        }
+    }
 }
 
 impl<'a, L, F> Operator<F> for MatOp<'a, L, F>
@@ -117,20 +155,12 @@ where L: LinAlgEx<F>, F: Float
 
     fn abssum_cols(&self, beta: F, tau: &mut[F])
     {
-        crate::operator::reffn::abssum_cols::<L, _, _>(
-            self.size(),
-            |x, y| self.op(F::one(), x, F::zero(), y),
-            beta, tau
-        );
+        self.abssum_impl(true, beta, tau);
     }
 
     fn abssum_rows(&self, beta: F, sigma: &mut[F])
     {
-        crate::operator::reffn::abssum_rows::<L, _, _>(
-            self.size(),
-            |x, y| self.trans_op(F::one(), x, F::zero(), y),
-            beta, sigma
-        );
+        self.abssum_impl(false, beta, sigma);
     }
 }
 

@@ -21,6 +21,8 @@ pub trait LinAlg<F: Float>
     ///   `x` and `y` shall have the same length.
     fn copy(x: &[F], y: &mut[F]);
 
+    fn fill(v: F, y: &mut[F]);
+
     /// Calculate \\(\alpha x\\).
     /// 
     /// * `alpha` is a scalar \\(\alpha\\).
@@ -39,7 +41,7 @@ pub trait LinAlg<F: Float>
     /// 
     /// Returns the calculated norm.
     /// * `x` is a vector \\(x\\).
-    fn abssum(x: &[F]) -> F;
+    fn abssum(x: &[F], incx: usize) -> F;
 
     /// Calculate \\(\alpha D x + \beta y\\),
     /// where \\(D={\bf diag}(d)\\) is a diagonal matrix.

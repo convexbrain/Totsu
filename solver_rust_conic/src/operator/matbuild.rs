@@ -324,20 +324,12 @@ where L: LinAlgEx<F>, F: Float
 
     fn abssum_cols(&self, beta: F, tau: &mut[F])
     {
-        crate::operator::reffn::abssum_cols::<L, _, _>(
-            self.size(),
-            |x, y| self.op(F::one(), x, F::zero(), y),
-            beta, tau
-        );
+        MatOp::from(self).abssum_cols(beta, tau);
     }
 
     fn abssum_rows(&self, beta: F, sigma: &mut[F])
     {
-        crate::operator::reffn::abssum_rows::<L, _, _>(
-            self.size(),
-            |x, y| self.trans_op(F::one(), x, F::zero(), y),
-            beta, sigma
-        );
+        MatOp::from(self).abssum_rows(beta, sigma);
     }
 }
 

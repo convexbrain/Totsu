@@ -37,7 +37,7 @@ where L: LinAlg<F>, O: Fn(&[F], &mut[F]), F: Float
         op(&row, &mut col);
         row[c] = f0;
 
-        *t = L::abssum(&col) + beta * *t;
+        *t = L::abssum(&col, 1) + beta * *t;
     }
 }
 
@@ -55,6 +55,6 @@ where L: LinAlg<F>, O: Fn(&[F], &mut[F]), F: Float
         trans_op(&col, &mut row);
         col[r] = f0;
 
-        *s = L::abssum(&row) + beta * *s;
+        *s = L::abssum(&row, 1) + beta * *s;
     }
 }

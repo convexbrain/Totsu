@@ -192,28 +192,28 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         self.b.trans_op(alpha, x_m, f1, y_tau);
     }
 
-    fn abssum_cols(&self, tau: &mut[F])
+    fn abssum(&self, tau: &mut[F], sigma: &mut[F])
     {
         let (m, n) = self.a.size();
-        let sz = (n + m + 1, n + m + m + 1);
+        let f0 = F::zero();
+        let f1 = F::one();
 
-        crate::operator::reffn::abssum_cols::<L, _, _>(
-            sz,
-            |x, y| self.op(F::one(), x, F::zero(), y),
-            F::zero(), tau
-        );
-    }
+        let (tau_x, tau_y, tau_s, tau_tau) = tau.split4(n, m, m, 1).unwrap();
 
-    fn abssum_rows(&self, sigma: &mut[F])
-    {
-        let (m, n) = self.a.size();
-        let sz = (n + m + 1, n + m + m + 1);
+        self.a.abssum_cols(f0, tau_x);
+        self.c.abssum_rows(f1, tau_x);
+        self.a.abssum_rows(f0, tau_y);
+        self.b.abssum_rows(f1, tau_y);
+        L::fill(f1, tau_s);
+        self.c.abssum_cols(f0, tau_tau);
+        self.b.abssum_cols(f1, tau_tau);
 
-        crate::operator::reffn::abssum_rows::<L, _, _>(
-            sz,
-            |x, y| self.trans_op(F::one(), x, F::zero(), y),
-            F::zero(), sigma
-        );
+        let (sigma_n, sigma_m, sigma_1) = sigma.split3(n, m, 1).unwrap();
+
+        L::copy(tau_x, sigma_n);
+        L::copy(tau_y, sigma_m);
+        L::add(f1, tau_s, sigma_m);
+        L::copy(tau_tau, sigma_1);
     }
 }
 
@@ -526,15 +526,11 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         let (m, n) = self.op_k.a().size();
 
         log::info!("----- 0");
-        self.op_k.abssum_cols(dp_tau);
+        self.op_k.abssum(dp_tau, dp_sigma);
         log::info!("----- 1");
         for tau in dp_tau.iter_mut() {
             *tau = tau.max(self.par.eps_zero).recip();
         }
-
-        log::info!("----- 2");
-        self.op_k.abssum_rows(dp_sigma);
-        log::info!("----- 3");
         for sigma in dp_sigma.iter_mut() {
             *sigma = sigma.max(self.par.eps_zero).recip();
         }
