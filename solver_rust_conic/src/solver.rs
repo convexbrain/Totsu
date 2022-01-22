@@ -200,7 +200,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         crate::operator::reffn::abssum_cols::<L, _, _>(
             sz,
             |x, y| self.op(F::one(), x, F::zero(), y),
-            tau
+            F::zero(), tau
         );
     }
 
@@ -212,7 +212,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         crate::operator::reffn::abssum_rows::<L, _, _>(
             sz,
             |x, y| self.trans_op(F::one(), x, F::zero(), y),
-            sigma
+            F::zero(), sigma
         );
     }
 }
