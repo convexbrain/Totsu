@@ -41,19 +41,79 @@ impl Operator<f64> for ProbOpC
 
     fn absadd_cols(&self, tau: &mut[f64])
     {
-        totsu::operator::reffn::absadd_cols::<LA, _, _>(
-            self.size(),
-            |x, y| self.op(1., x, 0., y),
-            tau
-        );
+        tau[0] = tau[0] + 1.;
     }
 
     fn absadd_rows(&self, sigma: &mut[f64])
     {
-        totsu::operator::reffn::absadd_rows::<LA, _, _>(
-            self.size(),
-            |x, y| self.trans_op(1., x, 0., y),
-            sigma
-        );
+        sigma[self.x_sz] = sigma[self.x_sz] + 1.;
     }
+}
+
+#[test]
+fn test_prob_op_c_trans_op()
+{
+    use float_eq::assert_float_eq;
+
+    let n = 32;
+    let op = ProbOpC::new(n, n);
+    let sz = op.size();
+
+    let xi = vec![1.; sz.0];
+
+    let mut yo = vec![0.; sz.1];
+    op.trans_op(1., &xi, 0., &mut yo);
+
+    let mut yo_ref = vec![0.; sz.1];
+    totsu::operator::reffn::trans_op::<LA, _, _>(
+        op.size(),
+        |x, y| op.op(1., x, 0., y),
+        1., &xi,
+        0., &mut yo_ref);
+
+    assert_float_eq!(yo, yo_ref, abs_all <= 1e-6);
+}
+
+#[test]
+fn test_prob_op_c_abssum_cols()
+{
+    use float_eq::assert_float_eq;
+
+    let n = 32;
+    let op = ProbOpC::new(n, n);
+    let sz = op.size();
+
+    let mut tau = vec![0.; sz.1];
+    op.absadd_cols(&mut tau);
+
+    let mut tau_ref = vec![0.; sz.1];
+    totsu::operator::reffn::absadd_cols::<LA, _, _>(
+        op.size(),
+        |x, y| op.op(1., x, 0., y),
+        &mut tau_ref
+    );
+
+    assert_float_eq!(tau, tau_ref, abs_all <= 1e-6);
+}
+
+#[test]
+fn test_prob_op_c_abssum_rows()
+{
+    use float_eq::assert_float_eq;
+
+    let n = 32;
+    let op = ProbOpC::new(n, n);
+    let sz = op.size();
+
+    let mut sigma = vec![0.; sz.0];
+    op.absadd_rows(&mut sigma);
+
+    let mut sigma_ref = vec![0.; sz.0];
+    totsu::operator::reffn::absadd_rows::<LA, _, _>(
+        op.size(),
+        |x, y| op.trans_op(1., x, 0., y),
+        &mut sigma_ref
+    );
+
+    assert_float_eq!(sigma, sigma_ref, abs_all <= 1e-6);
 }

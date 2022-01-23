@@ -198,16 +198,18 @@ fn test_laplacian_trans_op()
     use float_eq::assert_float_eq;
 
     let n = 32;
-    let l = Laplacian::new(n, n);
-    let xi = vec![1.; (n - 2) * (n - 2)];
+    let op = Laplacian::new(n, n);
+    let sz = op.size();
 
-    let mut yo = vec![0.; n * n];
-    l.trans_op(1., &xi, 0., &mut yo);
+    let xi = vec![1.; sz.0];
 
-    let mut yo_ref = vec![0.; n * n];
+    let mut yo = vec![0.; sz.1];
+    op.trans_op(1., &xi, 0., &mut yo);
+
+    let mut yo_ref = vec![0.; sz.1];
     totsu::operator::reffn::trans_op::<LA, _, _>(
-        l.size(),
-        |x, y| l.op(1., x, 0., y),
+        op.size(),
+        |x, y| op.op(1., x, 0., y),
         1., &xi,
         0., &mut yo_ref);
 
@@ -220,15 +222,16 @@ fn test_laplacian_abssum_cols()
     use float_eq::assert_float_eq;
 
     let n = 32;
-    let l = Laplacian::new(n, n);
+    let op = Laplacian::new(n, n);
+    let sz = op.size();
 
-    let mut tau = vec![0.; n * n];
-    l.absadd_cols(&mut tau);
+    let mut tau = vec![0.; sz.1];
+    op.absadd_cols(&mut tau);
 
-    let mut tau_ref = vec![0.; n * n];
+    let mut tau_ref = vec![0.; sz.1];
     totsu::operator::reffn::absadd_cols::<LA, _, _>(
-        l.size(),
-        |x, y| l.op(1., x, 0., y),
+        op.size(),
+        |x, y| op.op(1., x, 0., y),
         &mut tau_ref
     );
 
@@ -241,15 +244,16 @@ fn test_laplacian_abssum_rows()
     use float_eq::assert_float_eq;
 
     let n = 32;
-    let l = Laplacian::new(n, n);
+    let op = Laplacian::new(n, n);
+    let sz = op.size();
 
-    let mut sigma = vec![0.; (n - 2) * (n - 2)];
-    l.absadd_rows(&mut sigma);
+    let mut sigma = vec![0.; sz.0];
+    op.absadd_rows(&mut sigma);
 
-    let mut sigma_ref = vec![0.; (n - 2) * (n - 2)];
+    let mut sigma_ref = vec![0.; sz.0];
     totsu::operator::reffn::absadd_rows::<LA, _, _>(
-        l.size(),
-        |x, y| l.trans_op(1., x, 0., y),
+        op.size(),
+        |x, y| op.trans_op(1., x, 0., y),
         &mut sigma_ref
     );
 
