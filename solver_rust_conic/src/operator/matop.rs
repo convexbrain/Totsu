@@ -99,8 +99,10 @@ where L: LinAlgEx<F>, F: Float
     fn absadd_impl(&self, colwise: bool, y: &mut[F])
     {
         match self.typ {
-            MatType::General(nr, _) => {
+            MatType::General(nr, nc) => {
                 if colwise {
+                    assert_eq!(nc, y.len());
+                
                     let mut array = self.array;
                     for e in y {
                         let (col, rest) = array.split_at(nr);
@@ -109,6 +111,8 @@ where L: LinAlgEx<F>, F: Float
                     }
                 }
                 else {
+                    assert_eq!(nr, y.len());
+                
                     let mut array = self.array;
                     for e in y {
                         *e = L::abssum(array, nr) + *e;
@@ -117,7 +121,9 @@ where L: LinAlgEx<F>, F: Float
                     }
                 }
             },
-            MatType::SymPack(_) => {
+            MatType::SymPack(n) => {
+                assert_eq!(n, y.len());
+
                 let mut array = self.array;
                 for n in 0.. {
                     let (col, rest) = array.split_at(n + 1);

@@ -49,7 +49,7 @@ impl LinAlg<f64> for F64LAPACK
             0.
         }
         else {
-            unsafe { cblas::dasum((x.len() / incx) as i32, x, incx as i32) }
+            unsafe { cblas::dasum(((x.len() + (incx - 1)) / incx) as i32, x, incx as i32) }
         }
     }
 
