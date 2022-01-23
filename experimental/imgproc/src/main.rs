@@ -12,112 +12,8 @@ use anyhow::{Result, Context};
 type LA = F64LAPACK;
 type ASolver = Solver<LA, f64>;
 
-//
-
-struct Laplacian
-{
-    w: usize,
-    h: usize,
-}
-
-impl Laplacian
-{
-    fn new(w: usize, h: usize) -> Self
-    {
-        Laplacian {
-            w,
-            h,
-        }
-    }
-}
-
-impl Operator<f64> for Laplacian
-{
-    fn size(&self) -> (usize, usize)
-    {
-        ((self.w - 2) * (self.h - 2), self.w * self.h)
-    }
-
-    fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
-    {
-        let fc0 = 1.0 - 4.0 / 16.0;
-        let fc1 = -2.0 / 16.0;
-        let fc2 = -1.0/ 16.0;
-
-        LA::scale(beta, y);
-
-        let mut y_rest = y;
-        for cy in 0..(self.h - 2) {
-            let (y_line, y_lh) = y_rest.split_at_mut(self.w - 2);
-            y_rest = y_lh;
-
-            let x_0 = x.split_at(cy * self.w).1;
-            let x_00 = x_0.split_at(self.w - 2).0;
-            let x_01 = x_0.split_at(1).1.split_at(self.w - 2).0;
-            let x_02 = x_0.split_at(2).1.split_at(self.w - 2).0;
-            LA::add(alpha * fc2, x_00, y_line);
-            LA::add(alpha * fc1, x_01, y_line);
-            LA::add(alpha * fc2, x_02, y_line);
-
-            let x_1 = x.split_at((cy + 1) * self.w).1;
-            let x_10 = x_1.split_at(self.w - 2).0;
-            let x_11 = x_1.split_at(1).1.split_at(self.w - 2).0;
-            let x_12 = x_1.split_at(2).1.split_at(self.w - 2).0;
-            LA::add(alpha * fc1, x_10, y_line);
-            LA::add(alpha * fc0, x_11, y_line);
-            LA::add(alpha * fc1, x_12, y_line);
-
-            let x_2 = x.split_at((cy + 2) * self.w).1;
-            let x_20 = x_2.split_at(self.w - 2).0;
-            let x_21 = x_2.split_at(1).1.split_at(self.w - 2).0;
-            let x_22 = x_2.split_at(2).1.split_at(self.w - 2).0;
-            LA::add(alpha * fc2, x_20, y_line);
-            LA::add(alpha * fc1, x_21, y_line);
-            LA::add(alpha * fc2, x_22, y_line);
-        }
-    }
-
-    fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
-    {
-        let fc0 = 1.0 - 4.0 / 16.0;
-        let fc1 = -2.0 / 16.0;
-        let fc2 = -1.0/ 16.0;
-
-        LA::scale(beta, y);
-        
-        let mut x_rest = x;
-        for cy in 0..(self.h - 2) {
-            let (x_line, x_lh) = x_rest.split_at(self.w - 2);
-            x_rest = x_lh;
-
-            let y_0 = y.split_at_mut(cy * self.w).1;
-            let y_00 = y_0.split_at_mut(self.w - 2).0;
-            LA::add(alpha * fc2, x_line, y_00);
-            let y_01 = y_0.split_at_mut(1).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * fc1, x_line, y_01);
-            let y_02 = y_0.split_at_mut(2).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * fc2, x_line, y_02);
-
-            let y_1 = y.split_at_mut((cy + 1) * self.w).1;
-            let y_10 = y_1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * fc1, x_line, y_10);
-            let y_11 = y_1.split_at_mut(1).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * fc0, x_line, y_11);
-            let y_12 = y_1.split_at_mut(2).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * fc1, x_line, y_12);
-
-            let y_2 = y.split_at_mut((cy + 2) * self.w).1;
-            let y_20 = y_2.split_at_mut(self.w - 2).0;
-            LA::add(alpha * fc2, x_line, y_20);
-            let y_21 = y_2.split_at_mut(1).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * fc1, x_line, y_21);
-            let y_22 = y_2.split_at_mut(2).1.split_at_mut(self.w - 2).0;
-            LA::add(alpha * fc2, x_line, y_22);
-        }
-    }
-}
-
-//
+mod laplacian;
+use laplacian::Laplacian;
 
 struct ProbOpC
 {
@@ -152,6 +48,24 @@ impl Operator<f64> for ProbOpC
     fn trans_op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
     {
         y[0] = alpha * x[self.x_sz] + beta * y[0];
+    }
+
+    fn absadd_cols(&self, tau: &mut[f64])
+    {
+        totsu::operator::reffn::absadd_cols::<LA, _, _>(
+            self.size(),
+            |x, y| self.op(1., x, 0., y),
+            tau
+        );
+    }
+
+    fn absadd_rows(&self, sigma: &mut[f64])
+    {
+        totsu::operator::reffn::absadd_rows::<LA, _, _>(
+            self.size(),
+            |x, y| self.trans_op(1., x, 0., y),
+            sigma
+        );
     }
 }
 
@@ -242,6 +156,24 @@ impl Operator<f64> for ProbOpA
         LA::add(-alpha, x_lp, y_t);
         LA::add(-alpha, x_ln, y_t);
     }
+
+    fn absadd_cols(&self, tau: &mut[f64])
+    {
+        totsu::operator::reffn::absadd_cols::<LA, _, _>(
+            self.size(),
+            |x, y| self.op(1., x, 0., y),
+            tau
+        );
+    }
+
+    fn absadd_rows(&self, sigma: &mut[f64])
+    {
+        totsu::operator::reffn::absadd_rows::<LA, _, _>(
+            self.size(),
+            |x, y| self.trans_op(1., x, 0., y),
+            sigma
+        );
+    }
 }
 
 //
@@ -261,7 +193,7 @@ impl<'a> ProbOpB<'a>
     {
         let mut lxh = vec![0.0; (width - 2) * (height - 2)];
         Laplacian::new(width, height).op(1.0, vec_xh, 0.0, &mut lxh);
-        let lxh_norm1 = LA::abssum(&lxh);
+        let lxh_norm1 = LA::abssum(&lxh, 1);
         log::info!("lxh_norm1: {}", lxh_norm1);
 
         ProbOpB {
@@ -314,6 +246,24 @@ impl<'a> Operator<f64> for ProbOpB<'a>
         self.one.trans_op(alpha, x_xn, beta, y);
         self.xh.trans_op(-alpha, x_sx, 1.0, y);
         y[0] += alpha * self.lambda_lxh_norm1 * x_l1[0];
+    }
+
+    fn absadd_cols(&self, tau: &mut[f64])
+    {
+        totsu::operator::reffn::absadd_cols::<LA, _, _>(
+            self.size(),
+            |x, y| self.op(1., x, 0., y),
+            tau
+        );
+    }
+
+    fn absadd_rows(&self, sigma: &mut[f64])
+    {
+        totsu::operator::reffn::absadd_rows::<LA, _, _>(
+            self.size(),
+            |x, y| self.trans_op(1., x, 0., y),
+            sigma
+        );
     }
 }
 
@@ -392,10 +342,12 @@ fn main() -> Result<()> {
         p.eps_acc = 1.0 / 256.0;
         utils::set_par_by_env(p);
     });
-    let op_c = ProbOpC::new(width as usize, height as usize);
-    let op_a = ProbOpA::new(width as usize, height as usize);
-    let op_b = ProbOpB::new(width as usize, height as usize, lambda, &vec_xh);
-    let cone = ProbCone::new(width as usize, height as usize);
+    let w = width as usize;
+    let h = height as usize;
+    let op_c = ProbOpC::new(w, h);
+    let op_a = ProbOpA::new(w, h);
+    let op_b = ProbOpB::new(w, h, lambda, &vec_xh);
+    let cone = ProbCone::new(w, h);
     let mut work = vec![0.0; ASolver::query_worklen(op_a.size())];
     let rslt = s.solve((op_c, op_a, op_b, cone, &mut work))?;
     //println!("{:?}", rslt);

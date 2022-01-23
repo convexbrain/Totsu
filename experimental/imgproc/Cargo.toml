@@ -19,3 +19,6 @@ version = "0.6.0+mkl2020.1"
 git = 'https://github.com/convexbrain/intel-mkl-src'
 branch = 'branch_from_0.6.0+mkl2020.1'
 features = ["mkl-static-lp64-iomp"]
+
+[dev-dependencies]
+float_eq = "0.7.0"
