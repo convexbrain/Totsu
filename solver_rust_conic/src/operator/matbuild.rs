@@ -322,14 +322,14 @@ where L: LinAlgEx<F>, F: Float
         MatOp::from(self).trans_op(alpha, x, beta, y);
     }
 
-    fn abssum_cols(&self, beta: F, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut[F])
     {
-        MatOp::from(self).abssum_cols(beta, tau);
+        MatOp::from(self).absadd_cols(tau);
     }
 
-    fn abssum_rows(&self, beta: F, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut[F])
     {
-        MatOp::from(self).abssum_rows(beta, sigma);
+        MatOp::from(self).absadd_rows(sigma);
     }
 }
 

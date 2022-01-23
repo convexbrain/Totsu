@@ -198,15 +198,17 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         let f0 = F::zero();
         let f1 = F::one();
 
+        L::scale(f0, tau);
+
         let (tau_x, tau_y, tau_s, tau_tau) = tau.split4(n, m, m, 1).unwrap();
 
-        self.a.abssum_cols(f0, tau_x);
-        self.c.abssum_rows(f1, tau_x);
-        self.a.abssum_rows(f0, tau_y);
-        self.b.abssum_rows(f1, tau_y);
+        self.a.absadd_cols(tau_x);
+        self.c.absadd_rows(tau_x);
+        self.a.absadd_rows(tau_y);
+        self.b.absadd_rows(tau_y);
         L::fill(f1, tau_s);
-        self.c.abssum_cols(f0, tau_tau);
-        self.b.abssum_cols(f1, tau_tau);
+        self.c.absadd_cols(tau_tau);
+        self.b.absadd_cols(tau_tau);
 
         let (sigma_n, sigma_m, sigma_1) = sigma.split3(n, m, 1).unwrap();
 
@@ -525,9 +527,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
     {
         let (m, n) = self.op_k.a().size();
 
-        log::info!("----- 0");
         self.op_k.abssum(dp_tau, dp_sigma);
-        log::info!("----- 1");
         for tau in dp_tau.iter_mut() {
             *tau = tau.max(self.par.eps_zero).recip();
         }

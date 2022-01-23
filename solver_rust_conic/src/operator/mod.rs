@@ -37,9 +37,9 @@ pub trait Operator<F: Float>
     ///   The length of `y` shall be \\(n\\).
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]);
 
-    fn abssum_cols(&self, beta: F, tau: &mut[F]);
+    fn absadd_cols(&self, tau: &mut[F]);
 
-    fn abssum_rows(&self, beta: F, sigma: &mut[F]);
+    fn absadd_rows(&self, sigma: &mut[F]);
 }
 
 //

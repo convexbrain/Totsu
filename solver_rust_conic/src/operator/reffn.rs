@@ -23,7 +23,7 @@ where L: LinAlgEx<F>, O: Fn(&[F], &mut[F]), F: Float
     }
 }
 
-pub fn abssum_cols<L, O, F>((m, n): (usize, usize), op: O, beta: F, tau: &mut[F])
+pub fn absadd_cols<L, O, F>((m, n): (usize, usize), op: O, tau: &mut[F])
 where L: LinAlg<F>, O: Fn(&[F], &mut[F]), F: Float
 {
     let f0 = F::zero();
@@ -37,11 +37,11 @@ where L: LinAlg<F>, O: Fn(&[F], &mut[F]), F: Float
         op(&row, &mut col);
         row[c] = f0;
 
-        *t = L::abssum(&col, 1) + beta * *t;
+        *t = L::abssum(&col, 1) + *t;
     }
 }
 
-pub fn abssum_rows<L, O, F>((m, n): (usize, usize), trans_op: O, beta: F, sigma: &mut[F])
+pub fn absadd_rows<L, O, F>((m, n): (usize, usize), trans_op: O, sigma: &mut[F])
 where L: LinAlg<F>, O: Fn(&[F], &mut[F]), F: Float
 {
     let f0 = F::zero();
@@ -55,6 +55,6 @@ where L: LinAlg<F>, O: Fn(&[F], &mut[F]), F: Float
         trans_op(&col, &mut row);
         col[r] = f0;
 
-        *s = L::abssum(&row, 1) + beta * *s;
+        *s = L::abssum(&row, 1) + *s;
     }
 }

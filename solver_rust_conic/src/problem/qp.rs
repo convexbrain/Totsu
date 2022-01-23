@@ -48,21 +48,21 @@ where L: LinAlgEx<F>, F: Float
         L::add(alpha, x_t, y);
     }
 
-    fn abssum_cols(&self, beta: F, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut[F])
     {
-        crate::operator::reffn::abssum_cols::<L, _, _>(
+        crate::operator::reffn::absadd_cols::<L, _, _>(
             self.size(),
             |x, y| self.op(F::one(), x, F::zero(), y),
-            beta, tau
+            tau
         );
     }
 
-    fn abssum_rows(&self, beta: F, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut[F])
     {
-        crate::operator::reffn::abssum_rows::<L, _, _>(
+        crate::operator::reffn::absadd_rows::<L, _, _>(
             self.size(),
             |x, y| self.trans_op(F::one(), x, F::zero(), y),
-            beta, sigma
+            sigma
         );
     }
 }
@@ -146,21 +146,21 @@ where L: LinAlgEx<F>, F: Float
         L::add(-alpha, x_s, y_t);
     }
 
-    fn abssum_cols(&self, beta: F, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut[F])
     {
-        crate::operator::reffn::abssum_cols::<L, _, _>(
+        crate::operator::reffn::absadd_cols::<L, _, _>(
             self.size(),
             |x, y| self.op(F::one(), x, F::zero(), y),
-            beta, tau
+            tau
         );
     }
 
-    fn abssum_rows(&self, beta: F, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut[F])
     {
-        crate::operator::reffn::abssum_rows::<L, _, _>(
+        crate::operator::reffn::absadd_rows::<L, _, _>(
             self.size(),
             |x, y| self.trans_op(F::one(), x, F::zero(), y),
-            beta, sigma
+            sigma
         );
     }
 }
@@ -231,21 +231,21 @@ where L: LinAlgEx<F>, F: Float
         L::add(alpha, x_r, y);
     }
 
-    fn abssum_cols(&self, beta: F, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut[F])
     {
-        crate::operator::reffn::abssum_cols::<L, _, _>(
+        crate::operator::reffn::absadd_cols::<L, _, _>(
             self.size(),
             |x, y| self.op(F::one(), x, F::zero(), y),
-            beta, tau
+            tau
         );
     }
 
-    fn abssum_rows(&self, beta: F, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut[F])
     {
-        crate::operator::reffn::abssum_rows::<L, _, _>(
+        crate::operator::reffn::absadd_rows::<L, _, _>(
             self.size(),
             |x, y| self.trans_op(F::one(), x, F::zero(), y),
-            beta, sigma
+            sigma
         );
     }
 }

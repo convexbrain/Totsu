@@ -96,7 +96,7 @@ where L: LinAlgEx<F>, F: Float
         }
     }
 
-    fn abssum_impl(&self, colwise: bool, beta: F, y: &mut[F])
+    fn absadd_impl(&self, colwise: bool, y: &mut[F])
     {
         match self.typ {
             MatType::General(nr, _) => {
@@ -105,13 +105,13 @@ where L: LinAlgEx<F>, F: Float
                     for e in y {
                         let (col, rest) = array.split_at(nr);
                         array = rest;
-                        *e = L::abssum(col, 1) + beta * *e;
+                        *e = L::abssum(col, 1) + *e;
                     }
                 }
                 else {
                     let mut array = self.array;
                     for e in y {
-                        *e = L::abssum(array, nr) + beta * *e;
+                        *e = L::abssum(array, nr) + *e;
                         let (_, rest) = array.split_at(1);
                         array = rest;
                     }
@@ -121,7 +121,7 @@ where L: LinAlgEx<F>, F: Float
                 let mut array = self.array;
                 for n in 0.. {
                     let (col, rest) = array.split_at(n + 1);
-                    y[n] = L::abssum(col, 1) + beta * y[n];
+                    y[n] = L::abssum(col, 1) + y[n];
                     for i in 0.. n {
                         y[i] = y[i] + col[i].abs();
                     }
@@ -153,14 +153,14 @@ where L: LinAlgEx<F>, F: Float
         self.op_impl(true, alpha, x, beta, y);
     }
 
-    fn abssum_cols(&self, beta: F, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut[F])
     {
-        self.abssum_impl(true, beta, tau);
+        self.absadd_impl(true, tau);
     }
 
-    fn abssum_rows(&self, beta: F, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut[F])
     {
-        self.abssum_impl(false, beta, sigma);
+        self.absadd_impl(false, sigma);
     }
 }
 
