@@ -193,11 +193,33 @@ impl Operator<f64> for Laplacian
 }
 
 #[test]
-fn test_laplacian_abssum()
+fn test_laplacian_trans_op()
 {
     use float_eq::assert_float_eq;
 
-    let n = 64;
+    let n = 32;
+    let l = Laplacian::new(n, n);
+    let xi = vec![1.; (n - 2) * (n - 2)];
+
+    let mut yo = vec![0.; n * n];
+    l.trans_op(1., &xi, 0., &mut yo);
+
+    let mut yo_ref = vec![0.; n * n];
+    totsu::operator::reffn::trans_op::<LA, _, _>(
+        l.size(),
+        |x, y| l.op(1., x, 0., y),
+        1., &xi,
+        0., &mut yo_ref);
+
+    assert_float_eq!(yo, yo_ref, abs_all <= 1e-6);
+}
+
+#[test]
+fn test_laplacian_abssum_cols()
+{
+    use float_eq::assert_float_eq;
+
+    let n = 32;
     let l = Laplacian::new(n, n);
 
     let mut tau = vec![0.; n * n];
@@ -211,6 +233,15 @@ fn test_laplacian_abssum()
     );
 
     assert_float_eq!(tau, tau_ref, abs_all <= 1e-6);
+}
+
+#[test]
+fn test_laplacian_abssum_rows()
+{
+    use float_eq::assert_float_eq;
+
+    let n = 32;
+    let l = Laplacian::new(n, n);
 
     let mut sigma = vec![0.; (n - 2) * (n - 2)];
     l.absadd_rows(&mut sigma);
