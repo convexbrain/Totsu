@@ -1,6 +1,7 @@
 QEMU 2.8.0-8 monitor - type 'help' for more information
 (qemu) run
 query_worklen -> 48
+[INFO] ----- Initializing
 [INFO] ----- Started
 [DEBUG] 0: pri_dual_gap 8.95e-1 5.00e-1 0.00e0
 [DEBUG] 10: pri_dual_gap 5.72e-2 1.22e-1 9.31e-2
