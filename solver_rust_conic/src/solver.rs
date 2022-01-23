@@ -206,7 +206,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         self.c.absadd_rows(tau_x);
         self.a.absadd_rows(tau_y);
         self.b.absadd_rows(tau_y);
-        L::fill(f1, tau_s);
+        L::adds(f1, tau_s);
         self.c.absadd_cols(tau_tau);
         self.b.absadd_cols(tau_tau);
 

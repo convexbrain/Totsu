@@ -36,14 +36,6 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
         }
     }
 
-    fn fill(v: F, y: &mut[F])
-    {
-        for u in y {
-            *u = v;
-        }
-    }
-
-    
     fn scale(alpha: F, x: &mut[F])
     {
         for u in x {
@@ -60,6 +52,13 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
         }
     }
 
+    fn adds(s: F, y: &mut[F])
+    {
+        for v in y {
+            *v = *v + s;
+        }
+    }
+    
     fn abssum(x: &[F], incx: usize) -> F
     {
         if incx == 0 {

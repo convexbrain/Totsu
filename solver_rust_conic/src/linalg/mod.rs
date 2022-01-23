@@ -21,8 +21,6 @@ pub trait LinAlg<F: Float>
     ///   `x` and `y` shall have the same length.
     fn copy(x: &[F], y: &mut[F]);
 
-    fn fill(v: F, y: &mut[F]);
-
     /// Calculate \\(\alpha x\\).
     /// 
     /// * `alpha` is a scalar \\(\alpha\\).
@@ -36,6 +34,8 @@ pub trait LinAlg<F: Float>
     /// * `y` is a vector \\(y\\) before entry, \\(\alpha x + y\\) on exit.
     ///   `x` and `y` shall have the same length.
     fn add(alpha: F, x: &[F], y: &mut[F]);
+
+    fn adds(s: F, y: &mut[F]);
 
     /// Calculate 1-norm (or sum of absolute values) \\(\\|x\\|_1=\sum_i |x_i|\\).
     /// 
