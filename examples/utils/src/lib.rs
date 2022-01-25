@@ -3,3 +3,5 @@ pub use set_par_by_env::{num_by_env, set_par_by_env};
 
 mod contour_series;
 pub use contour_series::ContourSeries;
+
+pub mod operator_ref;

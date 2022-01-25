@@ -79,7 +79,7 @@ impl<'a> Operator<f64> for ProbOpB<'a>
 
     fn absadd_cols(&self, tau: &mut[f64])
     {
-        totsu::operator::reffn::absadd_cols::<LA, _, _>(
+        utils::operator_ref::absadd_cols::<LA, _, _>(
             self.size(),
             |x, y| self.op(1., x, 0., y),
             tau
@@ -88,7 +88,7 @@ impl<'a> Operator<f64> for ProbOpB<'a>
 
     fn absadd_rows(&self, sigma: &mut[f64])
     {
-        totsu::operator::reffn::absadd_rows::<LA, _, _>(
+        utils::operator_ref::absadd_rows::<LA, _, _>(
             self.size(),
             |x, y| self.trans_op(1., x, 0., y),
             sigma

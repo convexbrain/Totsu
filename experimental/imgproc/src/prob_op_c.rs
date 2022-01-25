@@ -65,7 +65,7 @@ fn test_prob_op_c_trans_op()
     op.trans_op(1., &xi, 0., &mut yo);
 
     let mut yo_ref = vec![0.; sz.1];
-    totsu::operator::reffn::trans_op::<LA, _, _>(
+    utils::operator_ref::trans_op::<LA, _, _>(
         op.size(),
         |x, y| op.op(1., x, 0., y),
         1., &xi,
@@ -87,7 +87,7 @@ fn test_prob_op_c_abssum_cols()
     op.absadd_cols(&mut tau);
 
     let mut tau_ref = vec![0.; sz.1];
-    totsu::operator::reffn::absadd_cols::<LA, _, _>(
+    utils::operator_ref::absadd_cols::<LA, _, _>(
         op.size(),
         |x, y| op.op(1., x, 0., y),
         &mut tau_ref
@@ -109,7 +109,7 @@ fn test_prob_op_c_abssum_rows()
     op.absadd_rows(&mut sigma);
 
     let mut sigma_ref = vec![0.; sz.0];
-    totsu::operator::reffn::absadd_rows::<LA, _, _>(
+    utils::operator_ref::absadd_rows::<LA, _, _>(
         op.size(),
         |x, y| op.trans_op(1., x, 0., y),
         &mut sigma_ref

@@ -53,6 +53,3 @@ pub use matop::*;
 
 #[cfg(feature = "std")]
 pub use matbuild::*;
-
-#[cfg(feature = "std")]
-pub mod reffn; // std,  Float
