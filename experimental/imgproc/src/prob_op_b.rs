@@ -3,32 +3,28 @@ use totsu::operator::MatBuild;
 
 use super::LA;
 
-use super::laplacian::Laplacian;
-
 //
 
 pub struct ProbOpB<'a>
 {
     x_sz: usize,
     t_sz: usize,
-    lambda_lxh_norm1: f64,
+    target_lx_norm1: f64,
     one: MatBuild<LA, f64>,
     xh: MatOp<'a, LA, f64>,
 }
 
 impl<'a> ProbOpB<'a>
 {
-    pub fn new(width: usize, height: usize, lambda: f64, vec_xh: &'a[f64]) -> Self
+    pub fn new(width: usize, height: usize, ratio: f64, vec_xh: &'a[f64]) -> Self
     {
-        let mut lxh = vec![0.0; (width - 2) * (height - 2)];
-        Laplacian::new(width, height).op(1.0, vec_xh, 0.0, &mut lxh);
-        let lxh_norm1 = LA::abssum(&lxh, 1);
-        log::info!("lxh_norm1: {}", lxh_norm1);
+        let target_lx_norm1 = (width * height) as f64 * ratio;
+        log::info!("target_lx_norm1: {}", target_lx_norm1);
 
         ProbOpB {
             x_sz: width * height,
             t_sz: (width - 2) * (height - 2),
-            lambda_lxh_norm1: lambda * lxh_norm1,
+            target_lx_norm1: target_lx_norm1,
             one: MatBuild::new(MatType::General(width * height, 1))
                  .by_fn(|_, _| 1.0),
             xh: MatOp::new(MatType::General(width * height, 1), vec_xh),
@@ -53,7 +49,7 @@ impl<'a> Operator<f64> for ProbOpB<'a>
 
         LA::scale(beta, y_lp_ln);
 
-        y_l1[0] = alpha * self.lambda_lxh_norm1 * x[0] + beta * y_l1[0];
+        y_l1[0] = alpha * self.target_lx_norm1 * x[0] + beta * y_l1[0];
 
         LA::scale(beta, y_xp);
 
@@ -74,7 +70,7 @@ impl<'a> Operator<f64> for ProbOpB<'a>
 
         self.one.trans_op(alpha, x_xn, beta, y);
         self.xh.trans_op(-alpha, x_sx, 1.0, y);
-        y[0] += alpha * self.lambda_lxh_norm1 * x_l1[0];
+        y[0] += alpha * self.target_lx_norm1 * x_l1[0];
     }
 
     fn absadd_cols(&self, tau: &mut[f64])

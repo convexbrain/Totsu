@@ -48,7 +48,7 @@ fn main() -> Result<()> {
 
     //-----
 
-    let lambda = utils::num_by_env("LAMBDA").unwrap_or(0.5);
+    let ratio = utils::num_by_env("RATIO").unwrap_or(0.02);
 
     //----- solve user-defined problem
 
@@ -60,7 +60,7 @@ fn main() -> Result<()> {
     let h = height as usize;
     let op_c = ProbOpC::new(w, h);
     let op_a = ProbOpA::new(w, h);
-    let op_b = ProbOpB::new(w, h, lambda, &vec_xh);
+    let op_b = ProbOpB::new(w, h, ratio, &vec_xh);
     let cone = ProbCone::new(w, h);
     let mut work = vec![0.0; ASolver::query_worklen(op_a.size())];
     let rslt = s.solve((op_c, op_a, op_b, cone, &mut work))?;
