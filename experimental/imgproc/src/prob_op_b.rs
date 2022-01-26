@@ -75,19 +75,91 @@ impl<'a> Operator<f64> for ProbOpB<'a>
 
     fn absadd_cols(&self, tau: &mut[f64])
     {
-        utils::operator_ref::absadd_cols::<LA, _, _>(
-            self.size(),
-            |x, y| self.op(1., x, 0., y),
-            tau
-        );
+        tau[0] += self.target_lx_norm1.abs() + self.x_sz as f64;
+        self.xh.absadd_cols(tau);
     }
 
     fn absadd_rows(&self, sigma: &mut[f64])
     {
-        utils::operator_ref::absadd_rows::<LA, _, _>(
-            self.size(),
-            |x, y| self.trans_op(1., x, 0., y),
-            sigma
-        );
+        let (_sigma_lp_ln, sigma_rest) = sigma.split_at_mut(self.t_sz * 2);
+        let (sigma_l1, sigma_rest) = sigma_rest.split_at_mut(1);
+        let (_sigma_xp, sigma_rest) = sigma_rest.split_at_mut(self.x_sz);
+        let (sigma_xn, sigma_rest) = sigma_rest.split_at_mut(self.x_sz);
+        let (_sigma_sz, sigma_sx) = sigma_rest.split_at_mut(1);
+
+        sigma_l1[0] += self.target_lx_norm1.abs();
+        LA::adds(1., sigma_xn);
+        self.xh.absadd_rows(sigma_sx);
     }
+}
+
+#[test]
+fn test_trans_op()
+{
+    use float_eq::assert_float_eq;
+
+    let n = 32;
+    let vec_xh = vec![1.0; n * n];
+    let op = ProbOpB::new(n, n, 1.0, &vec_xh);
+    let sz = op.size();
+
+    let xi = vec![1.; sz.0];
+
+    let mut yo = vec![0.; sz.1];
+    op.trans_op(1., &xi, 0., &mut yo);
+
+    let mut yo_ref = vec![0.; sz.1];
+    utils::operator_ref::trans_op::<LA, _, _>(
+        op.size(),
+        |x, y| op.op(1., x, 0., y),
+        1., &xi,
+        0., &mut yo_ref);
+
+    assert_float_eq!(yo, yo_ref, abs_all <= 1e-6);
+}
+
+#[test]
+fn test_abssum_cols()
+{
+    use float_eq::assert_float_eq;
+
+    let n = 32;
+    let vec_xh = vec![1.0; n * n];
+    let op = ProbOpB::new(n, n, 1.0, &vec_xh);
+    let sz = op.size();
+
+    let mut tau = vec![0.; sz.1];
+    op.absadd_cols(&mut tau);
+
+    let mut tau_ref = vec![0.; sz.1];
+    utils::operator_ref::absadd_cols::<LA, _, _>(
+        op.size(),
+        |x, y| op.op(1., x, 0., y),
+        &mut tau_ref
+    );
+
+    assert_float_eq!(tau, tau_ref, abs_all <= 1e-6);
+}
+
+#[test]
+fn test_abssum_rows()
+{
+    use float_eq::assert_float_eq;
+
+    let n = 32;
+    let vec_xh = vec![1.0; n * n];
+    let op = ProbOpB::new(n, n, 1.0, &vec_xh);
+    let sz = op.size();
+
+    let mut sigma = vec![0.; sz.0];
+    op.absadd_rows(&mut sigma);
+
+    let mut sigma_ref = vec![0.; sz.0];
+    utils::operator_ref::absadd_rows::<LA, _, _>(
+        op.size(),
+        |x, y| op.trans_op(1., x, 0., y),
+        &mut sigma_ref
+    );
+
+    assert_float_eq!(sigma, sigma_ref, abs_all <= 1e-6);
 }

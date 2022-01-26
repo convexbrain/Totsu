@@ -138,7 +138,7 @@ impl Operator<f64> for Laplacian
         for i in [pos(0,  0), pos(-1,  0),
                   pos(0, -1), pos(-1, -1)] {
             let a = self.c2.abs();
-            tau[i] = a + tau[i];
+            tau[i] += a;
         }
         // [1]
         for i in [pos(1,  0), pos(-2,  0),
@@ -146,13 +146,13 @@ impl Operator<f64> for Laplacian
                   pos(0, -2), pos(-1, -2),
                   pos(1, -1), pos(-2, -1)] {
             let a = self.c1.abs() + self.c2.abs();
-            tau[i] = a + tau[i];
+            tau[i] += a;
         }
         // [3]
         for i in [pos(1,  1), pos(-2,  1),
                   pos(1, -2), pos(-2, -2)] {
             let a = self.c0.abs() + self.c1.abs() * 2. + self.c2.abs();
-            tau[i] = a + tau[i];
+            tau[i] += a;
         }
 
         // [2]
@@ -162,8 +162,8 @@ impl Operator<f64> for Laplacian
         // TODO
         for i in 2.. (self.h - 2) {
             let i = i as isize;
-            tau[pos( 0, i)] = tau[pos( 0, i)] + a;
-            tau[pos(-1, i)] = tau[pos(-1, i)] + a;
+            tau[pos( 0, i)] += a;
+            tau[pos(-1, i)] += a;
         }
 
         // [4]
@@ -173,8 +173,8 @@ impl Operator<f64> for Laplacian
         // TODO
         for i in 2.. (self.h - 2) {
             let i = i as isize;
-            tau[pos( 1, i)] = tau[pos( 1, i)] + a;
-            tau[pos(-2, i)] = tau[pos(-2, i)] + a;
+            tau[pos( 1, i)] += a;
+            tau[pos(-2, i)] += a;
         }
 
         // [5]
@@ -193,7 +193,7 @@ impl Operator<f64> for Laplacian
 }
 
 #[test]
-fn test_laplacian_trans_op()
+fn test_trans_op()
 {
     use float_eq::assert_float_eq;
 
@@ -218,7 +218,7 @@ fn test_laplacian_trans_op()
 }
 
 #[test]
-fn test_laplacian_abssum_cols()
+fn test_abssum_cols()
 {
     use float_eq::assert_float_eq;
 
@@ -240,7 +240,7 @@ fn test_laplacian_abssum_cols()
 }
 
 #[test]
-fn test_laplacian_abssum_rows()
+fn test_abssum_rows()
 {
     use float_eq::assert_float_eq;
 

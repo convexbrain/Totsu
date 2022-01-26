@@ -41,17 +41,17 @@ impl Operator<f64> for ProbOpC
 
     fn absadd_cols(&self, tau: &mut[f64])
     {
-        tau[0] = tau[0] + 1.;
+        tau[0] += 1.;
     }
 
     fn absadd_rows(&self, sigma: &mut[f64])
     {
-        sigma[self.x_sz] = sigma[self.x_sz] + 1.;
+        sigma[self.x_sz] += 1.;
     }
 }
 
 #[test]
-fn test_prob_op_c_trans_op()
+fn test_trans_op()
 {
     use float_eq::assert_float_eq;
 
@@ -75,7 +75,7 @@ fn test_prob_op_c_trans_op()
 }
 
 #[test]
-fn test_prob_op_c_abssum_cols()
+fn test_abssum_cols()
 {
     use float_eq::assert_float_eq;
 
@@ -97,7 +97,7 @@ fn test_prob_op_c_abssum_cols()
 }
 
 #[test]
-fn test_prob_op_c_abssum_rows()
+fn test_abssum_rows()
 {
     use float_eq::assert_float_eq;
 
