@@ -493,6 +493,7 @@ name = "imgproc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cblas",
  "env_logger",
  "float_eq",
  "image",

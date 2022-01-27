@@ -95,22 +95,41 @@ impl Operator<f64> for ProbOpA
 
     fn absadd_cols(&self, tau: &mut[f64])
     {
-        // TODO
-        utils::operator_ref::absadd_cols::<LA, _, _>(
-            self.size(),
-            |x, y| self.op(1., x, 0., y),
-            tau
-        );
+        let (tau_x, tau_rest) = tau.split_at_mut(self.x_sz);
+        let (tau_z, tau_t) = tau_rest.split_at_mut(1);
+
+        self.lap.absadd_cols_alpha(2., tau_x);
+        LA::adds(3., tau_x);
+
+        LA::adds(3., tau_t);
+
+        LA::adds(1., tau_z);
     }
 
     fn absadd_rows(&self, sigma: &mut[f64])
     {
-        // TODO
-        utils::operator_ref::absadd_rows::<LA, _, _>(
-            self.size(),
-            |x, y| self.trans_op(1., x, 0., y),
-            sigma
-        );
+        let (sigma_lp, sigma_rest) = sigma.split_at_mut(self.t_sz);
+        let (sigma_ln, sigma_rest) = sigma_rest.split_at_mut(self.t_sz);
+        let (sigma_l1, sigma_rest) = sigma_rest.split_at_mut(1);
+        let (sigma_xp, sigma_rest) = sigma_rest.split_at_mut(self.x_sz);
+        let (sigma_xn, sigma_rest) = sigma_rest.split_at_mut(self.x_sz);
+        let (sigma_sz, sigma_sx) = sigma_rest.split_at_mut(1);
+
+        self.lap.absadd_rows(sigma_lp);
+        LA::adds(1., sigma_lp);
+
+        self.lap.absadd_rows(sigma_ln);
+        LA::adds(1., sigma_ln);
+
+        sigma_l1[0] += self.t_sz as f64;
+
+        LA::adds(1., sigma_xp);
+
+        LA::adds(1., sigma_xn);
+
+        LA::adds(1., sigma_sz);
+
+        LA::adds(1., sigma_sx);
     }
 }
 

@@ -4,6 +4,15 @@ use super::LA;
 
 //
 
+fn adds(s: f64, y: &mut[f64], incy: usize)
+{
+    let one = &[1.];
+
+    unsafe { cblas::daxpy(((y.len() + (incy - 1)) / incy) as i32, s, one, 0, y, incy as i32) }
+}
+
+//
+
 pub struct Laplacian
 {
     w: usize,
@@ -38,6 +47,65 @@ impl Laplacian
         assert!(y < self.h);
 
         x + y * self.w
+    }
+
+    pub fn absadd_cols_alpha(&self, alpha: f64, tau: &mut[f64])
+    {
+        /*
+           0                  w
+            [0][1][2]... [1][0]
+            [1][3][4]... [3][1]
+            [2][4][5]... [4][2]
+                     ...
+
+            [1][3][4]... [3][1]
+            [0][1][2]... [1][0]
+           h
+        */
+
+        let pos = |x, y| self.pos(x, y);
+
+        // [0]
+        for i in [pos(0,  0), pos(-1,  0),
+                  pos(0, -1), pos(-1, -1)] {
+            let a = self.c2.abs();
+            tau[i] += alpha * a;
+        }
+        // [1]
+        for i in [pos(1,  0), pos(-2,  0),
+                  pos(0,  1), pos(-1,  1),
+                  pos(0, -2), pos(-1, -2),
+                  pos(1, -1), pos(-2, -1)] {
+            let a = self.c1.abs() + self.c2.abs();
+            tau[i] += alpha * a;
+        }
+        // [3]
+        for i in [pos(1,  1), pos(-2,  1),
+                  pos(1, -2), pos(-2, -2)] {
+            let a = self.c0.abs() + self.c1.abs() * 2. + self.c2.abs();
+            tau[i] += alpha * a;
+        }
+
+        // [2]
+        let a = self.c1.abs() + self.c2.abs() * 2.;
+        LA::adds(alpha * a, tau.split_at_mut(pos(2,  0)).1.split_at_mut(self.w - 4).0);
+        LA::adds(alpha * a, tau.split_at_mut(pos(2, -1)).1.split_at_mut(self.w - 4).0);
+        adds(alpha * a, tau.split_at_mut(pos( 0, 2)).1.split_at_mut(self.w * (self.h - 4)).0, self.w);
+        adds(alpha * a, tau.split_at_mut(pos(-1, 2)).1.split_at_mut(self.w * (self.h - 4)).0, self.w);
+
+        // [4]
+        let a = self.c0.abs() + self.c1.abs() * 3. + self.c2.abs() * 2.;
+        LA::adds(alpha * a, tau.split_at_mut(pos(2,  1)).1.split_at_mut(self.w - 4).0);
+        LA::adds(alpha * a, tau.split_at_mut(pos(2, -2)).1.split_at_mut(self.w - 4).0);
+        adds(alpha * a, tau.split_at_mut(pos( 1, 2)).1.split_at_mut(self.w * (self.h - 4)).0, self.w);
+        adds(alpha * a, tau.split_at_mut(pos(-2, 2)).1.split_at_mut(self.w * (self.h - 4)).0, self.w);
+
+        // [5]
+        let a = self.c0.abs() + self.c1.abs() * 4. + self.c2.abs() * 4.;
+        for i in 2.. (self.h - 2) {
+            let i = i as isize;
+            LA::adds(alpha * a, tau.split_at_mut(pos(2, i)).1.split_at_mut(self.w - 4).0);
+        }
     }
 }
 
@@ -120,69 +188,7 @@ impl Operator<f64> for Laplacian
 
     fn absadd_cols(&self, tau: &mut[f64])
     {
-        /*
-           0                  w
-            [0][1][2]... [1][0]
-            [1][3][4]... [3][1]
-            [2][4][5]... [4][2]
-                     ...
-
-            [1][3][4]... [3][1]
-            [0][1][2]... [1][0]
-           h
-        */
-
-        let pos = |x, y| self.pos(x, y);
-
-        // [0]
-        for i in [pos(0,  0), pos(-1,  0),
-                  pos(0, -1), pos(-1, -1)] {
-            let a = self.c2.abs();
-            tau[i] += a;
-        }
-        // [1]
-        for i in [pos(1,  0), pos(-2,  0),
-                  pos(0,  1), pos(-1,  1),
-                  pos(0, -2), pos(-1, -2),
-                  pos(1, -1), pos(-2, -1)] {
-            let a = self.c1.abs() + self.c2.abs();
-            tau[i] += a;
-        }
-        // [3]
-        for i in [pos(1,  1), pos(-2,  1),
-                  pos(1, -2), pos(-2, -2)] {
-            let a = self.c0.abs() + self.c1.abs() * 2. + self.c2.abs();
-            tau[i] += a;
-        }
-
-        // [2]
-        let a = self.c1.abs() + self.c2.abs() * 2.;
-        LA::adds(a, tau.split_at_mut(pos(2,  0)).1.split_at_mut(self.w - 4).0);
-        LA::adds(a, tau.split_at_mut(pos(2, -1)).1.split_at_mut(self.w - 4).0);
-        // TODO
-        for i in 2.. (self.h - 2) {
-            let i = i as isize;
-            tau[pos( 0, i)] += a;
-            tau[pos(-1, i)] += a;
-        }
-
-        // [4]
-        let a = self.c0.abs() + self.c1.abs() * 3. + self.c2.abs() * 2.;
-        LA::adds(a, tau.split_at_mut(pos(2,  1)).1.split_at_mut(self.w - 4).0);
-        LA::adds(a, tau.split_at_mut(pos(2, -2)).1.split_at_mut(self.w - 4).0);
-        // TODO
-        for i in 2.. (self.h - 2) {
-            let i = i as isize;
-            tau[pos( 1, i)] += a;
-            tau[pos(-2, i)] += a;
-        }
-
-        // [5]
-        let a = self.c0.abs() + self.c1.abs() * 4. + self.c2.abs() * 4.;
-        for i in 2.. (self.h - 2) {
-            let i = i as isize;
-            LA::adds(a, tau.split_at_mut(pos(2, i)).1.split_at_mut(self.w - 4).0);
-        }
+        self.absadd_cols_alpha(1., tau);
     }
 
     fn absadd_rows(&self, sigma: &mut[f64])
