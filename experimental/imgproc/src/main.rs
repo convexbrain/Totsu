@@ -6,7 +6,7 @@ use utils;
 use image::io::Reader as ImageReader;
 use image::{Pixel, ImageBuffer, Luma};
 use intel_mkl_src as _;
-use anyhow::{Result, Context};
+use anyhow::Result;
 
 type LA = F64LAPACK;
 type ASolver = Solver<LA, f64>;
@@ -32,7 +32,7 @@ fn main() -> Result<()> {
 
     //----- read input image
 
-    let in_img_file = std::env::args().nth(1).context("no input image filename")?;
+    let in_img_file = std::env::args().nth(1).unwrap_or("miku_face_noise.png".to_string());
     log::info!("file: {}", in_img_file);
     let in_img = ImageReader::open(in_img_file)?.decode()?;
 
@@ -48,7 +48,7 @@ fn main() -> Result<()> {
 
     //-----
 
-    let ratio = utils::num_by_env("RATIO").unwrap_or(0.02);
+    let ratio = utils::num_by_env("RATIO").unwrap_or(0.01);
 
     //----- solve user-defined problem
 
