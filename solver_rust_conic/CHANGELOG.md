@@ -7,11 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Implement Display and Error trait for SolverError
+- Implement `Display` and `Error` trait for `SolverError`.
+- `absadd_cols` and `absadd_rows` in `Operator`.
+- Trait method `LinAlg::adds`.
 ### Changed
 - Update Rust edition to 2021.
 - Update version of `float_eq`.
 - Tentative patch for `intel-mkl-src`.
+- `Solver` initilization sped-up by using `absadd_cols` and `absadd_rows`.
+- `LinAlg::abssum` takes `incx` argument.
 ### Deprecated
 ### Removed
 ### Fixed
@@ -19,9 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.8.1] - 2021-08-17
 ### Changed
-- Bug fix of `ProbSDP`.
 - Update version of `cblas`.
 - Update versions of `float_eq` and `env_logger`.
+### Fixed
+- Bug fix of `ProbSDP`.
 
 ## [0.8.0] - 2021-05-30
 ### Changed

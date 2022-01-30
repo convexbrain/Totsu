@@ -35,12 +35,17 @@ pub trait LinAlg<F: Float>
     ///   `x` and `y` shall have the same length.
     fn add(alpha: F, x: &[F], y: &mut[F]);
 
+    /// Calculate \\(s\mathbb{1} + y\\).
+    /// 
+    /// * `s` is a scalar \\(s\\).
+    /// * `y` is a vector \\(y\\) before entry, \\(s\mathbb{1} + y\\) on exit.
     fn adds(s: F, y: &mut[F]);
 
     /// Calculate 1-norm (or sum of absolute values) \\(\\|x\\|_1=\sum_i |x_i|\\).
     /// 
     /// Returns the calculated norm.
     /// * `x` is a vector \\(x\\).
+    /// * `incx` is spacing between elements of `x`
     fn abssum(x: &[F], incx: usize) -> F;
 
     /// Calculate \\(\alpha D x + \beta y\\),
