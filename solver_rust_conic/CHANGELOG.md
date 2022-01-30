@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+## [0.9.0] - 2022-01-30
+### Added
 - Implement `Display` and `Error` trait for `SolverError`.
 - `absadd_cols` and `absadd_rows` in `Operator`.
 - Trait method `LinAlg::adds`.
@@ -16,10 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tentative patch for `intel-mkl-src`.
 - `Solver` initilization sped-up by using `absadd_cols` and `absadd_rows`.
 - `LinAlg::abssum` takes `incx` argument.
-### Deprecated
-### Removed
-### Fixed
-### Security
 
 ## [0.8.1] - 2021-08-17
 ### Changed
@@ -48,7 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Completely revised from [0.5.0] to conic solver.
 
 
-[unreleased]: https://github.com/convexbrain/Totsu/compare/rust_conic_v0.8.1...HEAD
+[unreleased]: https://github.com/convexbrain/Totsu/compare/rust_conic_v0.9.0...HEAD
+[0.9.0]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.9.0
 [0.8.1]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.8.1
 [0.8.0]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.8.0
 [0.7.0]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.7.0
