@@ -31,7 +31,7 @@ See [documentation](https://docs.rs/totsu/) for more details.
 
 ```toml
 [dependencies.totsu]
-version = "0.8.1"
+version = "0.9.0"
 features = ["f64lapack"]
 ```
 
@@ -45,7 +45,7 @@ Use this in `Cargo.toml`:
 
 ```toml
 [dependencies.totsu]
-version = "0.8.1"
+version = "0.9.0"
 default-features = false
 features = ["libm"]
 ```
@@ -65,7 +65,7 @@ use totsu::prelude::*;
 use totsu::operator::MatBuild;
 use totsu::problem::ProbQP;
 
-//env_logger::init();
+//env_logger::init(); // Use any logger crate as `totsu` uses `log` crate.
 
 type LA = FloatGeneric<f64>;
 type AMatBuild = MatBuild<LA, f64>;

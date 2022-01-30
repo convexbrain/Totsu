@@ -57,7 +57,7 @@ This crate includes two [`linalg::LinAlgEx`] implementors:
 
 ```toml
 [dependencies.totsu]
-version = "0.8.1"
+version = "0.9.0"
 features = ["f64lapack"]
 ```
 
@@ -71,7 +71,7 @@ Use this in `Cargo.toml`:
 
 ```toml
 [dependencies.totsu]
-version = "0.8.1"
+version = "0.9.0"
 default-features = false
 features = ["libm"]
 ```
