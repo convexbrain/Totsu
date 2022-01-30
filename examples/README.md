@@ -17,3 +17,9 @@
 # Example: partitioning_sdp
 
 ![](partitioning_sdp/plot.svg)
+
+# Example: imgnr_udef
+
+![](imgnr_udef/miku_face_noise.png)
+![](imgnr_udef/out.png)
+* Hatsune Miku by Crypton Future Media, INC. 2007 is licensed under a Creative Commons Attribution-NonCommercial 3.0 Unported License. Based on a work at https://piapro.net/license.
