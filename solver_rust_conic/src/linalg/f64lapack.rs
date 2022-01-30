@@ -23,7 +23,7 @@ impl LinAlg<f64> for F64LAPACK
     
         unsafe { cblas::dcopy(x.len() as i32, x, 1, y, 1) }
     }
-    
+
     fn scale(alpha: f64, x: &mut[f64])
     {
         unsafe { cblas::dscal(x.len() as i32, alpha, x, 1) }
@@ -36,9 +36,21 @@ impl LinAlg<f64> for F64LAPACK
         unsafe { cblas::daxpy(x.len() as i32, alpha, x, 1, y, 1) }
     }
 
-    fn abssum(x: &[f64]) -> f64
+    fn adds(s: f64, y: &mut[f64])
     {
-        unsafe { cblas::dasum(x.len() as i32, x, 1) }
+        let one = &[1.];
+
+        unsafe { cblas::daxpy(y.len() as i32, s, one, 0, y, 1) }
+    }
+    
+    fn abssum(x: &[f64], incx: usize) -> f64
+    {
+        if incx == 0 {
+            0.
+        }
+        else {
+            unsafe { cblas::dasum(((x.len() + (incx - 1)) / incx) as i32, x, incx as i32) }
+        }
     }
 
     fn transform_di(alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64])

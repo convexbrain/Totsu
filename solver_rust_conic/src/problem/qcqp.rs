@@ -47,6 +47,17 @@ where L: LinAlgEx<F>, F: Float
         L::scale(beta, y);
         L::add(alpha, x_t, y);
     }
+
+    fn absadd_cols(&self, tau: &mut[F])
+    {
+        tau[0] = tau[0] + F::one();
+    }
+
+    fn absadd_rows(&self, sigma: &mut[F])
+    {
+        let n = self.n;
+        sigma[n] = sigma[n] + F::one();
+    }
 }
 
 //
@@ -156,6 +167,49 @@ where L: LinAlgEx<F>, F: Float
 
         // y_t = .. + 0*x_p
     }
+
+    fn absadd_cols(&self, tau: &mut[F])
+    {
+        let (n, _m1, _p) = self.dim();
+        let (tau_n, tau_t) = tau.split2(n, 1).unwrap();
+
+        for vec_q in self.vecs_q {
+            vec_q.absadd_rows(tau_n);
+        }
+        for sym_p_sqrt in self.syms_p_sqrt {
+            sym_p_sqrt.absadd_cols(tau_n);
+        }
+        self.mat_a.absadd_cols(tau_n);
+
+        tau_t[0] = tau_t[0] + F::one();
+    }
+
+    fn absadd_rows(&self, sigma: &mut[F])
+    {
+        let (n, _m1, _p) = self.dim();
+
+        let mut i = 0;
+        let mut spl_sigma = sigma;
+        for (sym_p_sqrt, vec_q) in self.syms_p_sqrt.iter().zip(self.vecs_q) {
+            let (_sigma_r, spl) = spl_sigma.split_at_mut(1);
+            let (sigma_s, spl) = spl.split_at_mut(1);
+            let (sigma_n, spl) = spl.split_at_mut(n);
+            spl_sigma = spl;
+
+            vec_q.absadd_cols(sigma_s);
+            if i == 0 {
+                sigma_s[0] = sigma_s[0] + F::one();
+            }
+
+            sym_p_sqrt.absadd_rows(sigma_n);
+
+            i += 1;
+        }
+
+        let sigma_p = spl_sigma;
+
+        self.mat_a.absadd_rows(sigma_p);
+    }
 }
 
 //
@@ -246,6 +300,34 @@ where L: LinAlgEx<F>, F: Float
 
         // y = ... + a*vec_b^T*x_p
         self.vec_b.trans_op(alpha, x_p, f1, y);
+    }
+
+    fn absadd_cols(&self, tau: &mut[F])
+    {
+        let (_n, m1, _p) = self.dim();
+
+        tau[0] = tau[0] + F::from(m1).unwrap() + L::abssum(self.scls_r, 1);
+        self.vec_b.absadd_cols(tau);
+    }
+
+    fn absadd_rows(&self, sigma: &mut[F])
+    {
+        let (n, _m1, _p) = self.dim();
+
+        let mut spl_sigma = sigma;
+        for scl_r in self.scls_r {
+            let (sigma_r, spl) = spl_sigma.split_at_mut(1);
+            let (sigma_s, spl) = spl.split_at_mut(1);
+            let (_sigma_n, spl) = spl.split_at_mut(n);
+            spl_sigma = spl;
+
+            sigma_r[0] = sigma_r[0] + F::one();
+            sigma_s[0] = sigma_s[0] + scl_r.abs();
+        }
+
+        let sigma_p = spl_sigma;
+
+        self.vec_b.absadd_rows(sigma_p);
     }
 }
 

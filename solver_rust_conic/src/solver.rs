@@ -191,6 +191,32 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         self.c.trans_op(alpha, x_n, beta, y_tau);
         self.b.trans_op(alpha, x_m, f1, y_tau);
     }
+
+    fn abssum(&self, tau: &mut[F], sigma: &mut[F])
+    {
+        let (m, n) = self.a.size();
+        let f0 = F::zero();
+        let f1 = F::one();
+
+        L::scale(f0, tau);
+
+        let (tau_x, tau_y, tau_s, tau_tau) = tau.split4(n, m, m, 1).unwrap();
+
+        self.a.absadd_cols(tau_x);
+        self.c.absadd_rows(tau_x);
+        self.a.absadd_rows(tau_y);
+        self.b.absadd_rows(tau_y);
+        L::adds(f1, tau_s);
+        self.c.absadd_cols(tau_tau);
+        self.b.absadd_cols(tau_tau);
+
+        let (sigma_n, sigma_m, sigma_1) = sigma.split3(n, m, 1).unwrap();
+
+        L::copy(tau_x, sigma_n);
+        L::copy(tau_y, sigma_m);
+        L::add(f1, tau_s, sigma_m);
+        L::copy(tau_tau, sigma_1);
+    }
 }
 
 //
@@ -253,8 +279,6 @@ where L: LinAlg<F>, F: Float
             n + m + m + 1 +  // tmpw rx
             n + m + m + 1;   // tmpw tx
             //n + m + 1      // tmpw ty (share with tx)
-            //n + m + m + 1  // tmpw wy (share with rx)
-            //n + m + 1      // tmpw wy (share with tx)
             //m              // tmpw p (share with rx)
             //n              // tmpw d (share with rx)
         
@@ -344,7 +368,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
 {
     fn solve(mut self, work: &mut[F]) -> Result<(&[F], &[F]), SolverError>
     {
-        log::info!("----- Started");
+        log::info!("----- Initializing");
         let (m, n) = self.op_k.a().size();
 
         // Calculate norms
@@ -354,9 +378,10 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         let (x, y, dp_tau, dp_sigma, tmpw) = self.init_vecs(work)?;
 
         // Calculate diagonal preconditioning
-        self.calc_precond(dp_tau, dp_sigma, tmpw);
+        self.calc_precond(dp_tau, dp_sigma);
 
         // Iteration
+        log::info!("----- Started");
         let mut i = 0;
         loop {
             let excess_iter = if let Some(max_iter) = self.par.max_iter {
@@ -498,30 +523,16 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         Ok((x, y, dp_tau, dp_sigma, tmpw))
     }
 
-    fn calc_precond(&self, dp_tau: &mut[F], dp_sigma: &mut[F], tmpw: &mut[F])
+    fn calc_precond(&self, dp_tau: &mut[F], dp_sigma: &mut[F])
     {
         let (m, n) = self.op_k.a().size();
-        let (wx, wy) = tmpw.split2(dp_tau.len(), dp_sigma.len()).unwrap();
 
-        let f0 = F::zero();
-        let f1 = F::one();
-
-        L::scale(f0, wx);
-        for (i, tau) in dp_tau.iter_mut().enumerate() {
-            wx[i] = f1;
-            self.op_k.op(f1, wx, f0, wy);
-            let asum = L::abssum(wy);
-            *tau = asum.max(self.par.eps_zero).recip();
-            wx[i] = f0;
+        self.op_k.abssum(dp_tau, dp_sigma);
+        for tau in dp_tau.iter_mut() {
+            *tau = tau.max(self.par.eps_zero).recip();
         }
-
-        L::scale(f0, wy);
-        for (i, sigma) in dp_sigma.iter_mut().enumerate() {
-            wy[i] = f1;
-            self.op_k.trans_op(f1, wy, f0, wx);
-            let asum = L::abssum(wx);
-            *sigma = asum.max(self.par.eps_zero).recip();
-            wy[i] = f0;
+        for sigma in dp_sigma.iter_mut() {
+            *sigma = sigma.max(self.par.eps_zero).recip();
         }
 
         // grouping dependent on cone

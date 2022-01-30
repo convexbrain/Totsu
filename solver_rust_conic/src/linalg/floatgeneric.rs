@@ -35,7 +35,7 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
             *v = *u;
         }
     }
-    
+
     fn scale(alpha: F, x: &mut[F])
     {
         for u in x {
@@ -52,13 +52,25 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
         }
     }
 
-    fn abssum(x: &[F]) -> F
+    fn adds(s: F, y: &mut[F])
     {
-        let mut sum = F::zero();
-        for u in x.iter() {
-            sum = sum + u.abs();
+        for v in y {
+            *v = *v + s;
         }
-        sum
+    }
+    
+    fn abssum(x: &[F], incx: usize) -> F
+    {
+        if incx == 0 {
+            F::zero()
+        }
+        else {
+            let mut sum = F::zero();
+            for u in x.chunks(incx) {
+                sum = sum + u[0].abs();
+            }
+            sum
+        }
     }
 
     fn transform_di(alpha: F, mat: &[F], x: &[F], beta: F, y: &mut[F])

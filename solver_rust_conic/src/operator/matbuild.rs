@@ -321,6 +321,16 @@ where L: LinAlgEx<F>, F: Float
     {
         MatOp::from(self).trans_op(alpha, x, beta, y);
     }
+
+    fn absadd_cols(&self, tau: &mut[F])
+    {
+        MatOp::from(self).absadd_cols(tau);
+    }
+
+    fn absadd_rows(&self, sigma: &mut[F])
+    {
+        MatOp::from(self).absadd_rows(sigma);
+    }
 }
 
 impl<L, F> core::fmt::Display for MatBuild<L, F>

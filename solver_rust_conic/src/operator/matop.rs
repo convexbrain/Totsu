@@ -95,6 +95,50 @@ where L: LinAlgEx<F>, F: Float
             },
         }
     }
+
+    fn absadd_impl(&self, colwise: bool, y: &mut[F])
+    {
+        match self.typ {
+            MatType::General(nr, nc) => {
+                if colwise {
+                    assert_eq!(nc, y.len());
+                
+                    let mut array = self.array;
+                    for e in y {
+                        let (col, rest) = array.split_at(nr);
+                        array = rest;
+                        *e = L::abssum(col, 1) + *e;
+                    }
+                }
+                else {
+                    assert_eq!(nr, y.len());
+                
+                    let mut array = self.array;
+                    for e in y {
+                        *e = L::abssum(array, nr) + *e;
+                        let (_, rest) = array.split_at(1);
+                        array = rest;
+                    }
+                }
+            },
+            MatType::SymPack(n) => {
+                assert_eq!(n, y.len());
+
+                let mut array = self.array;
+                for n in 0.. {
+                    let (col, rest) = array.split_at(n + 1);
+                    y[n] = L::abssum(col, 1) + y[n];
+                    for i in 0.. n {
+                        y[i] = y[i] + col[i].abs();
+                    }
+                    array = rest;
+                    if array.len() == 0 {
+                        break;
+                    }
+                }
+            },
+        }
+    }
 }
 
 impl<'a, L, F> Operator<F> for MatOp<'a, L, F>
@@ -113,6 +157,16 @@ where L: LinAlgEx<F>, F: Float
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
         self.op_impl(true, alpha, x, beta, y);
+    }
+
+    fn absadd_cols(&self, tau: &mut[F])
+    {
+        self.absadd_impl(true, tau);
+    }
+
+    fn absadd_rows(&self, sigma: &mut[F])
+    {
+        self.absadd_impl(false, sigma);
     }
 }
 

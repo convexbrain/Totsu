@@ -95,7 +95,7 @@ use totsu::prelude::*;
 use totsu::operator::MatBuild;
 use totsu::problem::ProbQP;
 
-//env_logger::init();
+//env_logger::init(); // Use any logger crate as `totsu` uses `log` crate. 
 
 type LA = FloatGeneric<f64>;
 type AMatBuild = MatBuild<LA, f64>;

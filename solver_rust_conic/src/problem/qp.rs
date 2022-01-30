@@ -47,6 +47,18 @@ where L: LinAlgEx<F>, F: Float
         L::scale(beta, y);
         L::add(alpha, x_t, y);
     }
+
+    fn absadd_cols(&self, tau: &mut[F])
+    {
+        tau[0] = tau[0] + F::one();
+    }
+
+    fn absadd_rows(&self, sigma: &mut[F])
+    {
+        let n = self.n;
+        let (_sigma_n, sigma_t) = sigma.split2(n, 1).unwrap();
+        sigma_t[0] = sigma_t[0] + F::one();
+    }
 }
 
 //
@@ -127,6 +139,31 @@ where L: LinAlgEx<F>, F: Float
         L::scale(beta, y_t);
         L::add(-alpha, x_s, y_t);
     }
+
+    fn absadd_cols(&self, tau: &mut[F])
+    {
+        let (n, _m, _p) = self.dim();
+        let (tau_n, tau_t) = tau.split2(n, 1).unwrap();
+
+        self.vec_q.absadd_rows(tau_n);
+        self.sym_p_sqrt.absadd_cols(tau_n);
+        self.mat_g.absadd_cols(tau_n);
+        self.mat_a.absadd_cols(tau_n);
+
+        tau_t[0] = tau_t[0] + F::one();
+    }
+
+    fn absadd_rows(&self, sigma: &mut[F])
+    {
+        let (n, m, p) = self.dim();
+        let (_sigma_r, sigma_s, sigma_n, sigma_m, sigma_p) = sigma.split5(1, 1, n, m, p).unwrap();
+
+        self.vec_q.absadd_cols(sigma_s);
+        sigma_s[0] = sigma_s[0] + F::one();
+        self.sym_p_sqrt.absadd_rows(sigma_n);
+        self.mat_g.absadd_rows(sigma_m);
+        self.mat_a.absadd_rows(sigma_p);
+    }
 }
 
 //
@@ -193,6 +230,23 @@ where L: LinAlgEx<F>, F: Float
         self.vec_h.trans_op(alpha, x_m, beta, y);
         self.vec_b.trans_op(alpha, x_p, f1, y);
         L::add(alpha, x_r, y);
+    }
+
+    fn absadd_cols(&self, tau: &mut[F])
+    {
+        tau[0] = tau[0] + F::one();
+        self.vec_h.absadd_cols(tau);
+        self.vec_b.absadd_cols(tau);
+    }
+
+    fn absadd_rows(&self, sigma: &mut[F])
+    {
+        let (n, m, p) = self.dim();
+        let (sigma_r, _sigma_sn, sigma_m, sigma_p) = sigma.split4(1, 1 + n, m, p).unwrap();
+
+        sigma_r[0] = sigma_r[0] + F::one();
+        self.vec_h.absadd_rows(sigma_m);
+        self.vec_b.absadd_rows(sigma_p);
     }
 }
 

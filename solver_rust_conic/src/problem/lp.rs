@@ -27,14 +27,24 @@ where L: LinAlgEx<F>, F: Float
 
     fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
-        // y = a*vec_f*x + b*y;
+        // y = a*vec_c*x + b*y;
         self.vec_c.op(alpha, x, beta, y);
     }
 
     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
     {
-        // y = a*vec_f^T*x + b*y;
+        // y = a*vec_c^T*x + b*y;
         self.vec_c.trans_op(alpha, x, beta, y);
+    }
+
+    fn absadd_cols(&self, tau: &mut[F])
+    {
+        self.vec_c.absadd_cols(tau);
+    }
+
+    fn absadd_rows(&self, sigma: &mut[F])
+    {
+        self.vec_c.absadd_rows(sigma);
     }
 }
 
@@ -87,11 +97,27 @@ where L: LinAlgEx<F>, F: Float
     {
         let (_n, m, p) = self.dim();
 
-        let (x_m, x_p) = x.split2(m,p).unwrap();
+        let (x_m, x_p) = x.split2(m, p).unwrap();
 
         // y = a*mat_g^T*x_m + a*mat_a^T*x_p + b*y
         self.mat_g.trans_op(alpha, x_m, beta, y);
         self.mat_a.trans_op(alpha, x_p, F::one(), y);
+    }
+
+    fn absadd_cols(&self, tau: &mut[F])
+    {
+        self.mat_g.absadd_cols(tau);
+        self.mat_a.absadd_cols(tau);
+    }
+
+    fn absadd_rows(&self, sigma: &mut[F])
+    {
+        let (_n, m, p) = self.dim();
+
+        let (sigma_m, sigma_p) = sigma.split2(m, p).unwrap();
+
+        self.mat_g.absadd_rows(sigma_m);
+        self.mat_a.absadd_rows(sigma_p);
     }
 }
 
@@ -150,6 +176,22 @@ where L: LinAlgEx<F>, F: Float
         // y = a*vec_h^T*x_m + a*vec_b^T*x_p + b*y
         self.vec_h.trans_op(alpha, x_m, beta, y);
         self.vec_b.trans_op(alpha, x_p, F::one(), y);
+    }
+
+    fn absadd_cols(&self, tau: &mut[F])
+    {
+        self.vec_h.absadd_cols(tau);
+        self.vec_b.absadd_cols(tau);
+    }
+
+    fn absadd_rows(&self, sigma: &mut[F])
+    {
+        let (m, p) = self.dim();
+
+        let (sigma_m, sigma_p) = sigma.split2(m, p).unwrap();
+
+        self.vec_h.absadd_rows(sigma_m);
+        self.vec_b.absadd_rows(sigma_p);
     }
 }
 
