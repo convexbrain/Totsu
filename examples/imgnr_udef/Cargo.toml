@@ -9,17 +9,16 @@ publish = false
 totsu = {path = "../../solver_rust_conic", features = ["f64lapack"]}
 utils = {path = "../utils"}
 env_logger = "0.9.0"
-anyhow = "1.0.43"
-image = "0.23.14"
-log = "0.4.14"
+anyhow = "1.0.61"
+image = "0.24.3"
+log = "0.4.17"
 cblas = "0.4.0"
 
 [dependencies.intel-mkl-src]
 default-features = false
-version = "0.6.0+mkl2020.1"
-git = 'https://github.com/convexbrain/intel-mkl-src'
-branch = 'branch_from_0.6.0+mkl2020.1'
+git = 'https://github.com/convexbrain/intel-mkl-src' #patch
+branch = 'branch_from_0.6.0+mkl2020.1' #patch
 features = ["mkl-static-lp64-iomp"]
 
 [dev-dependencies]
-float_eq = "0.7.0"
+float_eq = "1.0.0"
