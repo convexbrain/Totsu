@@ -22,7 +22,7 @@ impl log::Log for HPrintLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            hprintln!("[{}] {}", record.level(), record.args()).unwrap();
+            hprintln!("[{}] {}", record.level(), record.args());
         }
     }
 
@@ -39,11 +39,11 @@ fn main() -> !
     log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Debug)) // run-time log level
         .unwrap();
-    hprintln!("run").unwrap();
+    hprintln!("run");
 
     test_lp();
     
-    hprintln!("exit").unwrap();
+    hprintln!("exit");
     debug::exit(debug::EXIT_SUCCESS);
     loop {}
 }
@@ -87,11 +87,11 @@ fn test_lp()
         p.log_period = 10;
     });
 
-    hprintln!("query_worklen -> {}", ASolver::query_worklen(op_a.size())).unwrap();
+    hprintln!("query_worklen -> {}", ASolver::query_worklen(op_a.size()));
     let mut solver_w = [0.; 48];
 
     let rslt = s.solve((op_c, op_a, op_b, cone, &mut solver_w)).unwrap();
-    hprintln!("solve -> {:?}", rslt.0).unwrap();
+    hprintln!("solve -> {:?}", rslt.0);
 
     assert!((rslt.0[0] - 2.).abs() <= 1e-3);
     assert!((rslt.0[1] - 2.).abs() <= 1e-3);

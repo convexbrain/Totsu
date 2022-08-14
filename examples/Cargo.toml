@@ -6,6 +6,7 @@ members = [
     "trajplan_qcqp",
     "toruscompl_socp",
     "partitioning_sdp",
+    "imgnr_udef",
     
     "utils",
 ]
