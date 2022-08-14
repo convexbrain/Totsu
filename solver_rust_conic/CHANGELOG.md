@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- Update versions of `log`, `num-traits`, `float_eq` and `intel-mkl-src`.
 ### Deprecated
 ### Removed
 ### Fixed
