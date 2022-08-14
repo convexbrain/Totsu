@@ -16,5 +16,5 @@ anyhow = "1.0.61"
 [dependencies.intel-mkl-src]
 default-features = false
 git = 'https://github.com/convexbrain/intel-mkl-src' #patch
-branch = 'branch_from_0.6.0+mkl2020.1' #patch
+branch = 'branch_from_intel-mkl-src-v0.7.0' #patch
 features = ["mkl-static-lp64-iomp"]
