@@ -8,11 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
-- Update versions of `log`, `num-traits`, `float_eq` and `intel-mkl-src`.
 ### Deprecated
 ### Removed
 ### Fixed
 ### Security
+
+## [0.9.1] - 2022-08-14
+### Changed
+- Update versions of `log`, `num-traits`, `float_eq` and `intel-mkl-src`.
 
 ## [0.9.0] - 2022-01-30
 ### Added
@@ -53,7 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Completely revised from [0.5.0] to conic solver.
 
 
-[unreleased]: https://github.com/convexbrain/Totsu/compare/rust_conic_v0.9.0...HEAD
+[unreleased]: https://github.com/convexbrain/Totsu/compare/rust_conic_v0.9.1...HEAD
+[0.9.1]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.9.1
 [0.9.0]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.9.0
 [0.8.1]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.8.1
 [0.8.0]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.8.0
