@@ -1,33 +1,26 @@
-use num_traits::Float;
 use core::fmt::Debug;
-use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use super::{LinAlg, LinAlgEx};
 use crate::utils::*;
 
 //
 
-/// `num::Float`-generic [`LinAlgEx`] implementation
-/// 
-/// All numeric operations are written in pure Rust, but slow.
+/// TODO
 #[derive(Debug, Clone)]
-pub struct FloatGeneric<F>
-{
-    ph_f: PhantomData<F>,
-}
+pub struct F64CUDA;
 
-impl<F: Float> LinAlg<F> for FloatGeneric<F>
+impl LinAlg<f64> for F64CUDA
 {
-    fn norm(x: &[F]) -> F
+    fn norm(x: &[f64]) -> f64
     {
-        let mut sum = F::zero();
+        let mut sum = 0.;
         for u in x {
             sum = sum + *u * *u;
         }
         sum.sqrt()
     }
     
-    fn copy(x: &[F], y: &mut[F])
+    fn copy(x: &[f64], y: &mut[f64])
     {
         assert_eq!(x.len(), y.len());
     
@@ -36,14 +29,14 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
         }
     }
 
-    fn scale(alpha: F, x: &mut[F])
+    fn scale(alpha: f64, x: &mut[f64])
     {
         for u in x {
             *u = alpha * *u;
         }
     }
     
-    fn add(alpha: F, x: &[F], y: &mut[F])
+    fn add(alpha: f64, x: &[f64], y: &mut[f64])
     {
         assert_eq!(x.len(), y.len());
     
@@ -52,20 +45,20 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
         }
     }
 
-    fn adds(s: F, y: &mut[F])
+    fn adds(s: f64, y: &mut[f64])
     {
         for v in y {
             *v = *v + s;
         }
     }
     
-    fn abssum(x: &[F], incx: usize) -> F
+    fn abssum(x: &[f64], incx: usize) -> f64
     {
         if incx == 0 {
-            F::zero()
+            0.
         }
         else {
-            let mut sum = F::zero();
+            let mut sum = 0.;
             for u in x.chunks(incx) {
                 sum = sum + u[0].abs();
             }
@@ -73,7 +66,7 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
         }
     }
 
-    fn transform_di(alpha: F, mat: &[F], x: &[F], beta: F, y: &mut[F])
+    fn transform_di(alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64])
     {
         assert_eq!(mat.len(), x.len());
         assert_eq!(mat.len(), y.len());
@@ -86,15 +79,15 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
 
 //
 
-struct MatIdx<'a, F: Float>
+struct MatIdx<'a>
 {
     n_row: usize,
     n_col: usize,
-    mat: &'a[F],
+    mat: &'a[f64],
     transpose: bool,
 }
 
-impl<'a, F: Float> MatIdx<'a, F>
+impl<'a> MatIdx<'a>
 {
     fn idx(&self, (r, c): (usize, usize)) -> usize
     {
@@ -107,9 +100,9 @@ impl<'a, F: Float> MatIdx<'a, F>
     }
 }
 
-impl<'a, F: Float> Index<(usize, usize)> for MatIdx<'a, F>
+impl<'a> Index<(usize, usize)> for MatIdx<'a>
 {
-    type Output = F;
+    type Output = f64;
 
     fn index(&self, index: (usize, usize)) -> &Self::Output
     {
@@ -119,17 +112,17 @@ impl<'a, F: Float> Index<(usize, usize)> for MatIdx<'a, F>
 
 //
 
-struct MatIdxMut<'a, F: Float>
+struct MatIdxMut<'a>
 {
     n_row: usize,
     n_col: usize,
-    mat: &'a mut[F],
+    mat: &'a mut[f64],
     transpose: bool,
 }
 
-impl<'a, F: Float> MatIdxMut<'a, F>
+impl<'a> MatIdxMut<'a>
 {
-    fn col_vec(&self, c: usize) -> &[F]
+    fn col_vec(&self, c: usize) -> &[f64]
     {
         assert!(c < self.n_col);
         assert!(!self.transpose);
@@ -143,14 +136,14 @@ impl<'a, F: Float> MatIdxMut<'a, F>
     fn clear(&mut self)
     {
         for a in self.mat.iter_mut() {
-            *a = F::zero();
+            *a = 0.;
         }
     }
 }
 
-impl<'a, F: Float> Index<(usize, usize)> for MatIdxMut<'a, F>
+impl<'a> Index<(usize, usize)> for MatIdxMut<'a>
 {
-    type Output = F;
+    type Output = f64;
 
     fn index(&self, index: (usize, usize)) -> &Self::Output
     {
@@ -165,7 +158,7 @@ impl<'a, F: Float> Index<(usize, usize)> for MatIdxMut<'a, F>
     }
 }
 
-impl<'a, F: Float> IndexMut<(usize, usize)> for MatIdxMut<'a, F>
+impl<'a> IndexMut<(usize, usize)> for MatIdxMut<'a>
 {
     fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output
     {
@@ -182,13 +175,13 @@ impl<'a, F: Float> IndexMut<(usize, usize)> for MatIdxMut<'a, F>
 
 //
 
-struct SpMatIdx<'a, F: Float>
+struct SpMatIdx<'a>
 {
     n: usize,
-    mat: &'a[F],
+    mat: &'a[f64],
 }
 
-impl<'a, F: Float> SpMatIdx<'a, F>
+impl<'a> SpMatIdx<'a>
 {
     fn idx(&self, (r, c): (usize, usize)) -> usize
     {
@@ -201,9 +194,9 @@ impl<'a, F: Float> SpMatIdx<'a, F>
     }
 }
 
-impl<'a, F: Float> Index<(usize, usize)> for SpMatIdx<'a, F>
+impl<'a> Index<(usize, usize)> for SpMatIdx<'a>
 {
-    type Output = F;
+    type Output = f64;
 
     fn index(&self, index: (usize, usize)) -> &Self::Output
     {
@@ -213,22 +206,22 @@ impl<'a, F: Float> Index<(usize, usize)> for SpMatIdx<'a, F>
 
 //
 
-struct SpMatIdxMut<'a, F: Float>
+struct SpMatIdxMut<'a>
 {
     n: usize,
-    mat: &'a mut[F],
+    mat: &'a mut[f64],
 }
 
-impl<'a, F: Float> SpMatIdxMut<'a, F>
+impl<'a> SpMatIdxMut<'a>
 {
     fn clear(&mut self)
     {
         for a in self.mat.iter_mut() {
-            *a = F::zero();
+            *a = 0.;
         }
     }
 
-    fn rank1op(&mut self, alpha: F, x: &[F])
+    fn rank1op(&mut self, alpha: f64, x: &[f64])
     {
         assert_eq!(x.len(), self.n);
 
@@ -240,9 +233,9 @@ impl<'a, F: Float> SpMatIdxMut<'a, F>
     }
 }
 
-impl<'a, F: Float> Index<(usize, usize)> for SpMatIdxMut<'a, F>
+impl<'a> Index<(usize, usize)> for SpMatIdxMut<'a>
 {
-    type Output = F;
+    type Output = f64;
 
     fn index(&self, index: (usize, usize)) -> &Self::Output
     {
@@ -255,7 +248,7 @@ impl<'a, F: Float> Index<(usize, usize)> for SpMatIdxMut<'a, F>
     }
 }
 
-impl<'a, F: Float> IndexMut<(usize, usize)> for SpMatIdxMut<'a, F>
+impl<'a> IndexMut<(usize, usize)> for SpMatIdxMut<'a>
 {
     fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output
     {
@@ -270,12 +263,12 @@ impl<'a, F: Float> IndexMut<(usize, usize)> for SpMatIdxMut<'a, F>
 
 //
 
-fn jacobi_eig<F: Float>(spmat_x: &mut SpMatIdxMut<F>, mat_z: &mut MatIdxMut<F>, eps: F)
+fn jacobi_eig(spmat_x: &mut SpMatIdxMut, mat_z: &mut MatIdxMut, eps: f64)
 {
     let n = spmat_x.n;
     let tol = eps * eps;
-    let f0 = F::zero();
-    let f1 = F::one();
+    let f0 = 0.;
+    let f1 = 1.;
     let f2 = f1 + f1;
 
     let mut conv = false;
@@ -323,10 +316,10 @@ fn jacobi_eig<F: Float>(spmat_x: &mut SpMatIdxMut<F>, mat_z: &mut MatIdxMut<F>, 
     }
 }
 
-fn eig_func<F: Float, E>(spmat_x: &mut SpMatIdxMut<F>, eps_zero: F, work: &mut[F], func: E)
-where E: Fn(F)->Option<F>
+fn eig_func<E>(spmat_x: &mut SpMatIdxMut, eps_zero: f64, work: &mut[f64], func: E)
+where E: Fn(f64)->Option<f64>
 {
-    let f1 = F::one();
+    let f1 = 1.;
 
     let n = spmat_x.n;
 
@@ -366,10 +359,10 @@ fn eig_func_worklen(n: usize) -> usize
 
 //
 
-impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
+impl LinAlgEx<f64> for F64CUDA
 {
     // y = a*mat*x + b*y
-    fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: F, mat: &[F], x: &[F], beta: F, y: &mut[F])
+    fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64])
     {
         assert_eq!(mat.len(), n_row * n_col);
         if transpose {
@@ -385,7 +378,7 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
         };
 
         for r in 0.. y.len() {
-            let mut mat_x = F::zero();
+            let mut mat_x = 0.;
             for c in 0.. x.len() {
                 mat_x = mat_x + mat[(r, c)] * x[c];
             }
@@ -394,7 +387,7 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
     }
 
     // y = a*mat*x + b*y
-    fn transform_sp(n: usize, alpha: F, mat: &[F], x: &[F], beta: F, y: &mut[F])
+    fn transform_sp(n: usize, alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64])
     {
         assert_eq!(mat.len(), n * (n + 1) / 2);
 
@@ -406,7 +399,7 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
         };
 
         for r in 0.. y.len() {
-            let mut mat_x = F::zero();
+            let mut mat_x = 0.;
             for c in 0.. x.len() {
                 mat_x = mat_x + mat[(r, c)] * x[c];
             }
@@ -416,21 +409,21 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
 
     fn proj_psd_worklen(sn: usize) -> usize
     {
-        let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
+        let n = ((((8 * sn + 1) as f64).sqrt() as usize) - 1) / 2;
         assert_eq!(n * (n + 1) / 2, sn);
 
         eig_func_worklen(n)
     }
 
-    fn proj_psd(x: &mut[F], eps_zero: F, work: &mut[F])
+    fn proj_psd(x: &mut[f64], eps_zero: f64, work: &mut[f64])
     {
-        let f0 = F::zero();
-        let f1 = F::one();
-        let f2 = f1 + f1;
+        let f0 = 0.;
+        let f1 = 1.;
+        let f2: f64 = f1 + f1;
         let fsqrt2 = f2.sqrt();
 
         let sn = x.len();
-        let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
+        let n = ((((8 * sn + 1) as f64).sqrt() as usize) - 1) / 2;
 
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
@@ -463,12 +456,12 @@ impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
         eig_func_worklen(n)
     }
 
-    fn sqrt_spmat(mat: &mut[F], eps_zero: F, work: &mut[F])
+    fn sqrt_spmat(mat: &mut[f64], eps_zero: f64, work: &mut[f64])
     {
-        let f0 = F::zero();
+        let f0 = 0.;
 
         let sn = mat.len();
-        let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
+        let n = ((((8 * sn + 1) as f64).sqrt() as usize) - 1) / 2;
 
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
