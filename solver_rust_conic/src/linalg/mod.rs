@@ -134,7 +134,7 @@ mod floatgeneric; // core, Float
 #[cfg(feature = "f64lapack")]
 mod f64lapack;    // core, f64(cblas/lapacke)
 
-mod f64cuda;      // TODO
+mod f32cuda;      // TODO
 
 
 pub use floatgeneric::*;
@@ -142,4 +142,4 @@ pub use floatgeneric::*;
 #[cfg(feature = "f64lapack")]
 pub use f64lapack::*;
 
-pub use f64cuda::*;
+pub use f32cuda::*;

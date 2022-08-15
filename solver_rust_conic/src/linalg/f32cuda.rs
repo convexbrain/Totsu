@@ -7,11 +7,11 @@ use crate::utils::*;
 
 /// TODO
 #[derive(Debug, Clone)]
-pub struct F64CUDA;
+pub struct F32CUDA;
 
-impl LinAlg<f64> for F64CUDA
+impl LinAlg<f32> for F32CUDA
 {
-    fn norm(x: &[f64]) -> f64
+    fn norm(x: &[f32]) -> f32
     {
         let mut sum = 0.;
         for u in x {
@@ -20,7 +20,7 @@ impl LinAlg<f64> for F64CUDA
         sum.sqrt()
     }
     
-    fn copy(x: &[f64], y: &mut[f64])
+    fn copy(x: &[f32], y: &mut[f32])
     {
         assert_eq!(x.len(), y.len());
     
@@ -29,14 +29,14 @@ impl LinAlg<f64> for F64CUDA
         }
     }
 
-    fn scale(alpha: f64, x: &mut[f64])
+    fn scale(alpha: f32, x: &mut[f32])
     {
         for u in x {
             *u = alpha * *u;
         }
     }
     
-    fn add(alpha: f64, x: &[f64], y: &mut[f64])
+    fn add(alpha: f32, x: &[f32], y: &mut[f32])
     {
         assert_eq!(x.len(), y.len());
     
@@ -45,14 +45,14 @@ impl LinAlg<f64> for F64CUDA
         }
     }
 
-    fn adds(s: f64, y: &mut[f64])
+    fn adds(s: f32, y: &mut[f32])
     {
         for v in y {
             *v = *v + s;
         }
     }
     
-    fn abssum(x: &[f64], incx: usize) -> f64
+    fn abssum(x: &[f32], incx: usize) -> f32
     {
         if incx == 0 {
             0.
@@ -66,7 +66,7 @@ impl LinAlg<f64> for F64CUDA
         }
     }
 
-    fn transform_di(alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64])
+    fn transform_di(alpha: f32, mat: &[f32], x: &[f32], beta: f32, y: &mut[f32])
     {
         assert_eq!(mat.len(), x.len());
         assert_eq!(mat.len(), y.len());
@@ -83,7 +83,7 @@ struct MatIdx<'a>
 {
     n_row: usize,
     n_col: usize,
-    mat: &'a[f64],
+    mat: &'a[f32],
     transpose: bool,
 }
 
@@ -102,7 +102,7 @@ impl<'a> MatIdx<'a>
 
 impl<'a> Index<(usize, usize)> for MatIdx<'a>
 {
-    type Output = f64;
+    type Output = f32;
 
     fn index(&self, index: (usize, usize)) -> &Self::Output
     {
@@ -116,13 +116,13 @@ struct MatIdxMut<'a>
 {
     n_row: usize,
     n_col: usize,
-    mat: &'a mut[f64],
+    mat: &'a mut[f32],
     transpose: bool,
 }
 
 impl<'a> MatIdxMut<'a>
 {
-    fn col_vec(&self, c: usize) -> &[f64]
+    fn col_vec(&self, c: usize) -> &[f32]
     {
         assert!(c < self.n_col);
         assert!(!self.transpose);
@@ -143,7 +143,7 @@ impl<'a> MatIdxMut<'a>
 
 impl<'a> Index<(usize, usize)> for MatIdxMut<'a>
 {
-    type Output = f64;
+    type Output = f32;
 
     fn index(&self, index: (usize, usize)) -> &Self::Output
     {
@@ -178,7 +178,7 @@ impl<'a> IndexMut<(usize, usize)> for MatIdxMut<'a>
 struct SpMatIdx<'a>
 {
     n: usize,
-    mat: &'a[f64],
+    mat: &'a[f32],
 }
 
 impl<'a> SpMatIdx<'a>
@@ -196,7 +196,7 @@ impl<'a> SpMatIdx<'a>
 
 impl<'a> Index<(usize, usize)> for SpMatIdx<'a>
 {
-    type Output = f64;
+    type Output = f32;
 
     fn index(&self, index: (usize, usize)) -> &Self::Output
     {
@@ -209,7 +209,7 @@ impl<'a> Index<(usize, usize)> for SpMatIdx<'a>
 struct SpMatIdxMut<'a>
 {
     n: usize,
-    mat: &'a mut[f64],
+    mat: &'a mut[f32],
 }
 
 impl<'a> SpMatIdxMut<'a>
@@ -221,7 +221,7 @@ impl<'a> SpMatIdxMut<'a>
         }
     }
 
-    fn rank1op(&mut self, alpha: f64, x: &[f64])
+    fn rank1op(&mut self, alpha: f32, x: &[f32])
     {
         assert_eq!(x.len(), self.n);
 
@@ -235,7 +235,7 @@ impl<'a> SpMatIdxMut<'a>
 
 impl<'a> Index<(usize, usize)> for SpMatIdxMut<'a>
 {
-    type Output = f64;
+    type Output = f32;
 
     fn index(&self, index: (usize, usize)) -> &Self::Output
     {
@@ -263,7 +263,7 @@ impl<'a> IndexMut<(usize, usize)> for SpMatIdxMut<'a>
 
 //
 
-fn jacobi_eig(spmat_x: &mut SpMatIdxMut, mat_z: &mut MatIdxMut, eps: f64)
+fn jacobi_eig(spmat_x: &mut SpMatIdxMut, mat_z: &mut MatIdxMut, eps: f32)
 {
     let n = spmat_x.n;
     let tol = eps * eps;
@@ -316,8 +316,8 @@ fn jacobi_eig(spmat_x: &mut SpMatIdxMut, mat_z: &mut MatIdxMut, eps: f64)
     }
 }
 
-fn eig_func<E>(spmat_x: &mut SpMatIdxMut, eps_zero: f64, work: &mut[f64], func: E)
-where E: Fn(f64)->Option<f64>
+fn eig_func<E>(spmat_x: &mut SpMatIdxMut, eps_zero: f32, work: &mut[f32], func: E)
+where E: Fn(f32)->Option<f32>
 {
     let f1 = 1.;
 
@@ -359,10 +359,10 @@ fn eig_func_worklen(n: usize) -> usize
 
 //
 
-impl LinAlgEx<f64> for F64CUDA
+impl LinAlgEx<f32> for F32CUDA
 {
     // y = a*mat*x + b*y
-    fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64])
+    fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f32, mat: &[f32], x: &[f32], beta: f32, y: &mut[f32])
     {
         assert_eq!(mat.len(), n_row * n_col);
         if transpose {
@@ -387,7 +387,7 @@ impl LinAlgEx<f64> for F64CUDA
     }
 
     // y = a*mat*x + b*y
-    fn transform_sp(n: usize, alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64])
+    fn transform_sp(n: usize, alpha: f32, mat: &[f32], x: &[f32], beta: f32, y: &mut[f32])
     {
         assert_eq!(mat.len(), n * (n + 1) / 2);
 
@@ -409,21 +409,21 @@ impl LinAlgEx<f64> for F64CUDA
 
     fn proj_psd_worklen(sn: usize) -> usize
     {
-        let n = ((((8 * sn + 1) as f64).sqrt() as usize) - 1) / 2;
+        let n = ((((8 * sn + 1) as f32).sqrt() as usize) - 1) / 2;
         assert_eq!(n * (n + 1) / 2, sn);
 
         eig_func_worklen(n)
     }
 
-    fn proj_psd(x: &mut[f64], eps_zero: f64, work: &mut[f64])
+    fn proj_psd(x: &mut[f32], eps_zero: f32, work: &mut[f32])
     {
         let f0 = 0.;
         let f1 = 1.;
-        let f2: f64 = f1 + f1;
+        let f2: f32 = f1 + f1;
         let fsqrt2 = f2.sqrt();
 
         let sn = x.len();
-        let n = ((((8 * sn + 1) as f64).sqrt() as usize) - 1) / 2;
+        let n = ((((8 * sn + 1) as f32).sqrt() as usize) - 1) / 2;
 
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
@@ -456,12 +456,12 @@ impl LinAlgEx<f64> for F64CUDA
         eig_func_worklen(n)
     }
 
-    fn sqrt_spmat(mat: &mut[f64], eps_zero: f64, work: &mut[f64])
+    fn sqrt_spmat(mat: &mut[f32], eps_zero: f32, work: &mut[f32])
     {
         let f0 = 0.;
 
         let sn = mat.len();
-        let n = ((((8 * sn + 1) as f64).sqrt() as usize) - 1) / 2;
+        let n = ((((8 * sn + 1) as f32).sqrt() as usize) - 1) / 2;
 
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
