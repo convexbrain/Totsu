@@ -51,3 +51,9 @@ fn test_solver1()
 
     assert_float_eq!(rslt.0[0], -2., abs_all <= 1e-3);
 }
+
+#[cfg(feature = "f64lapack")]
+mod f64lapack
+{
+    use intel_mkl_src as _; // workaround in case of link failure
+}
