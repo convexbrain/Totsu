@@ -2,12 +2,47 @@ use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
 use super::{LinAlg, LinAlgEx};
 use crate::utils::*;
-
+use rustacuda::prelude::*;
+use rustacuda::memory::DeviceBuffer;
 //
 
 /// TODO
 #[derive(Debug, Clone)]
 pub struct F32CUDA;
+
+static mut CUDA_CONTEXT: Option<Context> = None;
+static mut CUBLAS_CONTEXT: Option<cublas::Context> = None;
+
+impl F32CUDA
+{
+    fn get_context() -> (&'static Context, &'static cublas::Context)
+    {
+        unsafe {
+            if CUDA_CONTEXT.is_none() {
+                std::println!("CUDA Init");
+
+                // Initialize the CUDA API
+                rustacuda::init(CudaFlags::empty()).unwrap();
+
+                // Get the first device
+                let device = Device::get_device(0).unwrap();
+
+                // Create a context associated to this device
+                let context = Context::create_and_push(
+                    ContextFlags::MAP_HOST | ContextFlags::SCHED_AUTO,
+                    device
+                ).unwrap();
+
+                CUDA_CONTEXT = Some(context);
+
+                let cublas_ctx = cublas::Context::new().unwrap();
+                CUBLAS_CONTEXT = Some(cublas_ctx);
+
+            }
+            (CUDA_CONTEXT.as_ref().unwrap(), CUBLAS_CONTEXT.as_ref().unwrap())
+        }
+    }
+}
 
 impl LinAlg<f32> for F32CUDA
 {
@@ -31,9 +66,18 @@ impl LinAlg<f32> for F32CUDA
 
     fn scale(alpha: f32, x: &mut[f32])
     {
-        for u in x {
-            *u = alpha * *u;
-        }
+        let (_, cublas_ctx) = Self::get_context();
+
+        let mut x_dev = DeviceBuffer::from_slice(x).unwrap();
+
+        cublas::API::scal(cublas_ctx,
+            (&alpha as *const f32) as *mut f32,
+            x_dev.as_mut_ptr(),
+            x.len() as i32,
+            None
+        ).unwrap();
+
+        x_dev.copy_to(x).unwrap();
     }
     
     fn add(alpha: f32, x: &[f32], y: &mut[f32])
