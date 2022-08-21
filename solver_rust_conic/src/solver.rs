@@ -3,10 +3,10 @@
 use num_traits::Float;
 use core::marker::PhantomData;
 use core::fmt::{Debug, Display, LowerExp};
-use crate::linalg::LinAlg;
+use crate::linalg::{SliceBuf, LinAlg};
 use crate::operator::Operator;
 use crate::cone::Cone;
-use crate::utils::*;
+use crate::{splitm, splitm_mut};
 
 //
 
@@ -78,7 +78,8 @@ impl<F: Float> Default for SolverParam<F>
 
 //
 
-struct SelfDualEmbed<F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>>
+struct SelfDualEmbed<F, L, OC, OA, OB>
+where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operator<L, F>
 {
     ph_f: PhantomData<F>,
     ph_l: PhantomData<L>,
@@ -88,7 +89,7 @@ struct SelfDualEmbed<F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, O
 }
 
 impl<F, L, OC, OA, OB> SelfDualEmbed<F, L, OC, OA, OB>
-where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
+where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operator<L, F>
 {
     fn c(&self) -> &OC
     {
@@ -106,21 +107,21 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
     }
 
     fn norm_b(&self,
-        work_v: &mut[F], work_t: &mut[F]) -> F
+        work_v: &mut L::Vector, work_t: &mut L::Vector) -> F
     {
         Self::fr_norm(self.b(), work_v, work_t)
     }
 
     fn norm_c(&self,
-        work_v: &mut[F], work_t: &mut[F]) -> F
+        work_v: &mut L::Vector, work_t: &mut L::Vector) -> F
     {
         Self::fr_norm(self.c(), work_v, work_t)
     }
 
     // Frobenius norm
-    fn fr_norm<O: Operator<F>>(
+    fn fr_norm<O: Operator<L, F>>(
         op: &O,
-        work_v: &mut[F], work_t: &mut[F]) -> F
+        work_v: &mut L::Vector, work_t: &mut L::Vector) -> F
     {
         assert_eq!(work_v.len(), op.size().1);
         assert_eq!(work_t.len(), op.size().0);
@@ -142,16 +143,16 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         sq_norm.sqrt()
     }
     
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector)
     {
         let (m, n) = self.a.size();
         
         assert_eq!(x.len(), n + m + m + 1);
         assert_eq!(y.len(), n + m + 1);
 
-        let (x_x, x_y, x_s, x_tau) = x.split4(n, m, m, 1).unwrap();
+        splitm!(x, (x_x; n), (x_y; m), (x_s; m), (x_tau; 1));
 
-        let (y_n, y_m, y_1) = y.split3(n, m, 1).unwrap();
+        splitm_mut!(y, (y_n; n), (y_m; m), (y_1; 1));
 
         let f1 = F::one();
 
@@ -166,16 +167,16 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         self.b.trans_op(-alpha, x_y, f1, y_1);
     }
 
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn trans_op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector)
     {
         let (m, n) = self.a.size();
         
         assert_eq!(x.len(), n + m + 1);
         assert_eq!(y.len(), n + m + m + 1);
 
-        let (x_n, x_m, x_1) = x.split3(n, m, 1).unwrap();
+        splitm!(x, (x_n; n), (x_m; m), (x_1; 1));
 
-        let (y_x, y_y, y_s, y_tau) = y.split4(n, m, m, 1).unwrap();
+        splitm_mut!(y, (y_x; n), (y_y; m), (y_s; m), (y_tau; 1));
 
         let f1 = F::one();
 
@@ -192,7 +193,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         self.b.trans_op(alpha, x_m, f1, y_tau);
     }
 
-    fn abssum(&self, tau: &mut[F], sigma: &mut[F])
+    fn abssum(&self, tau: &mut L::Vector, sigma: &mut L::Vector)
     {
         let (m, n) = self.a.size();
         let f0 = F::zero();
@@ -200,7 +201,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
 
         L::scale(f0, tau);
 
-        let (tau_x, tau_y, tau_s, tau_tau) = tau.split4(n, m, m, 1).unwrap();
+        splitm_mut!(tau, (tau_x; n), (tau_y; m), (tau_s; m), (tau_tau; 1));
 
         self.a.absadd_cols(tau_x);
         self.c.absadd_rows(tau_x);
@@ -210,7 +211,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<F>, OA: Operator<F>, OB: Operator<F>
         self.c.absadd_cols(tau_tau);
         self.b.absadd_cols(tau_tau);
 
-        let (sigma_n, sigma_m, sigma_1) = sigma.split3(n, m, 1).unwrap();
+        splitm_mut!(sigma, (sigma_n; n), (sigma_m; m), (sigma_1; 1));
 
         L::copy(tau_x, sigma_n);
         L::copy(tau_y, sigma_m);
@@ -323,11 +324,15 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp
     /// * `cone` is \\(\mathcal{K}\\) expressed by [`Cone`].
     /// * `work` slice is used for temporal variables. [`Solver::solve`] does not rely on dynamic heap allocation.
     pub fn solve<OC, OA, OB, C>(self,
-        (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut[F])
-    ) -> Result<(&[F], &[F]), SolverError>
-    where OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
+        (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut L::Vector)
+    ) -> Result<(&L::Vector, &L::Vector), SolverError>
+    where OC: Operator<L, F>, OA: Operator<L, F>, OB: Operator<L, F>, C: Cone<L, F>
     {
         let (m, n) = op_a.size();
+
+        if Self::query_worklen((m, n)) > work.len() {
+            return Err(SolverError::WorkShortage);
+        }
 
         if op_c.size() != (n, 1) || op_b.size() != (m, 1) {
             log::error!("Size mismatch: op_c{:?}, op_a{:?}, op_b{:?}", op_c.size(), op_a.size(), op_b.size());
@@ -354,7 +359,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp
 
 struct SolverCore<L, F, OC, OA, OB, C>
 where L: LinAlg<F>, F: Float + Debug + LowerExp,
-      OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
+      OC: Operator<L, F>, OA: Operator<L, F>, OB: Operator<L, F>, C: Cone<L, F>
 {
     par: SolverParam<F>,
 
@@ -364,18 +369,18 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
 
 impl<L, F, OC, OA, OB, C> SolverCore<L, F, OC, OA, OB, C>
 where L: LinAlg<F>, F: Float + Debug + LowerExp,
-      OC: Operator<F>, OA: Operator<F>, OB: Operator<F>, C: Cone<F>
+      OC: Operator<L, F>, OA: Operator<L, F>, OB: Operator<L, F>, C: Cone<L, F>
 {
-    fn solve(mut self, work: &mut[F]) -> Result<(&[F], &[F]), SolverError>
+    fn solve(mut self, work: &mut L::Vector) -> Result<(&L::Vector, &L::Vector), SolverError>
     {
         log::info!("----- Initializing");
         let (m, n) = self.op_k.a().size();
 
         // Calculate norms
-        let (norm_b, norm_c) = self.calc_norms(work)?;
+        let (norm_b, norm_c) = self.calc_norms(work);
 
         // Initialize vectors
-        let (x, y, dp_tau, dp_sigma, tmpw) = self.init_vecs(work)?;
+        let (x, y, dp_tau, dp_sigma, tmpw) = self.init_vecs(work);
 
         // Calculate diagonal preconditioning
         self.calc_precond(dp_tau, dp_sigma);
@@ -403,10 +408,6 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
             // Update vectors
             let val_tau = self.update_vecs(x, y, dp_tau, dp_sigma, tmpw)?;
 
-            if log_trig {
-                log::trace!("{}: state {:?} {:?}", i, x, y);
-            }
-
             if val_tau > self.par.eps_zero {
                 // Termination criteria of convergence
                 let (cri_pri, cri_dual, cri_gap) = self.criteria_conv(x, norm_c, norm_b, tmpw);
@@ -416,14 +417,17 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                 if log_trig || excess_iter || term_conv {
                     log::debug!("{}: pri_dual_gap {:.2e} {:.2e} {:.2e}", i, cri_pri, cri_dual, cri_gap);
                 }
+                else {
+                    log::trace!("{}: pri_dual_gap {:.2e} {:.2e} {:.2e}", i, cri_pri, cri_dual, cri_gap);
+                }
 
                 if excess_iter || term_conv {
-                    let (x_x_ast, x_y_ast) = x.split2(n, m).unwrap();
+                    splitm_mut!(x, (x_x_ast; n), (x_y_ast; m));
                     L::scale(val_tau.recip(), x_x_ast);
                     L::scale(val_tau.recip(), x_y_ast);
 
-                    log::trace!("{}: x {:?}", i, x_x_ast);
-                    log::trace!("{}: y {:?}", i, x_y_ast);
+                    log::trace!("{}: x {:?}", i, x_x_ast.get());
+                    log::trace!("{}: y {:?}", i, x_y_ast.get());
 
                     if term_conv {
                         log::info!("----- Converged");
@@ -447,12 +451,15 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
                 if log_trig || excess_iter || term_unbdd || term_infeas {
                     log::debug!("{}: unbdd_infeas {:.2e} {:.2e}", i, cri_unbdd, cri_infeas);
                 }
+                else {
+                    log::trace!("{}: unbdd_infeas {:.2e} {:.2e}", i, cri_unbdd, cri_infeas);
+                }
 
                 if excess_iter || term_unbdd || term_infeas {
-                    let (x_x_cert, x_y_cert) = x.split2(n, m).unwrap();
+                    splitm_mut!(x, (x_x_cert; n), (x_y_cert; m));
 
-                    log::trace!("{}: x {:?}", i, x_x_cert);
-                    log::trace!("{}: y {:?}", i, x_y_cert);
+                    log::trace!("{}: x {:?}", i, x_x_cert.get());
+                    log::trace!("{}: y {:?}", i, x_y_cert.get());
 
                     if term_unbdd {
                         log::warn!("----- Unbounded");
@@ -477,40 +484,41 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         } // end of loop
     }
 
-    fn calc_norms(&mut self, work: &mut[F])
-    -> Result<(F, F), SolverError>
+    fn calc_norms(&mut self, work: &mut L::Vector)
+    -> (F, F)
     {
-        let work_one = &mut [F::zero()];
+        let mut work1 = [F::zero()];
+        let work_one = L::Vector::new_from_mut(&mut work1);
         
         let norm_b = {
             let (m, _) = self.op_k.b().size();
-            let t = work.split1(m).ok_or(SolverError::WorkShortage)?;
+            splitm_mut!(work, (t; m));
     
             self.op_k.norm_b(work_one, t)
         };
     
         let norm_c = {
             let (n, _) = self.op_k.c().size();
-            let t = work.split1(n).ok_or(SolverError::WorkShortage)?;
+            splitm_mut!(work, (t; n));
     
             self.op_k.norm_c(work_one, t)
         };
     
-        Ok((norm_b, norm_c))
+        (norm_b, norm_c)
     }
     
-    fn init_vecs<'b>(&self, work: &'b mut[F])
-    -> Result<(&'b mut[F], &'b mut[F], &'b mut[F], &'b mut[F], &'b mut[F]), SolverError>
+    fn init_vecs<'b>(&self, work: &'b mut L::Vector)
+    -> (&'b mut L::Vector, &'b mut L::Vector, &'b mut L::Vector, &'b mut L::Vector, &'b mut L::Vector)
     {
         let (m, n) = self.op_k.a().size();
 
-        let (x, y, dp_tau, dp_sigma, tmpw) = work.split5(
-            n + m + m + 1,
-            n + m + 1,
-            n + m + m + 1,
-            n + m + 1,
-            (n + m + m + 1) * 2,
-        ).ok_or(SolverError::WorkShortage)?;
+        splitm_mut!(work,
+            (x; n + m + m + 1),
+            (y; n + m + 1),
+            (dp_tau; n + m + m + 1),
+            (dp_sigma; n + m + 1),
+            (tmpw; (n + m + m + 1) * 2)
+        );
 
         let f0 = F::zero();
         let f1 = F::one();
@@ -520,44 +528,44 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
     
         x[n + m + m] = f1; // x_tau
     
-        Ok((x, y, dp_tau, dp_sigma, tmpw))
+        (x, y, dp_tau, dp_sigma, tmpw)
     }
 
-    fn calc_precond(&self, dp_tau: &mut[F], dp_sigma: &mut[F])
+    fn calc_precond(&self, dp_tau: &mut L::Vector, dp_sigma: &mut L::Vector)
     {
         let (m, n) = self.op_k.a().size();
 
         self.op_k.abssum(dp_tau, dp_sigma);
-        for tau in dp_tau.iter_mut() {
-            *tau = tau.max(self.par.eps_zero).recip();
+        for tau in dp_tau.get_mut() {
+            *tau = (*tau).max(self.par.eps_zero).recip();
         }
-        for sigma in dp_sigma.iter_mut() {
-            *sigma = sigma.max(self.par.eps_zero).recip();
+        for sigma in dp_sigma.get_mut() {
+            *sigma = (*sigma).max(self.par.eps_zero).recip();
         }
 
         // grouping dependent on cone
-        let group = |tau_group: &mut[F]| {
+        let group = |tau_group: &mut L::Vector| {
             if tau_group.len() > 0 {
                 let mut min_t = tau_group[0];
-                for t in tau_group.iter() {
+                for t in tau_group.get() {
                     min_t = min_t.min(*t);
                 }
-                for t in tau_group.iter_mut() {
+                for t in tau_group.get_mut() {
                     *t = min_t;
                 }
             }
         };
-        let (_, dpt_dual_cone, dpt_cone, _) = dp_tau.split4(n, m, m, 1).unwrap();
+        splitm_mut!(dp_tau, (_dpt_n; n), (dpt_dual_cone; m), (dpt_cone; m), (_dpt_1; 1));
         self.cone.product_group(dpt_dual_cone, group);
         self.cone.product_group(dpt_cone, group);
     }
 
-    fn update_vecs(&mut self, x: &mut[F], y: &mut[F], dp_tau: &[F], dp_sigma: &[F], tmpw: &mut[F])
+    fn update_vecs(&mut self, x: &mut L::Vector, y: &mut L::Vector, dp_tau: &L::Vector, dp_sigma: &L::Vector, tmpw: &mut L::Vector)
     -> Result<F, SolverError>
     {
         let (m, n) = self.op_k.a().size();
 
-        let (rx, tx) = tmpw.split2(x.len(), x.len()).unwrap();
+        splitm_mut!(tmpw, (rx; x.len()), (tx; x.len()));
 
         let val_tau;
 
@@ -572,7 +580,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         }
 
         { // Projection prox_G(x)
-            let (_x_x, x_y, x_s, x_tau) = x.split4(n, m, m, 1).unwrap();
+            splitm_mut!(x, (_x_x; n), (x_y; m), (x_s; m), (x_tau; 1));
 
             self.cone.proj(true, x_y).or(Err(SolverError::ConeFailure))?;
             self.cone.proj(false, x_s).or(Err(SolverError::ConeFailure))?;
@@ -584,28 +592,27 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         L::add(-f1-f1, x, rx); // rx := x_k - 2 * x_{k+1}
 
         { // Update y := y_{k+1} before projection
-            let ty = tx.split1(y.len()).unwrap();
-            
+            splitm_mut!(tx, (ty; y.len()));
             self.op_k.op(-f1, rx, f0, ty);
             L::transform_di(f1, dp_sigma, ty, f1, y);
         }
 
         { // Projection prox_F*(y)
-            let (y_1, _) = y.split_last_mut().unwrap();
+            splitm_mut!(y, (_y_nm; n + m), (y_1; 1));
 
-            *y_1 = y_1.min(f0);
+            y_1[0] = y_1[0].min(f0);
         }
 
         Ok(val_tau)
     }
 
-    fn criteria_conv(&self, x: &[F], norm_c: F, norm_b: F, tmpw: &mut[F])
+    fn criteria_conv(&self, x: &L::Vector, norm_c: F, norm_b: F, tmpw: &mut L::Vector)
     -> (F, F, F)
     {
         let (m, n) = self.op_k.a().size();
 
-        let (x_x, x_y, x_s, x_tau) = x.split4(n, m, m, 1).unwrap();
-        let (p, d) = tmpw.split2(m, n).unwrap();
+        splitm!(x, (x_x; n), (x_y; m), (x_s; m), (x_tau; 1));
+        splitm_mut!(tmpw, (p; m), (d; n));
     
         let f0 = F::zero();
         let f1 = F::one();
@@ -613,7 +620,8 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         let val_tau = x_tau[0];
         assert!(val_tau > f0);
     
-        let work_one = &mut [f1];
+        let mut work1 = [f1];
+        let work_one = L::Vector::new_from_mut(&mut work1);
     
         // Calc convergence criteria
         
@@ -639,19 +647,20 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         (cri_pri, cri_dual, cri_gap)
     }
     
-    fn criteria_inf(&self, x: &[F], norm_c: F, norm_b: F, tmpw: &mut[F])
+    fn criteria_inf(&self, x: &L::Vector, norm_c: F, norm_b: F, tmpw: &mut L::Vector)
     -> (F, F)
     {
         let (m, n) = self.op_k.a().size();
 
-        let (x_x, x_y, x_s, _) = x.split4(n, m, m, 1).unwrap();
-        let (p, d) = tmpw.split2(m, n).unwrap();
+        splitm!(x, (x_x; n), (x_y; m), (x_s; m), (_x_tau; 1));
+        splitm_mut!(tmpw, (p; m), (d; n));
 
         let f0 = F::zero();
         let f1 = F::one();
         let finf = F::infinity();
     
-        let work_one = &mut [f0];
+        let mut work1 = [f0];
+        let work_one = L::Vector::new_from_mut(&mut work1);
 
         // Calc undoundness and infeasibility criteria
         

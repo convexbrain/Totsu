@@ -1,3 +1,33 @@
+// TODO
+#[macro_export]
+macro_rules! splitm {
+    ($slice:expr, $( ($var:ident; $len:expr) ),+ ) => {
+        $( let $var; )*
+        {
+            let (_, mut spl) = $slice.split_at(0);
+            $(
+                ($var, spl) = spl.split_at($len);
+            )*
+            let _ = spl;
+        }
+    };
+}
+
+// TODO
+#[macro_export]
+macro_rules! splitm_mut {
+    ($slice:expr, $( ($var:ident; $len:expr) ),+ ) => {
+        $( let $var; )*
+        {
+            let (_, mut spl) = $slice.split_at_mut(0);
+            $(
+                ($var, spl) = spl.split_at_mut($len);
+            )*
+            let _ = spl;
+        }
+    };
+}
+
 pub trait SplitN
 where Self: core::marker::Sized
 {

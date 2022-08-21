@@ -1,6 +1,6 @@
 use num_traits::Float;
 use core::marker::PhantomData;
-use crate::linalg::LinAlgEx;
+use crate::linalg::{SliceBuf, LinAlgEx};
 use super::Operator;
 
 //
@@ -51,7 +51,7 @@ where L: LinAlgEx<F>, F: Float
 {
     ph_l: PhantomData<L>,
     typ: MatType,
-    array: &'a[F]
+    array: &'a L::Vector
 }
 
 impl<'a, L, F> MatOp<'a, L, F>
@@ -70,16 +70,17 @@ where L: LinAlgEx<F>, F: Float
 
         MatOp {
             ph_l: PhantomData,
-            typ, array,
+            typ,
+            array: L::Vector::new_from(array)
         }
     }
 
-    fn op_impl(&self, transpose: bool, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op_impl(&self, transpose: bool, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector)
     {
         match self.typ {
             MatType::General(nr, nc) => {
                 if nr > 0 && nc > 0 {
-                    L::transform_ge(transpose, nr, nc, alpha, self.as_ref(), x, beta, y)
+                    L::transform_ge(transpose, nr, nc, alpha, self.array, x, beta, y)
                 }
                 else {
                     L::scale(beta, y);
@@ -87,7 +88,7 @@ where L: LinAlgEx<F>, F: Float
             },
             MatType::SymPack(n) => {
                 if n > 0 {
-                    L::transform_sp(n, alpha, self.as_ref(), x, beta, y)
+                    L::transform_sp(n, alpha, self.array, x, beta, y)
                 }
                 else {
                     L::scale(beta, y);
@@ -96,7 +97,7 @@ where L: LinAlgEx<F>, F: Float
         }
     }
 
-    fn absadd_impl(&self, colwise: bool, y: &mut[F])
+    fn absadd_impl(&self, colwise: bool, y: &mut L::Vector)
     {
         match self.typ {
             MatType::General(nr, nc) => {
@@ -104,7 +105,7 @@ where L: LinAlgEx<F>, F: Float
                     assert_eq!(nc, y.len());
                 
                     let mut array = self.array;
-                    for e in y {
+                    for e in y.get_mut() {
                         let (col, rest) = array.split_at(nr);
                         array = rest;
                         *e = L::abssum(col, 1) + *e;
@@ -114,7 +115,7 @@ where L: LinAlgEx<F>, F: Float
                     assert_eq!(nr, y.len());
                 
                     let mut array = self.array;
-                    for e in y {
+                    for e in y.get_mut() {
                         *e = L::abssum(array, nr) + *e;
                         let (_, rest) = array.split_at(1);
                         array = rest;
@@ -141,7 +142,7 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<'a, L, F> Operator<F> for MatOp<'a, L, F>
+impl<'a, L, F> Operator<L, F> for MatOp<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
     fn size(&self) -> (usize, usize)
@@ -149,22 +150,22 @@ where L: LinAlgEx<F>, F: Float
         self.typ.size()
     }
 
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector)
     {
         self.op_impl(false, alpha, x, beta, y);
     }
 
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn trans_op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector)
     {
         self.op_impl(true, alpha, x, beta, y);
     }
 
-    fn absadd_cols(&self, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut L::Vector)
     {
         self.absadd_impl(true, tau);
     }
 
-    fn absadd_rows(&self, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut L::Vector)
     {
         self.absadd_impl(false, sigma);
     }
@@ -175,7 +176,7 @@ where L: LinAlgEx<F>, F: Float
 {
     fn as_ref(&self) -> &[F]
     {
-        self.array
+        self.array.get()
     }
 }
 

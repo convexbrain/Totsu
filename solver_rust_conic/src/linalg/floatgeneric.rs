@@ -2,10 +2,48 @@ use num_traits::Float;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
-use super::{LinAlg, LinAlgEx};
+use super::{SliceBuf, LinAlg, LinAlgEx};
 use crate::utils::*;
 
 //
+
+impl<F: Float> SliceBuf<F> for [F]
+{
+    fn new_from(s: &[F]) -> &Self
+    {
+        s
+    }
+
+    fn new_from_mut(s: &mut[F]) -> &mut Self
+    {
+        s
+    }
+
+    fn len(&self) -> usize
+    {
+        self.len()
+    }
+
+    fn split_at(&self, mid: usize) -> (&Self, &Self)
+    {
+        self.split_at(mid)
+    }
+
+    fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self)
+    {
+        self.split_at_mut(mid)
+    }
+
+    fn get(&self) -> &[F]
+    {
+        self
+    }
+
+    fn get_mut(&mut self) -> &mut[F]
+    {
+        self
+    }
+}
 
 /// `num::Float`-generic [`LinAlgEx`] implementation
 /// 
@@ -18,6 +56,8 @@ pub struct FloatGeneric<F>
 
 impl<F: Float> LinAlg<F> for FloatGeneric<F>
 {
+    type Vector = [F];
+
     fn norm(x: &[F]) -> F
     {
         let mut sum = F::zero();

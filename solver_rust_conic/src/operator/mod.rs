@@ -1,6 +1,7 @@
 //! Linear operator
 
 use num_traits::Float;
+use crate::linalg::LinAlg;
 
 /// Linear operator trait
 /// 
@@ -8,7 +9,7 @@ use num_traits::Float;
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 /// 
 /// Expresses a linear operator \\(K: \mathbb{R}^n \to \mathbb{R}^m\\) (or a matrix \\(K \in \mathbb{R}^{m \times n}\\)).
-pub trait Operator<F: Float>
+pub trait Operator<L: LinAlg<F>, F: Float>
 {
     /// Size of \\(K\\).
     /// 
@@ -24,7 +25,7 @@ pub trait Operator<F: Float>
     /// * `y` is a vector \\(y\\) before entry,
     ///   \\(\alpha K x + \beta y\\) on exit.
     ///   The length of `y` shall be \\(m\\).
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]);
+    fn op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector);
 
     /// Calculate \\(\alpha K^T x + \beta y\\).
     /// 
@@ -45,10 +46,10 @@ pub trait Operator<F: Float>
     /// impl<L: LinAlgEx<F>, F: Float> Operator<F> for OpRef<L, F>
     /// {
     /// #   fn size(&self) -> (usize, usize) {(0, 0)}
-    /// #   fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]) {}
-    /// #   fn absadd_cols(&self, tau: &mut[F]) {}
-    /// #   fn absadd_rows(&self, sigma: &mut[F]) {}
-    ///     fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    /// #   fn op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector) {}
+    /// #   fn absadd_cols(&self, tau: &mut L::Vector) {}
+    /// #   fn absadd_rows(&self, sigma: &mut L::Vector) {}
+    ///     fn trans_op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector)
     ///     {
     ///         let f0 = F::zero();
     ///         let f1 = F::one();
@@ -70,7 +71,7 @@ pub trait Operator<F: Float>
     ///     }
     /// }
     /// ```
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]);
+    fn trans_op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector);
 
     /// Calculate \\(\left[ \tau_j + \sum_{i=0}^{m-1}|K_{ij}| \right]_{j=0,...,n-1}\\).
     /// 
@@ -87,10 +88,10 @@ pub trait Operator<F: Float>
     /// impl<L: LinAlg<F>, F: Float> Operator<F> for OpRef<L, F>
     /// {
     /// #   fn size(&self) -> (usize, usize) {(0, 0)}
-    /// #   fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]) {}
-    /// #   fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]) {}
-    /// #   fn absadd_rows(&self, sigma: &mut[F]) {}
-    ///     fn absadd_cols(&self, tau: &mut[F])
+    /// #   fn op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector) {}
+    /// #   fn trans_op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector) {}
+    /// #   fn absadd_rows(&self, sigma: &mut L::Vector) {}
+    ///     fn absadd_cols(&self, tau: &mut L::Vector)
     ///     {
     ///         let f0 = F::zero();
     ///         let f1 = F::one();
@@ -109,7 +110,7 @@ pub trait Operator<F: Float>
     ///     }
     /// }
     /// ```
-    fn absadd_cols(&self, tau: &mut[F]);
+    fn absadd_cols(&self, tau: &mut L::Vector);
 
     /// Calculate \\(\left[ \sigma_i + \sum_{j=0}^{n-1}|K_{ij}| \right]_{i=0,...,m-1}\\).
     /// 
@@ -126,10 +127,10 @@ pub trait Operator<F: Float>
     /// impl<L: LinAlg<F>, F: Float> Operator<F> for OpRef<L, F>
     /// {
     /// #   fn size(&self) -> (usize, usize) {(0, 0)}
-    /// #   fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]) {}
-    /// #   fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F]) {}
-    /// #   fn absadd_cols(&self, tau: &mut[F]) {}
-    ///     fn absadd_rows(&self, sigma: &mut[F])
+    /// #   fn op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector) {}
+    /// #   fn trans_op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector) {}
+    /// #   fn absadd_cols(&self, tau: &mut L::Vector) {}
+    ///     fn absadd_rows(&self, sigma: &mut L::Vector)
     ///     {
     ///         let f0 = F::zero();
     ///         let f1 = F::one();
@@ -148,17 +149,21 @@ pub trait Operator<F: Float>
     ///     }
     /// }
     /// ```
-    fn absadd_rows(&self, sigma: &mut[F]);
+    fn absadd_rows(&self, sigma: &mut L::Vector);
 }
 
 //
 
 mod matop;    // core, Float
 
+/* TODO
 #[cfg(feature = "std")]
 mod matbuild; // std,  Float
+ */
 
 pub use matop::*;
 
+/* TODO
 #[cfg(feature = "std")]
 pub use matbuild::*;
+ */

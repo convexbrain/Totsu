@@ -1,6 +1,6 @@
 use num_traits::Float;
 use core::marker::PhantomData;
-use crate::linalg::LinAlgEx;
+use crate::linalg::{SliceBuf, LinAlgEx};
 use super::Cone;
 
 //
@@ -22,7 +22,7 @@ pub struct ConePSD<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
     ph_l: PhantomData<L>,
-    work: &'a mut[F],
+    work: &'a mut L::Vector,
     eps_zero: F,
 }
 
@@ -47,16 +47,16 @@ where L: LinAlgEx<F>, F: Float
     {
         ConePSD {
             ph_l: PhantomData::<L>,
-            work,
+            work: L::Vector::new_from_mut(work),
             eps_zero,
         }
     }
 }
 
-impl<'a, L, F> Cone<F> for ConePSD<'a, L, F>
+impl<'a, L, F> Cone<L, F> for ConePSD<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
-    fn proj(&mut self, _dual_cone: bool, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, _dual_cone: bool, x: &mut L::Vector) -> Result<(), ()>
     {
         if self.work.len() < L::proj_psd_worklen(x.len()) {
             log::error!("work shortage: {} given < {} required", self.work.len(), L::proj_psd_worklen(x.len()));
@@ -68,7 +68,7 @@ where L: LinAlgEx<F>, F: Float
         Ok(())
     }
 
-    fn product_group<G: Fn(&mut[F]) + Copy>(&self, dp_tau: &mut[F], group: G)
+    fn product_group<G: Fn(&mut L::Vector) + Copy>(&self, dp_tau: &mut L::Vector, group: G)
     {
         group(dp_tau);
     }
