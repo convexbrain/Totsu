@@ -3,6 +3,79 @@
 use num_traits::Float;
 use core::ops::{Index, IndexMut};
 
+pub trait DevSlice
+{
+    fn new<F>(s: &[F]) -> Self;
+}
+
+pub struct SliceRef<'a, F, D: DevSlice>
+{
+    s: &'a [F],
+    dev: D,
+}
+
+impl<'a, F, D: DevSlice> SliceRef<'a, F, D>
+{
+    pub fn len(&self) -> usize
+    {
+        self.s.len()
+    }
+
+    pub fn new_from(s: &'a[F]) -> Self
+    {
+        let dev = D::new(s);
+        SliceRef {s, dev}
+    }
+
+    pub fn get(&self) -> &[F]
+    {
+        // TODO
+        self.s
+    }
+
+    pub fn split_at(&'a self, mid: usize) -> (Self, Self)
+    {
+        let s = self.s.split_at(mid);
+        let d0 = D::new(s.0); // TODO
+        let d1 = D::new(s.1); // TODO
+        (SliceRef {s: s.0, dev: d0}, SliceRef {s: s.1, dev: d1})
+    }
+}
+
+pub struct SliceMut<'a, F, D: DevSlice>
+{
+    s: &'a mut [F],
+    dev: D,
+}
+
+impl<'a, F, D: DevSlice> SliceMut<'a, F, D>
+{
+    pub fn len(&self) -> usize
+    {
+        self.s.len()
+    }
+
+    pub fn new_from(s: &'a mut[F]) -> Self
+    {
+        let dev = D::new(s);
+        SliceMut { s, dev }
+    }
+
+    pub fn get(&mut self) -> &mut[F]
+    {
+        self.s
+    }
+
+    pub fn split_at(&'a mut self, mid: usize) -> (Self, Self)
+    {
+        // TODO
+        let s = self.s.split_at_mut(mid);
+        let d0 = D::new(s.0); // TODO
+        let d1 = D::new(s.1); // TODO
+        (SliceMut {s: s.0, dev: d0}, SliceMut {s: s.1, dev: d1})
+    }
+}
+
 pub trait SliceBuf<F: Float>:
     Index<usize, Output=F> + IndexMut<usize, Output=F> // TODO: cause of inefficiency
 {
@@ -22,6 +95,7 @@ pub trait SliceBuf<F: Float>:
 pub trait LinAlg<F: Float>
 {
     type Vector: SliceBuf<F> + ?Sized;
+    type Dev: DevSlice;
 
     /// Calculate 2-norm (or euclidean norm) \\(\\|x\\|_2=\sqrt{\sum_i x_i^2}\\).
     /// 
@@ -54,14 +128,14 @@ pub trait LinAlg<F: Float>
     /// 
     /// * `s` is a scalar \\(s\\).
     /// * `y` is a vector \\(y\\) before entry, \\(s\mathbb{1} + y\\) on exit.
-    fn adds(s: F, y: &mut Self::Vector);
+    fn adds<'a>(s: F, y: &'a mut SliceMut<'a, F, Self::Dev>);
 
     /// Calculate 1-norm (or sum of absolute values) \\(\\|x\\|_1=\sum_i |x_i|\\).
     /// 
     /// Returns the calculated norm.
     /// * `x` is a vector \\(x\\).
     /// * `incx` is spacing between elements of `x`
-    fn abssum(x: &Self::Vector, incx: usize) -> F;
+    fn abssum<'a>(x: &'a SliceRef<'a, F, Self::Dev>, incx: usize) -> F;
 
     /// Calculate \\(\alpha D x + \beta y\\),
     /// where \\(D={\bf diag}(d)\\) is a diagonal matrix.

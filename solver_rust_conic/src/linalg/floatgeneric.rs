@@ -2,10 +2,18 @@ use num_traits::Float;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
-use super::{SliceBuf, LinAlg, LinAlgEx};
+use super::{DevSlice, SliceRef, SliceMut, SliceBuf, LinAlg, LinAlgEx};
 use crate::utils::*;
 
 //
+
+impl DevSlice for ()
+{
+    fn new<F>(_s: &[F]) -> Self
+    {
+        ()
+    }
+}
 
 impl<F: Float> SliceBuf<F> for [F]
 {
@@ -57,6 +65,7 @@ pub struct FloatGeneric<F>
 impl<F: Float> LinAlg<F> for FloatGeneric<F>
 {
     type Vector = [F];
+    type Dev = ();
 
     fn norm(x: &[F]) -> F
     {
@@ -92,15 +101,19 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
         }
     }
 
-    fn adds(s: F, y: &mut[F])
+    fn adds<'a>(s: F, y: &'a mut SliceMut<'a, F, ()>)
     {
+        let y = y.get();
+
         for v in y {
             *v = *v + s;
         }
     }
     
-    fn abssum(x: &[F], incx: usize) -> F
+    fn abssum<'a>(x: &'a SliceRef<'a, F, ()>, incx: usize) -> F
     {
+        let x = x.get();
+
         if incx == 0 {
             F::zero()
         }

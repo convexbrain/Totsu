@@ -1,6 +1,6 @@
 use num_traits::Float;
 use core::marker::PhantomData;
-use crate::linalg::{SliceBuf, LinAlgEx};
+use crate::linalg::{SliceRef, SliceBuf, LinAlgEx};
 use super::Operator;
 
 //
@@ -108,7 +108,7 @@ where L: LinAlgEx<F>, F: Float
                     for e in y.get_mut() {
                         let (col, rest) = array.split_at(nr);
                         array = rest;
-                        *e = L::abssum(col, 1) + *e;
+                        *e = L::abssum(&SliceRef::new_from(col.get()), 1) + *e;
                     }
                 }
                 else {
@@ -116,7 +116,7 @@ where L: LinAlgEx<F>, F: Float
                 
                     let mut array = self.array;
                     for e in y.get_mut() {
-                        *e = L::abssum(array, nr) + *e;
+                        *e = L::abssum(&SliceRef::new_from(array.get()), nr) + *e;
                         let (_, rest) = array.split_at(1);
                         array = rest;
                     }
@@ -128,7 +128,7 @@ where L: LinAlgEx<F>, F: Float
                 let mut array = self.array;
                 for n in 0.. {
                     let (col, rest) = array.split_at(n + 1);
-                    y[n] = L::abssum(col, 1) + y[n];
+                    y[n] = L::abssum(&SliceRef::new_from(col.get()), 1) + y[n];
                     for i in 0.. n {
                         y[i] = y[i] + col[i].abs();
                     }
