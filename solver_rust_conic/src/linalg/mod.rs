@@ -3,18 +3,19 @@
 use num_traits::Float;
 use core::ops::{Index, IndexMut};
 
-pub trait DevSlice
+pub trait DevSlice<F>
 {
-    fn new<F>(s: &[F]) -> Self;
+    fn new(s: &[F]) -> Self;
+    fn sync_mut(&mut self, s: &mut[F]);
 }
 
-pub struct SliceRef<'a, F, D: DevSlice>
+pub struct SliceRef<'a, F, D: DevSlice<F>>
 {
     s: &'a [F],
     dev: D,
 }
 
-impl<'a, F, D: DevSlice> SliceRef<'a, F, D>
+impl<'a, F, D: DevSlice<F>> SliceRef<'a, F, D>
 {
     pub fn len(&self) -> usize
     {
@@ -29,26 +30,28 @@ impl<'a, F, D: DevSlice> SliceRef<'a, F, D>
 
     pub fn get(&self) -> &[F]
     {
-        // TODO
         self.s
     }
 
     pub fn split_at(&'a self, mid: usize) -> (Self, Self)
     {
         let s = self.s.split_at(mid);
-        let d0 = D::new(s.0); // TODO
-        let d1 = D::new(s.1); // TODO
+
+        // TODO
+        let d0 = D::new(s.0);
+        let d1 = D::new(s.1);
+
         (SliceRef {s: s.0, dev: d0}, SliceRef {s: s.1, dev: d1})
     }
 }
 
-pub struct SliceMut<'a, F, D: DevSlice>
+pub struct SliceMut<'a, F, D: DevSlice<F>>
 {
     s: &'a mut [F],
     dev: D,
 }
 
-impl<'a, F, D: DevSlice> SliceMut<'a, F, D>
+impl<'a, F, D: DevSlice<F>> SliceMut<'a, F, D>
 {
     pub fn len(&self) -> usize
     {
@@ -63,19 +66,23 @@ impl<'a, F, D: DevSlice> SliceMut<'a, F, D>
 
     pub fn get(&mut self) -> &mut[F]
     {
+        self.dev.sync_mut(self.s);
         self.s
     }
 
     pub fn split_at(&'a mut self, mid: usize) -> (Self, Self)
     {
-        // TODO
         let s = self.s.split_at_mut(mid);
-        let d0 = D::new(s.0); // TODO
-        let d1 = D::new(s.1); // TODO
+
+        // TODO
+        let d0 = D::new(s.0);
+        let d1 = D::new(s.1);
+
         (SliceMut {s: s.0, dev: d0}, SliceMut {s: s.1, dev: d1})
     }
 }
 
+// TODO: remove
 pub trait SliceBuf<F: Float>:
     Index<usize, Output=F> + IndexMut<usize, Output=F> // TODO: cause of inefficiency
 {
@@ -94,8 +101,8 @@ pub trait SliceBuf<F: Float>:
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 pub trait LinAlg<F: Float>
 {
-    type Vector: SliceBuf<F> + ?Sized;
-    type Dev: DevSlice;
+    type Vector: SliceBuf<F> + ?Sized; // TODO: remove
+    type Dev: DevSlice<F>;
 
     /// Calculate 2-norm (or euclidean norm) \\(\\|x\\|_2=\sqrt{\sum_i x_i^2}\\).
     /// 

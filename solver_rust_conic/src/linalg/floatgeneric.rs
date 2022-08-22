@@ -7,12 +7,10 @@ use crate::utils::*;
 
 //
 
-impl DevSlice for ()
+impl<F> DevSlice<F> for ()
 {
-    fn new<F>(_s: &[F]) -> Self
-    {
-        ()
-    }
+    fn new(_s: &[F]) -> Self {()}
+    fn sync_mut(&mut self, _s: &mut[F]) {}
 }
 
 impl<F: Float> SliceBuf<F> for [F]

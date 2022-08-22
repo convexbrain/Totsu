@@ -1,10 +1,55 @@
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
-use super::{LinAlg, LinAlgEx};
+use super::{DevSlice, SliceRef, SliceMut, LinAlg, LinAlgEx};
 use crate::utils::*;
 use rustacuda::prelude::*;
 use rustacuda::memory::DeviceBuffer;
 //
+
+enum CUDAMemUpd
+{
+    Sync,
+    Host,
+    Dev,
+}
+
+pub struct F32CUDAMem
+{
+    dev: DeviceBuffer<f32>,
+    upd: CUDAMemUpd,
+}
+
+impl F32CUDAMem
+{
+    fn sync(&mut self, s: &mut[f32])
+    {
+        match self.upd {
+            CUDAMemUpd::Sync => {},
+            CUDAMemUpd::Host => {
+                self.dev.copy_from(s).unwrap();
+            },
+            CUDAMemUpd::Dev => {
+                self.dev.copy_to(s).unwrap();
+            },
+        }
+        self.upd = CUDAMemUpd::Sync;
+    }
+}
+
+impl DevSlice<f32> for F32CUDAMem
+{
+    fn new(s: &[f32]) -> Self
+    {
+        let dev = DeviceBuffer::from_slice(s).unwrap();
+        F32CUDAMem {dev, upd: CUDAMemUpd::Sync}
+    }
+
+    fn sync_mut(&mut self, s: &mut[f32])
+    {
+        self.sync(s);
+        self.upd = CUDAMemUpd::Host;
+    }
+}
 
 /// TODO
 #[derive(Debug, Clone)]
@@ -46,6 +91,9 @@ impl F32CUDA
 
 impl LinAlg<f32> for F32CUDA
 {
+    type Vector = [f32];
+    type Dev = F32CUDAMem;
+
     fn norm(x: &[f32]) -> f32
     {
         let mut sum = 0.;
@@ -89,15 +137,19 @@ impl LinAlg<f32> for F32CUDA
         }
     }
 
-    fn adds(s: f32, y: &mut[f32])
+    fn adds<'a>(s: f32, y: &'a mut SliceMut<'a, f32, Self::Dev>)
     {
+        let y = y.get();
+
         for v in y {
             *v = *v + s;
         }
     }
     
-    fn abssum(x: &[f32], incx: usize) -> f32
+    fn abssum<'a>(x: &'a SliceRef<'a, f32, Self::Dev>, incx: usize) -> f32
     {
+        let x = x.get();
+
         if incx == 0 {
             0.
         }
