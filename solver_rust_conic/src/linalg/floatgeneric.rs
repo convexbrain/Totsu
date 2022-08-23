@@ -99,7 +99,7 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
         }
     }
 
-    fn adds<'a>(s: F, y: &'a mut SliceMut<'a, F, ()>)
+    fn adds(s: F, y: &mut SliceMut<'_, F, ()>)
     {
         let y = y.get();
 
@@ -108,7 +108,7 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
         }
     }
     
-    fn abssum<'a>(x: &'a SliceRef<'a, F, ()>, incx: usize) -> F
+    fn abssum(x: &SliceRef<'_, F, ()>, incx: usize) -> F
     {
         let x = x.get();
 

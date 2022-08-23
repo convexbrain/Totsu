@@ -46,7 +46,12 @@ impl DevSlice<f32> for F32CUDAMem
 
     fn sync_mut(&mut self, s: &mut[f32])
     {
-        self.sync(s);
+        match self.upd {
+            CUDAMemUpd::Sync | CUDAMemUpd::Host => {},
+            CUDAMemUpd::Dev => {
+                self.dev.copy_to(s).unwrap();
+            },
+        }
         self.upd = CUDAMemUpd::Host;
     }
 }
@@ -137,7 +142,7 @@ impl LinAlg<f32> for F32CUDA
         }
     }
 
-    fn adds<'a>(s: f32, y: &'a mut SliceMut<'a, f32, Self::Dev>)
+    fn adds(s: f32, y: &mut SliceMut<'_, f32, Self::Dev>)
     {
         let y = y.get();
 
@@ -146,7 +151,7 @@ impl LinAlg<f32> for F32CUDA
         }
     }
     
-    fn abssum<'a>(x: &'a SliceRef<'a, f32, Self::Dev>, incx: usize) -> f32
+    fn abssum(x: &SliceRef<'_, f32, Self::Dev>, incx: usize) -> f32
     {
         let x = x.get();
 

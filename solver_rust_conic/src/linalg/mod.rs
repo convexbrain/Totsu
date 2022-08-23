@@ -135,14 +135,14 @@ pub trait LinAlg<F: Float>
     /// 
     /// * `s` is a scalar \\(s\\).
     /// * `y` is a vector \\(y\\) before entry, \\(s\mathbb{1} + y\\) on exit.
-    fn adds<'a>(s: F, y: &'a mut SliceMut<'a, F, Self::Dev>);
+    fn adds(s: F, y: &mut SliceMut<'_, F, Self::Dev>);
 
     /// Calculate 1-norm (or sum of absolute values) \\(\\|x\\|_1=\sum_i |x_i|\\).
     /// 
     /// Returns the calculated norm.
     /// * `x` is a vector \\(x\\).
     /// * `incx` is spacing between elements of `x`
-    fn abssum<'a>(x: &'a SliceRef<'a, F, Self::Dev>, incx: usize) -> F;
+    fn abssum(x: &SliceRef<'_, F, Self::Dev>, incx: usize) -> F;
 
     /// Calculate \\(\alpha D x + \beta y\\),
     /// where \\(D={\bf diag}(d)\\) is a diagonal matrix.
