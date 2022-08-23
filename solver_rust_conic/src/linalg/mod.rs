@@ -4,9 +4,11 @@ use num_traits::Float;
 use core::ops::{Index, IndexMut};
 
 pub trait DevSlice<F>
+where Self: Sized
 {
     fn new(s: &[F]) -> Self;
     fn sync_mut(&mut self, s: &mut[F]);
+    fn split_at(&self, mid: usize) -> (Self, Self);
 }
 
 pub struct SliceRef<'a, F, D: DevSlice<F>>
@@ -36,12 +38,8 @@ impl<'a, F, D: DevSlice<F>> SliceRef<'a, F, D>
     pub fn split_at(&'a self, mid: usize) -> (Self, Self)
     {
         let s = self.s.split_at(mid);
-
-        // TODO
-        let d0 = D::new(s.0);
-        let d1 = D::new(s.1);
-
-        (SliceRef {s: s.0, dev: d0}, SliceRef {s: s.1, dev: d1})
+        let d = self.dev.split_at(mid);
+        (SliceRef {s: s.0, dev: d.0}, SliceRef {s: s.1, dev: d.1})
     }
 }
 
@@ -73,12 +71,8 @@ impl<'a, F, D: DevSlice<F>> SliceMut<'a, F, D>
     pub fn split_at(&'a mut self, mid: usize) -> (Self, Self)
     {
         let s = self.s.split_at_mut(mid);
-
-        // TODO
-        let d0 = D::new(s.0);
-        let d1 = D::new(s.1);
-
-        (SliceMut {s: s.0, dev: d0}, SliceMut {s: s.1, dev: d1})
+        let d = self.dev.split_at(mid);
+        (SliceMut {s: s.0, dev: d.0}, SliceMut {s: s.1, dev: d.1})
     }
 }
 

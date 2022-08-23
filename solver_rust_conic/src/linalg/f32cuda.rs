@@ -1,12 +1,15 @@
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
+use std::rc::Rc;
+use core::cell::RefCell;
 use super::{DevSlice, SliceRef, SliceMut, LinAlg, LinAlgEx};
 use crate::utils::*;
 use rustacuda::prelude::*;
 use rustacuda::memory::DeviceBuffer;
 //
 
-enum CUDAMemUpd
+#[derive(PartialEq, Copy, Clone)]
+enum CUDAMemMut
 {
     Sync,
     Host,
@@ -15,24 +18,34 @@ enum CUDAMemUpd
 
 pub struct F32CUDAMem
 {
-    dev: DeviceBuffer<f32>,
-    upd: CUDAMemUpd,
+    buf: Rc<RefCell<DeviceBuffer<f32>>>,
+    ofs: usize,
+    len: usize,
+    mutator: CUDAMemMut,
 }
 
 impl F32CUDAMem
 {
-    fn sync(&mut self, s: &mut[f32])
+    fn sync(&mut self, s: &mut[f32], next_mutator: CUDAMemMut)
     {
-        match self.upd {
-            CUDAMemUpd::Sync => {},
-            CUDAMemUpd::Host => {
-                self.dev.copy_from(s).unwrap();
-            },
-            CUDAMemUpd::Dev => {
-                self.dev.copy_to(s).unwrap();
-            },
+        if next_mutator != self.mutator {
+            match self.mutator {
+                CUDAMemMut::Sync => {},
+                CUDAMemMut::Host => {
+                    let mut b = self.buf.borrow_mut();
+                    let (_, b) = b.split_at_mut(self.ofs);
+                    let (b, _) = b.split_at_mut(self.len);
+                    b.copy_from(s).unwrap();
+                },
+                CUDAMemMut::Dev => {
+                    let b = self.buf.borrow();
+                    let (_, b) = b.split_at(self.ofs);
+                    let (b, _) = b.split_at(self.len);
+                    b.copy_to(s).unwrap();
+                },
+            }
+            self.mutator = next_mutator;
         }
-        self.upd = CUDAMemUpd::Sync;
     }
 }
 
@@ -40,19 +53,36 @@ impl DevSlice<f32> for F32CUDAMem
 {
     fn new(s: &[f32]) -> Self
     {
-        let dev = DeviceBuffer::from_slice(s).unwrap();
-        F32CUDAMem {dev, upd: CUDAMemUpd::Sync}
+        let buf = DeviceBuffer::from_slice(s).unwrap();
+        F32CUDAMem {
+            buf: Rc::new(RefCell::new(buf)),
+            ofs: 0,
+            len: s.len(),
+            mutator: CUDAMemMut::Sync,
+        }
     }
 
     fn sync_mut(&mut self, s: &mut[f32])
     {
-        match self.upd {
-            CUDAMemUpd::Sync | CUDAMemUpd::Host => {},
-            CUDAMemUpd::Dev => {
-                self.dev.copy_to(s).unwrap();
+        self.sync(s, CUDAMemMut::Host);
+    }
+
+    fn split_at(&self, mid: usize) -> (Self, Self)
+    {
+        (
+            F32CUDAMem {
+                buf: self.buf.clone(),
+                ofs: self.ofs,
+                len: mid,
+                mutator: self.mutator,
             },
-        }
-        self.upd = CUDAMemUpd::Host;
+            F32CUDAMem {
+                buf: self.buf.clone(),
+                ofs: self.ofs + mid,
+                len: self.len - mid,
+                mutator: self.mutator,
+            },
+        )
     }
 }
 

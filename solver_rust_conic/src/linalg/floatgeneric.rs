@@ -11,6 +11,7 @@ impl<F> DevSlice<F> for ()
 {
     fn new(_s: &[F]) -> Self {()}
     fn sync_mut(&mut self, _s: &mut[F]) {}
+    fn split_at(&self, _mid: usize) -> (Self, Self) {((), ())}
 }
 
 impl<F: Float> SliceBuf<F> for [F]
