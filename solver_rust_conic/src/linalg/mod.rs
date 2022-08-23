@@ -11,68 +11,91 @@ where Self: Sized
     fn split_at(&self, mid: usize) -> (Self, Self);
 }
 
-pub struct SliceRef<'a, F, D: DevSlice<F>>
+pub enum Slice<'a, F, D: DevSlice<F>>
 {
-    s: &'a [F],
-    dev: D,
+    Ref(&'a[F], D),
+    Mut(&'a mut[F], D),
 }
 
-impl<'a, F, D: DevSlice<F>> SliceRef<'a, F, D>
+impl<'a, F, D: DevSlice<F>> Slice<'a, F, D>
 {
     pub fn len(&self) -> usize
     {
-        self.s.len()
+        match self {
+            Slice::Ref(slc, _dev) => {slc.len()},
+            Slice::Mut(slc, _dev) => {slc.len()},
+        }
     }
 
     pub fn new_from(s: &'a[F]) -> Self
     {
         let dev = D::new(s);
-        SliceRef {s, dev}
+        Slice::Ref(s, dev)
+    }
+
+    pub fn new_from_mut(s: &'a mut[F]) -> Self
+    {
+        let dev = D::new(s);
+        Slice::Mut(s, dev)
     }
 
     pub fn get(&self) -> &[F]
     {
-        self.s
+        match self {
+            Slice::Ref(slc, _dev) => {
+                slc
+            },
+            Slice::Mut(_slc, _dev) => {
+                panic!();
+            },
+        }
+    }
+
+    pub fn get_mut(&mut self) -> &mut[F]
+    {
+        match self {
+            Slice::Ref(_slc, _dev) => {
+                unreachable!();
+            },
+            Slice::Mut(slc, dev) => {
+                dev.sync_mut(slc);
+                slc
+            },
+        }
     }
 
     pub fn split_at(&'a self, mid: usize) -> (Self, Self)
     {
-        let s = self.s.split_at(mid);
-        let d = self.dev.split_at(mid);
-        (SliceRef {s: s.0, dev: d.0}, SliceRef {s: s.1, dev: d.1})
-    }
-}
-
-pub struct SliceMut<'a, F, D: DevSlice<F>>
-{
-    s: &'a mut [F],
-    dev: D,
-}
-
-impl<'a, F, D: DevSlice<F>> SliceMut<'a, F, D>
-{
-    pub fn len(&self) -> usize
-    {
-        self.s.len()
+        match self {
+            Slice::Ref(slc, dev) => {
+                let slc_spl = slc.split_at(mid);
+                let dev_spl = dev.split_at(mid);
+                (
+                    Slice::Ref(slc_spl.0, dev_spl.0),
+                    Slice::Ref(slc_spl.1, dev_spl.1),
+                )
+            },
+            Slice::Mut(_slc, _dev) => {
+                unreachable!();
+            },
+        }
     }
 
-    pub fn new_from(s: &'a mut[F]) -> Self
+    pub fn split_at_mut(&'a mut self, mid: usize) -> (Self, Self)
     {
-        let dev = D::new(s);
-        SliceMut { s, dev }
-    }
-
-    pub fn get(&mut self) -> &mut[F]
-    {
-        self.dev.sync_mut(self.s);
-        self.s
-    }
-
-    pub fn split_at(&'a mut self, mid: usize) -> (Self, Self)
-    {
-        let s = self.s.split_at_mut(mid);
-        let d = self.dev.split_at(mid);
-        (SliceMut {s: s.0, dev: d.0}, SliceMut {s: s.1, dev: d.1})
+        match self {
+            Slice::Ref(_slc, _dev) => {
+                unreachable!();
+            },
+            Slice::Mut(slc, dev) => {
+                let slc_spl = slc.split_at_mut(mid);
+                let dev_spl = dev.split_at(mid);
+                (
+                    Slice::Mut(slc_spl.0, dev_spl.0),
+                    Slice::Mut(slc_spl.1, dev_spl.1),
+                )
+            },
+        }
     }
 }
 
@@ -129,14 +152,14 @@ pub trait LinAlg<F: Float>
     /// 
     /// * `s` is a scalar \\(s\\).
     /// * `y` is a vector \\(y\\) before entry, \\(s\mathbb{1} + y\\) on exit.
-    fn adds(s: F, y: &mut SliceMut<'_, F, Self::Dev>);
+    fn adds(s: F, y: &mut Slice<'_, F, Self::Dev>);
 
     /// Calculate 1-norm (or sum of absolute values) \\(\\|x\\|_1=\sum_i |x_i|\\).
     /// 
     /// Returns the calculated norm.
     /// * `x` is a vector \\(x\\).
     /// * `incx` is spacing between elements of `x`
-    fn abssum(x: &SliceRef<'_, F, Self::Dev>, incx: usize) -> F;
+    fn abssum(x: &Slice<'_, F, Self::Dev>, incx: usize) -> F;
 
     /// Calculate \\(\alpha D x + \beta y\\),
     /// where \\(D={\bf diag}(d)\\) is a diagonal matrix.
