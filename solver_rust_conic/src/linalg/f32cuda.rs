@@ -19,8 +19,8 @@ enum CUDAMemMut
 pub struct F32CUDAMem
 {
     buf: Rc<RefCell<DeviceBuffer<f32>>>,
-    ofs: usize,
-    len: usize,
+    sta: usize,
+    end: usize,
     mutator: CUDAMemMut,
 }
 
@@ -32,16 +32,12 @@ impl F32CUDAMem
             match self.mutator {
                 CUDAMemMut::Sync => {},
                 CUDAMemMut::Host => {
-                    let mut b = self.buf.borrow_mut();
-                    let (_, b) = b.split_at_mut(self.ofs);
-                    let (b, _) = b.split_at_mut(self.len);
-                    b.copy_from(s).unwrap();
+                    let ds = &mut self.buf.borrow_mut()[self.sta..self.end];
+                    ds.copy_from(s).unwrap();
                 },
                 CUDAMemMut::Dev => {
-                    let b = self.buf.borrow();
-                    let (_, b) = b.split_at(self.ofs);
-                    let (b, _) = b.split_at(self.len);
-                    b.copy_to(s).unwrap();
+                    let ds = &self.buf.borrow()[self.sta..self.end];
+                    ds.copy_to(s).unwrap();
                 },
             }
             self.mutator = next_mutator;
@@ -56,8 +52,8 @@ impl DevSlice<f32> for F32CUDAMem
         let buf = DeviceBuffer::from_slice(s).unwrap();
         F32CUDAMem {
             buf: Rc::new(RefCell::new(buf)),
-            ofs: 0,
-            len: s.len(),
+            sta: 0,
+            end: s.len(),
             mutator: CUDAMemMut::Sync,
         }
     }
@@ -77,14 +73,14 @@ impl DevSlice<f32> for F32CUDAMem
         (
             F32CUDAMem {
                 buf: self.buf.clone(),
-                ofs: self.ofs,
-                len: mid,
+                sta: self.sta,
+                end: self.sta + mid,
                 mutator: self.mutator,
             },
             F32CUDAMem {
                 buf: self.buf.clone(),
-                ofs: self.ofs + mid,
-                len: self.len - mid,
+                sta: self.sta + mid,
+                end: self.end,
                 mutator: self.mutator,
             },
         )
