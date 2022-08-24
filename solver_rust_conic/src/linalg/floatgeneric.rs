@@ -2,7 +2,7 @@ use num_traits::Float;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
-use super::{DevSlice, Slice, SliceBuf, LinAlg, LinAlgEx};
+use super::{DevSlice, SliceRef, SliceMut, SliceBuf, LinAlg, LinAlgEx};
 use crate::utils::*;
 
 //
@@ -100,16 +100,16 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
         }
     }
 
-    fn adds(s: F, y: &mut Slice<'_, F, ()>)
+    fn adds(s: F, y: &mut SliceMut<'_, F, ()>)
     {
-        let y = y.get_mut();
+        let y = y.get();
 
         for v in y {
             *v = *v + s;
         }
     }
     
-    fn abssum(x: &Slice<'_, F, ()>, incx: usize) -> F
+    fn abssum(x: &SliceRef<'_, F, ()>, incx: usize) -> F
     {
         let x = x.get();
 

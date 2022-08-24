@@ -2,7 +2,7 @@ use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
 use std::rc::Rc;
 use core::cell::RefCell;
-use super::{DevSlice, Slice, LinAlg, LinAlgEx};
+use super::{DevSlice, SliceRef, SliceMut, LinAlg, LinAlgEx};
 use crate::utils::*;
 use rustacuda::prelude::*;
 use rustacuda::memory::DeviceBuffer;
@@ -172,16 +172,16 @@ impl LinAlg<f32> for F32CUDA
         }
     }
 
-    fn adds(s: f32, y: &mut Slice<'_, f32, Self::Dev>)
+    fn adds(s: f32, y: &mut SliceMut<'_, f32, Self::Dev>)
     {
-        let y = y.get_mut();
+        let y = y.get();
 
         for v in y {
             *v = *v + s;
         }
     }
     
-    fn abssum(x: &Slice<'_, f32, Self::Dev>, incx: usize) -> f32
+    fn abssum(x: &SliceRef<'_, f32, Self::Dev>, incx: usize) -> f32
     {
         let x = x.get();
 
