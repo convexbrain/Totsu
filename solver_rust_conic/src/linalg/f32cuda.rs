@@ -26,7 +26,7 @@ pub struct F32CUDAMem
 
 impl F32CUDAMem
 {
-    fn sync(&mut self, s: &mut[f32], next_mutator: CUDAMemMut)
+    fn sync_impl(&mut self, s: &mut[f32], next_mutator: CUDAMemMut)
     {
         if next_mutator != self.mutator {
             match self.mutator {
@@ -62,9 +62,14 @@ impl DevSlice<f32> for F32CUDAMem
         }
     }
 
+    fn sync(&mut self, s: &mut[f32])
+    {
+        self.sync_impl(s, CUDAMemMut::Sync);
+    }
+
     fn sync_mut(&mut self, s: &mut[f32])
     {
-        self.sync(s, CUDAMemMut::Host);
+        self.sync_impl(s, CUDAMemMut::Host);
     }
 
     fn split_at(&self, mid: usize) -> (Self, Self)

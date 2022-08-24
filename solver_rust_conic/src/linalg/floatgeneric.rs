@@ -10,6 +10,7 @@ use crate::utils::*;
 impl<F> DevSlice<F> for ()
 {
     fn new(_s: &[F]) -> Self {()}
+    fn sync(&mut self, _s: &mut[F]) {}
     fn sync_mut(&mut self, _s: &mut[F]) {}
     fn split_at(&self, _mid: usize) -> (Self, Self) {((), ())}
 }

@@ -7,6 +7,7 @@ pub trait DevSlice<F>
 where Self: Sized
 {
     fn new(s: &[F]) -> Self;
+    fn sync(&mut self, s: &mut[F]);
     fn sync_mut(&mut self, s: &mut[F]);
     fn split_at(&self, mid: usize) -> (Self, Self);
 }
@@ -73,6 +74,12 @@ impl<'a, F, D: DevSlice<F>> SliceMut<'a, F, D>
         let s = self.s.split_at_mut(mid);
         let d = self.dev.split_at(mid);
         (SliceMut {s: s.0, dev: d.0}, SliceMut {s: s.1, dev: d.1})
+    }
+
+    pub fn into_ref(mut self) -> SliceRef<'a, F, D>
+    {
+        self.dev.sync(self.s);
+        SliceRef {s: self.s, dev: self.dev}
     }
 }
 
