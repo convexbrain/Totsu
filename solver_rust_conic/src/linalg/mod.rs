@@ -3,84 +3,47 @@
 use num_traits::Float;
 use core::ops::{Index, IndexMut};
 
-pub trait DevSlice<F>
-where Self: Sized
-{
-    fn new(s: &[F]) -> Self;
-    fn sync(&mut self, s: &mut[F]);
-    fn sync_mut(&mut self, s: &mut[F]);
-    fn split_at(&self, mid: usize) -> (Self, Self);
-}
+//
 
-pub struct SliceRef<'a, F, D: DevSlice<F>>
+pub struct VecRef<'a, F, D>
 {
-    s: &'a [F],
+    slc: &'a[F],
     dev: D,
 }
 
-impl<'a, F, D: DevSlice<F>> SliceRef<'a, F, D>
+pub struct VecMut<'a, F, D>
 {
-    pub fn len(&self) -> usize
-    {
-        self.s.len()
-    }
-
-    pub fn new_from(s: &'a[F]) -> Self
-    {
-        let dev = D::new(s);
-        SliceRef {s, dev}
-    }
-
-    pub fn get(&self) -> &[F]
-    {
-        self.s
-    }
-
-    pub fn split_at(&'a self, mid: usize) -> (Self, Self)
-    {
-        let s = self.s.split_at(mid);
-        let d = self.dev.split_at(mid);
-        (SliceRef {s: s.0, dev: d.0}, SliceRef {s: s.1, dev: d.1})
-    }
-}
-
-pub struct SliceMut<'a, F, D: DevSlice<F>>
-{
-    s: &'a mut [F],
+    slc: &'a mut[F],
     dev: D,
 }
 
-impl<'a, F, D: DevSlice<F>> SliceMut<'a, F, D>
+impl<'a, F, D> VecRef<'a, F, D>
 {
     pub fn len(&self) -> usize
     {
-        self.s.len()
+        self.slc.len()
     }
+}
 
-    pub fn new_from(s: &'a mut[F]) -> Self
+impl<'a, F, D> VecMut<'a, F, D>
+{
+    pub fn len(&self) -> usize
     {
-        let dev = D::new(s);
-        SliceMut { s, dev }
+        self.slc.len()
     }
+}
 
-    pub fn get(&mut self) -> &mut[F]
-    {
-        self.dev.sync_mut(self.s);
-        self.s
-    }
+pub trait LinMem<F>
+{
+    type Dev;
 
-    pub fn split_at(&'a mut self, mid: usize) -> (Self, Self)
-    {
-        let s = self.s.split_at_mut(mid);
-        let d = self.dev.split_at(mid);
-        (SliceMut {s: s.0, dev: d.0}, SliceMut {s: s.1, dev: d.1})
-    }
+    fn new_from(s: &[F]) -> VecRef<'_, F, Self::Dev>;
+    fn get<'a>(v: &'a VecRef<'_, F, Self::Dev>) -> &'a[F];
+    fn split_at<'a>(v: &'a VecRef<'_, F, Self::Dev>, mid: usize) -> (VecRef<'a, F, Self::Dev>, VecRef<'a, F, Self::Dev>);
 
-    pub fn into_ref(mut self) -> SliceRef<'a, F, D>
-    {
-        self.dev.sync(self.s);
-        SliceRef {s: self.s, dev: self.dev}
-    }
+    fn new_from_mut(s: &mut[F]) -> VecMut<'_, F, Self::Dev>;
+    fn get_mut<'a>(v: &'a mut VecMut<'_, F, Self::Dev>) -> &'a mut[F];
+    fn split_at_mut<'a>(v: &'a mut VecMut<'_, F, Self::Dev>, mid: usize) -> (VecMut<'a, F, Self::Dev>, VecMut<'a, F, Self::Dev>);
 }
 
 // TODO: remove
@@ -100,10 +63,9 @@ pub trait SliceBuf<F: Float>:
 /// 
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-pub trait LinAlg<F: Float>
+pub trait LinAlg<F: Float>: LinMem<F>
 {
     type Vector: SliceBuf<F> + ?Sized; // TODO: remove
-    type Dev: DevSlice<F>;
 
     /// Calculate 2-norm (or euclidean norm) \\(\\|x\\|_2=\sqrt{\sum_i x_i^2}\\).
     /// 
@@ -136,14 +98,14 @@ pub trait LinAlg<F: Float>
     /// 
     /// * `s` is a scalar \\(s\\).
     /// * `y` is a vector \\(y\\) before entry, \\(s\mathbb{1} + y\\) on exit.
-    fn adds(s: F, y: &mut SliceMut<'_, F, Self::Dev>);
+    fn adds(s: F, y: &mut VecMut<'_, F, Self::Dev>);
 
     /// Calculate 1-norm (or sum of absolute values) \\(\\|x\\|_1=\sum_i |x_i|\\).
     /// 
     /// Returns the calculated norm.
     /// * `x` is a vector \\(x\\).
     /// * `incx` is spacing between elements of `x`
-    fn abssum(x: &SliceRef<'_, F, Self::Dev>, incx: usize) -> F;
+    fn abssum(x: &VecRef<'_, F, Self::Dev>, incx: usize) -> F;
 
     /// Calculate \\(\alpha D x + \beta y\\),
     /// where \\(D={\bf diag}(d)\\) is a diagonal matrix.

@@ -1,8 +1,8 @@
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
+use core::cell::{Cell, RefCell};
 use std::rc::Rc;
-use core::cell::RefCell;
-use super::{DevSlice, SliceRef, SliceMut, LinAlg, LinAlgEx};
+use super::{VecRef, VecMut, LinMem, LinAlg, LinAlgEx};
 use crate::utils::*;
 use rustacuda::prelude::*;
 use rustacuda::memory::DeviceBuffer;
@@ -21,53 +21,11 @@ pub struct F32CUDAMem
     buf: Rc<RefCell<DeviceBuffer<f32>>>,
     sta: usize,
     end: usize,
-    mutator: CUDAMemMut,
+    mutator: Cell<CUDAMemMut>,
 }
 
 impl F32CUDAMem
 {
-    fn sync_impl(&mut self, s: &mut[f32], next_mutator: CUDAMemMut)
-    {
-        if next_mutator != self.mutator {
-            match self.mutator {
-                CUDAMemMut::Sync => {},
-                CUDAMemMut::Host => {
-                    let ds = &mut self.buf.borrow_mut()[self.sta..self.end];
-                    ds.copy_from(s).unwrap();
-                },
-                CUDAMemMut::Dev => {
-                    let ds = &self.buf.borrow()[self.sta..self.end];
-                    ds.copy_to(s).unwrap();
-                },
-            }
-            self.mutator = next_mutator;
-        }
-    }
-}
-
-impl DevSlice<f32> for F32CUDAMem
-{
-    fn new(s: &[f32]) -> Self
-    {
-        let buf = DeviceBuffer::from_slice(s).unwrap();
-        F32CUDAMem {
-            buf: Rc::new(RefCell::new(buf)),
-            sta: 0,
-            end: s.len(),
-            mutator: CUDAMemMut::Sync,
-        }
-    }
-
-    fn sync(&mut self, s: &mut[f32])
-    {
-        self.sync_impl(s, CUDAMemMut::Sync);
-    }
-
-    fn sync_mut(&mut self, s: &mut[f32])
-    {
-        self.sync_impl(s, CUDAMemMut::Host);
-    }
-
     fn split_at(&self, mid: usize) -> (Self, Self)
     {
         (
@@ -75,15 +33,71 @@ impl DevSlice<f32> for F32CUDAMem
                 buf: self.buf.clone(),
                 sta: self.sta,
                 end: self.sta + mid,
-                mutator: self.mutator,
+                mutator: self.mutator.clone(),
             },
             F32CUDAMem {
                 buf: self.buf.clone(),
                 sta: self.sta + mid,
                 end: self.end,
-                mutator: self.mutator,
+                mutator: self.mutator.clone(),
             },
         )
+    }
+
+    fn sync_mut(&mut self, s: &mut[f32])
+    {
+        match self.mutator.get() {
+            CUDAMemMut::Sync | CUDAMemMut::Host => {},
+            CUDAMemMut::Dev => {
+                let ds = &self.buf.borrow()[self.sta..self.end];
+                ds.copy_to(s).unwrap();
+            },
+        }
+        self.mutator.set(CUDAMemMut::Host);
+    }
+
+    fn sync_ref(&self, s: &[f32])
+    {
+        match self.mutator.get() {
+            CUDAMemMut::Sync | CUDAMemMut::Host => {},
+            CUDAMemMut::Dev => {
+                let ds = &self.buf.borrow()[self.sta..self.end];
+
+                let us = s as *const[f32] as *mut[f32];
+                unsafe {
+                    // TODO: undefeined behaviour
+                    
+                    let us = us.as_mut().unwrap();
+                    ds.copy_to(us).unwrap();
+                }
+
+                self.mutator.set(CUDAMemMut::Sync);
+            },
+        }
+    }
+
+    fn sync_dev_mut(&mut self, s: &[f32])
+    {
+        match self.mutator.get() {
+            CUDAMemMut::Sync | CUDAMemMut::Dev => {},
+            CUDAMemMut::Host => {
+                let ds = &mut self.buf.borrow_mut()[self.sta..self.end];
+                ds.copy_from(s).unwrap();
+            },
+        }
+        self.mutator.set(CUDAMemMut::Dev);
+    }
+
+    fn sync_dev_ref(&self, s: &[f32])
+    {
+        match self.mutator.get() {
+            CUDAMemMut::Sync | CUDAMemMut::Dev => {},
+            CUDAMemMut::Host => {
+                let ds = &mut self.buf.borrow_mut()[self.sta..self.end];
+                ds.copy_from(s).unwrap();
+                self.mutator.set(CUDAMemMut::Sync);
+            },
+        }
     }
 }
 
@@ -125,10 +139,65 @@ impl F32CUDA
     }
 }
 
+
+impl LinMem<f32> for F32CUDA
+{
+    type Dev = F32CUDAMem;
+
+    fn new_from(s: &[f32]) -> VecRef<'_, f32, F32CUDAMem>
+    {
+        let dev = F32CUDAMem {
+            buf: Rc::new(RefCell::new(DeviceBuffer::from_slice(s).unwrap())),
+            sta: 0,
+            end: s.len(),
+            mutator: Cell::new(CUDAMemMut::Sync),
+        };
+        VecRef {slc: s, dev}
+    }
+    fn get<'a>(v: &'a VecRef<'_, f32, F32CUDAMem>) -> &'a[f32]
+    {
+        v.dev.sync_ref(v.slc);
+        v.slc
+    }
+    fn split_at<'a>(v: &'a VecRef<'_, f32, F32CUDAMem>, mid: usize) -> (VecRef<'a, f32, F32CUDAMem>, VecRef<'a, f32, F32CUDAMem>)
+    {
+        let slcs = v.slc.split_at(mid);
+        let devs = v.dev.split_at(mid);
+        (
+            VecRef {slc: slcs.0, dev: devs.0},
+            VecRef {slc: slcs.1, dev: devs.1},
+        )
+    }
+
+    fn new_from_mut(s: &mut[f32]) -> VecMut<'_, f32, F32CUDAMem>
+    {
+        let dev = F32CUDAMem {
+            buf: Rc::new(RefCell::new(DeviceBuffer::from_slice(s).unwrap())),
+            sta: 0,
+            end: s.len(),
+            mutator: Cell::new(CUDAMemMut::Sync),
+        };
+        VecMut {slc: s, dev}
+    }
+    fn get_mut<'a>(v: &'a mut VecMut<'_, f32, F32CUDAMem>) -> &'a mut[f32]
+    {
+        v.dev.sync_mut(v.slc);
+        v.slc
+    }
+    fn split_at_mut<'a>(v: &'a mut VecMut<'_, f32, F32CUDAMem>, mid: usize) -> (VecMut<'a, f32, F32CUDAMem>, VecMut<'a, f32, F32CUDAMem>)
+    {
+        let slcs = v.slc.split_at_mut(mid);
+        let devs = v.dev.split_at(mid);
+        (
+            VecMut {slc: slcs.0, dev: devs.0},
+            VecMut {slc: slcs.1, dev: devs.1},
+        )
+    }
+}
+
 impl LinAlg<f32> for F32CUDA
 {
     type Vector = [f32];
-    type Dev = F32CUDAMem;
 
     fn norm(x: &[f32]) -> f32
     {
@@ -173,18 +242,18 @@ impl LinAlg<f32> for F32CUDA
         }
     }
 
-    fn adds(s: f32, y: &mut SliceMut<'_, f32, Self::Dev>)
+    fn adds(s: f32, y: &mut VecMut<'_, f32, F32CUDAMem>)
     {
-        let y = y.get();
+        let y = Self::get_mut(y);
 
         for v in y {
             *v = *v + s;
         }
     }
     
-    fn abssum(x: &SliceRef<'_, f32, Self::Dev>, incx: usize) -> f32
+    fn abssum(x: &VecRef<'_, f32, F32CUDAMem>, incx: usize) -> f32
     {
-        let x = x.get();
+        let x = Self::get(x);
 
         if incx == 0 {
             0.

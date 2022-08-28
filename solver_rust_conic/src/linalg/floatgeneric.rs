@@ -2,18 +2,10 @@ use num_traits::Float;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
-use super::{DevSlice, SliceRef, SliceMut, SliceBuf, LinAlg, LinAlgEx};
+use super::{VecRef, VecMut, LinMem, SliceBuf, LinAlg, LinAlgEx};
 use crate::utils::*;
 
 //
-
-impl<F> DevSlice<F> for ()
-{
-    fn new(_s: &[F]) -> Self {()}
-    fn sync(&mut self, _s: &mut[F]) {}
-    fn sync_mut(&mut self, _s: &mut[F]) {}
-    fn split_at(&self, _mid: usize) -> (Self, Self) {((), ())}
-}
 
 impl<F: Float> SliceBuf<F> for [F]
 {
@@ -62,10 +54,48 @@ pub struct FloatGeneric<F>
     ph_f: PhantomData<F>,
 }
 
+impl<F: Float> LinMem<F> for FloatGeneric<F>
+{
+    type Dev = ();
+
+    fn new_from(s: &[F]) -> VecRef<'_, F, ()>
+    {
+        VecRef {slc: s, dev: ()}
+    }
+    fn get<'a>(v: &'a VecRef<'_, F, ()>) -> &'a[F]
+    {
+        v.slc
+    }
+    fn split_at<'a>(v: &'a VecRef<'_, F, ()>, mid: usize) -> (VecRef<'a, F, ()>, VecRef<'a, F, ()>)
+    {
+        let spl = v.slc.split_at(mid);
+        (
+            VecRef {slc: spl.0, dev: ()},
+            VecRef {slc: spl.1, dev: ()},
+        )
+    }
+
+    fn new_from_mut(s: &mut[F]) -> VecMut<'_, F, ()>
+    {
+        VecMut {slc: s, dev: ()}
+    }
+    fn get_mut<'a>(v: &'a mut VecMut<'_, F, ()>) -> &'a mut[F]
+    {
+        v.slc
+    }
+    fn split_at_mut<'a>(v: &'a mut VecMut<'_, F, ()>, mid: usize) -> (VecMut<'a, F, ()>, VecMut<'a, F, ()>)
+    {
+        let spl = v.slc.split_at_mut(mid);
+        (
+            VecMut {slc: spl.0, dev: ()},
+            VecMut {slc: spl.1, dev: ()},
+        )
+    }
+}
+
 impl<F: Float> LinAlg<F> for FloatGeneric<F>
 {
     type Vector = [F];
-    type Dev = ();
 
     fn norm(x: &[F]) -> F
     {
@@ -101,18 +131,18 @@ impl<F: Float> LinAlg<F> for FloatGeneric<F>
         }
     }
 
-    fn adds(s: F, y: &mut SliceMut<'_, F, ()>)
+    fn adds(s: F, y: &mut VecMut<'_, F, ()>)
     {
-        let y = y.get();
+        let y = &mut y.slc;
 
-        for v in y {
+        for v in y.iter_mut() {
             *v = *v + s;
         }
     }
     
-    fn abssum(x: &SliceRef<'_, F, ()>, incx: usize) -> F
+    fn abssum(x: &VecRef<'_, F, ()>, incx: usize) -> F
     {
-        let x = x.get();
+        let x = x.slc;
 
         if incx == 0 {
             F::zero()

@@ -3,7 +3,7 @@
 use num_traits::Float;
 use core::marker::PhantomData;
 use core::fmt::{Debug, Display, LowerExp};
-use crate::linalg::{SliceMut, SliceBuf, LinAlg};
+use crate::linalg::{SliceBuf, LinAlg};
 use crate::operator::Operator;
 use crate::cone::Cone;
 use crate::{splitm, splitm_mut};
@@ -207,7 +207,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operat
         self.c.absadd_rows(tau_x);
         self.a.absadd_rows(tau_y);
         self.b.absadd_rows(tau_y);
-        L::adds(f1, &mut SliceMut::new_from(tau_s.get_mut()));
+        L::adds(f1, &mut L::new_from_mut(tau_s.get_mut()));
         self.c.absadd_cols(tau_tau);
         self.b.absadd_cols(tau_tau);
 
