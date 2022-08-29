@@ -1,6 +1,6 @@
 use num_traits::Float;
 use core::marker::PhantomData;
-use crate::linalg::{SliceBuf, LinAlgEx};
+use crate::linalg::{SliceRef, SliceLike, LinAlgEx};
 use super::Operator;
 
 //
@@ -51,7 +51,7 @@ where L: LinAlgEx<F>, F: Float
 {
     ph_l: PhantomData<L>,
     typ: MatType,
-    array: &'a L::Vector
+    array: SliceRef<'a, L::Slice>
 }
 
 impl<'a, L, F> MatOp<'a, L, F>
@@ -71,16 +71,16 @@ where L: LinAlgEx<F>, F: Float
         MatOp {
             ph_l: PhantomData,
             typ,
-            array: L::Vector::new_from(array)
+            array: L::slice_ref(array)
         }
     }
 
-    fn op_impl(&self, transpose: bool, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector)
+    fn op_impl(&self, transpose: bool, alpha: F, x: &L::Slice, beta: F, y: &mut L::Slice)
     {
         match self.typ {
             MatType::General(nr, nc) => {
                 if nr > 0 && nc > 0 {
-                    L::transform_ge(transpose, nr, nc, alpha, self.array, x, beta, y)
+                    L::transform_ge(transpose, nr, nc, alpha, &self.array, x, beta, y)
                 }
                 else {
                     L::scale(beta, y);
@@ -88,7 +88,7 @@ where L: LinAlgEx<F>, F: Float
             },
             MatType::SymPack(n) => {
                 if n > 0 {
-                    L::transform_sp(n, alpha, self.array, x, beta, y)
+                    L::transform_sp(n, alpha, &self.array, x, beta, y)
                 }
                 else {
                     L::scale(beta, y);
@@ -97,26 +97,26 @@ where L: LinAlgEx<F>, F: Float
         }
     }
 
-    fn absadd_impl(&self, colwise: bool, y: &mut L::Vector)
+    fn absadd_impl(&self, colwise: bool, y: &mut L::Slice)
     {
         match self.typ {
             MatType::General(nr, nc) => {
                 if colwise {
                     assert_eq!(nc, y.len());
                 
-                    let mut array = self.array;
+                    let mut array: &L::Slice = &self.array;
                     for e in y.get_mut() {
                         let (col, rest) = array.split_at(nr);
                         array = rest;
-                        *e = L::abssum(&L::new_from(col.get()), 1) + *e;
+                        *e = L::abssum(col, 1) + *e;
                     }
                 }
                 else {
                     assert_eq!(nr, y.len());
                 
-                    let mut array = self.array;
+                    let mut array: &L::Slice = &self.array;
                     for e in y.get_mut() {
-                        *e = L::abssum(&L::new_from(array.get()), nr) + *e;
+                        *e = L::abssum(array, nr) + *e;
                         let (_, rest) = array.split_at(1);
                         array = rest;
                     }
@@ -125,10 +125,10 @@ where L: LinAlgEx<F>, F: Float
             MatType::SymPack(n) => {
                 assert_eq!(n, y.len());
 
-                let mut array = self.array;
+                let mut array: &L::Slice = &self.array;
                 for n in 0.. {
                     let (col, rest) = array.split_at(n + 1);
-                    y[n] = L::abssum(&L::new_from(col.get()), 1) + y[n];
+                    y[n] = L::abssum(col, 1) + y[n];
                     for i in 0.. n {
                         y[i] = y[i] + col[i].abs();
                     }
@@ -150,22 +150,22 @@ where L: LinAlgEx<F>, F: Float
         self.typ.size()
     }
 
-    fn op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector)
+    fn op(&self, alpha: F, x: &L::Slice, beta: F, y: &mut L::Slice)
     {
         self.op_impl(false, alpha, x, beta, y);
     }
 
-    fn trans_op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector)
+    fn trans_op(&self, alpha: F, x: &L::Slice, beta: F, y: &mut L::Slice)
     {
         self.op_impl(true, alpha, x, beta, y);
     }
 
-    fn absadd_cols(&self, tau: &mut L::Vector)
+    fn absadd_cols(&self, tau: &mut L::Slice)
     {
         self.absadd_impl(true, tau);
     }
 
-    fn absadd_rows(&self, sigma: &mut L::Vector)
+    fn absadd_rows(&self, sigma: &mut L::Slice)
     {
         self.absadd_impl(false, sigma);
     }
