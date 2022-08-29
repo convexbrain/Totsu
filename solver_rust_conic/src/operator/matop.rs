@@ -128,9 +128,9 @@ where L: LinAlgEx<F>, F: Float
                 let mut array: &L::Slice = &self.array;
                 for n in 0.. {
                     let (col, rest) = array.split_at(n + 1);
-                    y[n] = L::abssum(col, 1) + y[n];
+                    y.get_mut()[n] = L::abssum(col, 1) + y.get()[n];
                     for i in 0.. n {
-                        y[i] = y[i] + col[i].abs();
+                        y.get_mut()[i] = y.get()[i] + col.get()[i].abs();
                     }
                     array = rest;
                     if array.len() == 0 {

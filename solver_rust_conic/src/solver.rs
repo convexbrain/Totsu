@@ -133,11 +133,11 @@ where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operat
         let mut sq_norm = f0;
 
         for row in 0.. op.size().1 {
-            work_v[row] = f1;
+            work_v.get_mut()[row] = f1;
             op.op(f1, work_v, f0, work_t);
             let n = L::norm(work_t);
             sq_norm = sq_norm + n * n;
-            work_v[row] = f0;
+            work_v.get_mut()[row] = f0;
         }
 
         sq_norm.sqrt()
@@ -526,7 +526,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         L::scale(f0, x);
         L::scale(f0, y);
     
-        x[n + m + m] = f1; // x_tau
+        x.get_mut()[n + m + m] = f1; // x_tau
     
         (x, y, dp_tau, dp_sigma, tmpw)
     }
@@ -546,7 +546,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         // grouping dependent on cone
         let group = |tau_group: &mut L::Slice| {
             if tau_group.len() > 0 {
-                let mut min_t = tau_group[0];
+                let mut min_t = tau_group.get()[0];
                 for t in tau_group.get() {
                     min_t = min_t.min(*t);
                 }
@@ -584,9 +584,9 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
 
             self.cone.proj(true, x_y).or(Err(SolverError::ConeFailure))?;
             self.cone.proj(false, x_s).or(Err(SolverError::ConeFailure))?;
-            x_tau[0] = x_tau[0].max(f0);
+            x_tau.get_mut()[0] = x_tau.get()[0].max(f0);
 
-            val_tau = x_tau[0];
+            val_tau = x_tau.get()[0];
         }
 
         L::add(-f1-f1, x, rx); // rx := x_k - 2 * x_{k+1}
@@ -600,7 +600,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         { // Projection prox_F*(y)
             splitm_mut!(y, (_y_nm; n + m), (y_1; 1));
 
-            y_1[0] = y_1[0].min(f0);
+            y_1.get_mut()[0] = y_1.get()[0].min(f0);
         }
 
         Ok(val_tau)
@@ -617,7 +617,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         let f0 = F::zero();
         let f1 = F::one();
     
-        let val_tau = x_tau[0];
+        let val_tau = x_tau.get()[0];
         assert!(val_tau > f0);
     
         let mut work1 = [f1];
@@ -633,10 +633,10 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         self.op_k.a().trans_op(val_tau.recip(), x_y, f1, d);
     
         self.op_k.c().trans_op(val_tau.recip(), x_x, f0, &mut work_one);
-        let g_x = work_one[0];
+        let g_x = work_one.get()[0];
     
         self.op_k.b().trans_op(val_tau.recip(), x_y, f0, &mut work_one);
-        let g_y = work_one[0];
+        let g_y = work_one.get()[0];
     
         let g = g_x + g_y;
     
@@ -670,10 +670,10 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         self.op_k.a().trans_op(f1, x_y, f0, d);
 
         self.op_k.c().trans_op(-f1, x_x, f0, &mut work_one);
-        let m_cx = work_one[0];
+        let m_cx = work_one.get()[0];
 
         self.op_k.b().trans_op(-f1, x_y, f0, &mut work_one);
-        let m_by = work_one[0];
+        let m_by = work_one.get()[0];
 
         let cri_unbdd = if m_cx > self.par.eps_zero {
             L::norm(p) * norm_c / m_cx

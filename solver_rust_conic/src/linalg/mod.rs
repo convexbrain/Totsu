@@ -1,12 +1,11 @@
 //! Linear algebra
 
 use num_traits::Float;
-use core::ops::{Index, IndexMut, Deref, DerefMut};
+use core::ops::{Deref, DerefMut};
 
 //
 
-pub trait SliceLike<F>:
-    Index<usize, Output=F> + IndexMut<usize, Output=F> // TODO: cause of inefficiency
+pub trait SliceLike<F>
 {
     fn len(&self) -> usize;
     fn split_at(&self, mid: usize) -> (&Self, &Self);
