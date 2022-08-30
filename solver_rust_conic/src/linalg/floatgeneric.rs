@@ -2,10 +2,12 @@ use num_traits::Float;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
-use super::{SliceRef, SliceMut, SliceLike, LinMem, LinAlg, LinAlgEx};
+use super::{SliceRef, SliceMut, SliceDrop, SliceLike, LinMem, LinAlg, LinAlgEx};
 use crate::utils::*;
 
 //
+
+impl<F: Float> SliceDrop for [F] {}
 
 impl<F: Float> SliceLike<F> for [F]
 {

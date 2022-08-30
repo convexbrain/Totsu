@@ -1,46 +1,65 @@
 //! Linear algebra
 
 use num_traits::Float;
-use core::ops::{Deref, DerefMut};
+use core::ops::{Deref, DerefMut, Drop};
 
 //
 
-pub trait SliceLike<F>
+pub trait SliceDrop
 {
-    fn len(&self) -> usize;
-    fn split_at(&self, mid: usize) -> (&Self, &Self);
-    fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self);
-    fn get(&self) -> &[F]; // TODO: cause of inefficiency
-    fn get_mut(&mut self) -> &mut[F]; // TODO: cause of inefficiency
+    fn drop(&self) {}
 }
 
-#[derive(Debug, Clone)]
-pub struct SliceRef<'a, S: ?Sized>
+#[derive(Debug)] // NOTE: Do not derive clone, or the functionality of SliceDrop may break.
+pub struct SliceRef<'a, S: SliceDrop + ?Sized>
 {
     s: &'a S,
 }
 
-impl<'a, S: ?Sized> Deref for SliceRef<'a, S>
+impl<'a, S: SliceDrop + ?Sized> Deref for SliceRef<'a, S>
 {
     type Target = S;
     fn deref(&self) -> &Self::Target {self.s}
 }
 
+impl<'a, S: SliceDrop + ?Sized> Drop for SliceRef<'a, S>
+{
+    fn drop(&mut self) {
+        self.s.drop();
+    }
+}
+
 #[derive(Debug)]
-pub struct SliceMut<'a, S: ?Sized>
+pub struct SliceMut<'a, S: SliceDrop + ?Sized>
 {
     s: &'a mut S,
 }
 
-impl<'a, S: ?Sized> Deref for SliceMut<'a, S>
+impl<'a, S: SliceDrop + ?Sized> Deref for SliceMut<'a, S>
 {
     type Target = S;
     fn deref(&self) -> &Self::Target {self.s}
 }
 
-impl<'a, S: ?Sized> DerefMut for SliceMut<'a, S>
+impl<'a, S: SliceDrop + ?Sized> DerefMut for SliceMut<'a, S>
 {
     fn deref_mut(&mut self) -> &mut Self::Target {self.s}
+}
+
+impl<'a, S: SliceDrop + ?Sized> Drop for SliceMut<'a, S>
+{
+    fn drop(&mut self) {
+        self.s.drop();
+    }
+}
+
+pub trait SliceLike<F>: SliceDrop
+{
+    fn len(&self) -> usize;
+    fn split_at(&self, mid: usize) -> (&Self, &Self);
+    fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self);
+    fn get(&self) -> &[F];
+    fn get_mut(&mut self) -> &mut[F];
 }
 
 pub trait LinMem<F>

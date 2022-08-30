@@ -45,7 +45,7 @@ impl MatType
 /// Matrix operator
 /// 
 /// Matrix struct which borrows a slice of data array and implements [`Operator`].
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MatOp<'a, L, F>
 where L: LinAlgEx<F>, F: Float
 {
