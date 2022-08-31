@@ -2,48 +2,118 @@ use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
 use core::cell::{Cell, RefCell};
 use std::rc::Rc;
-use super::{VecRef, VecMut, LinMem, LinAlg, LinAlgEx};
+use std::vec::Vec;
+use std::boxed::Box;
+use super::{SliceRef, SliceMut, SliceDrop, SliceLike, LinMem, LinAlg, LinAlgEx};
 use crate::utils::*;
 use rustacuda::prelude::*;
 use rustacuda::memory::DeviceBuffer;
 //
 
-#[derive(PartialEq, Copy, Clone)]
-enum CUDAMemMut
+#[derive(Eq, PartialEq, Copy, Clone)]
+enum CUDASliceMut
 {
     Sync,
     Host,
     Dev,
 }
 
-pub struct F32CUDAMem
+pub struct F32CUDASlice
 {
     buf: Rc<RefCell<DeviceBuffer<f32>>>,
     sta: usize,
     end: usize,
-    mutator: Cell<CUDAMemMut>,
+    mutator: Cell<CUDASliceMut>,
+    vec: Vec<f32>,
 }
 
-impl F32CUDAMem
+// TODO
+static mut SLICE_LIST: Vec<Box<F32CUDASlice>> = Vec::new();
+
+
+impl SliceDrop for F32CUDASlice {}
+
+impl SliceLike<f32> for F32CUDASlice
 {
-    fn split_at(&self, mid: usize) -> (Self, Self)
+    fn len(&self) -> usize
     {
-        (
-            F32CUDAMem {
-                buf: self.buf.clone(),
-                sta: self.sta,
-                end: self.sta + mid,
-                mutator: self.mutator.clone(),
-            },
-            F32CUDAMem {
-                buf: self.buf.clone(),
-                sta: self.sta + mid,
-                end: self.end,
-                mutator: self.mutator.clone(),
-            },
-        )
+        self.end - self.sta
     }
 
+    fn split_at(&self, mid: usize) -> (&Self, &Self)
+    {
+        let s0 = F32CUDASlice {
+            buf: self.buf.clone(),
+            sta: self.sta,
+            end: self.sta + mid,
+            mutator: self.mutator.clone(),
+            vec: Vec::new(),
+        };
+        let s1 = F32CUDASlice {
+            buf: self.buf.clone(),
+            sta: self.sta + mid,
+            end: self.end,
+            mutator: self.mutator.clone(),
+            vec: Vec::new(),
+        };
+
+        // TODO
+        let (ss0, ss1) = unsafe {
+            SLICE_LIST.push(Box::new(s0));
+            SLICE_LIST.push(Box::new(s1));
+
+            let l = SLICE_LIST.len();
+
+            (SLICE_LIST[l - 2].as_ref(), SLICE_LIST[l - 1].as_ref())
+        };
+
+        (ss0, ss1)
+    }
+
+    fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self)
+    {
+        let s0 = F32CUDASlice {
+            buf: self.buf.clone(),
+            sta: self.sta,
+            end: self.sta + mid,
+            mutator: self.mutator.clone(),
+            vec: Vec::new(),
+        };
+        let s1 = F32CUDASlice {
+            buf: self.buf.clone(),
+            sta: self.sta + mid,
+            end: self.end,
+            mutator: self.mutator.clone(),
+            vec: Vec::new(),
+        };
+
+        // TODO
+        let (ss0, ss1) = unsafe {
+            SLICE_LIST.push(Box::new(s0));
+            SLICE_LIST.push(Box::new(s1));
+
+            let l = SLICE_LIST.len();
+
+            (SLICE_LIST[l - 2].as_mut(), SLICE_LIST[l - 1].as_mut())
+        };
+
+        (ss0, ss1)
+    }
+
+    fn get(&self) -> &[f32]
+    {
+        // TODO: sync
+        &self.vec
+    }
+
+    fn get_mut(&mut self) -> &mut[f32]
+    {
+        // TODO: sync
+        &mut self.vec
+    }
+}
+
+/* TODO
     fn sync_mut(&mut self, s: &mut[f32])
     {
         match self.mutator.get() {
@@ -99,17 +169,19 @@ impl F32CUDAMem
             },
         }
     }
-}
+*/
 
 /// TODO
 #[derive(Debug, Clone)]
 pub struct F32CUDA;
 
+// TODO
 static mut CUDA_CONTEXT: Option<Context> = None;
 static mut CUBLAS_CONTEXT: Option<cublas::Context> = None;
 
 impl F32CUDA
 {
+    // TODO
     fn get_context() -> (&'static Context, &'static cublas::Context)
     {
         unsafe {
@@ -142,65 +214,59 @@ impl F32CUDA
 
 impl LinMem<f32> for F32CUDA
 {
-    type Dev = F32CUDAMem;
+    type Slice = F32CUDASlice;
 
-    fn new_from(s: &[f32]) -> VecRef<'_, f32, F32CUDAMem>
+    fn slice_ref(s: &[f32]) -> SliceRef<'_, F32CUDASlice>
     {
-        let dev = F32CUDAMem {
+        let s = F32CUDASlice {
             buf: Rc::new(RefCell::new(DeviceBuffer::from_slice(s).unwrap())),
             sta: 0,
             end: s.len(),
-            mutator: Cell::new(CUDAMemMut::Sync),
+            mutator: Cell::new(CUDASliceMut::Sync),
+            vec: Vec::new(),
         };
-        VecRef {slc: s, dev}
-    }
-    fn get<'a>(v: &'a VecRef<'_, f32, F32CUDAMem>) -> &'a[f32]
-    {
-        v.dev.sync_ref(v.slc);
-        v.slc
-    }
-    fn split_at<'a>(v: &'a VecRef<'_, f32, F32CUDAMem>, mid: usize) -> (VecRef<'a, f32, F32CUDAMem>, VecRef<'a, f32, F32CUDAMem>)
-    {
-        let slcs = v.slc.split_at(mid);
-        let devs = v.dev.split_at(mid);
-        (
-            VecRef {slc: slcs.0, dev: devs.0},
-            VecRef {slc: slcs.1, dev: devs.1},
-        )
+
+        // TODO
+        let ss = unsafe {
+            SLICE_LIST.push(Box::new(s));
+
+            let l = SLICE_LIST.len();
+
+            SLICE_LIST[l - 1].as_ref()
+        };
+
+        SliceRef {s: ss}
     }
 
-    fn new_from_mut(s: &mut[f32]) -> VecMut<'_, f32, F32CUDAMem>
+    fn slice_mut(s: &mut[f32]) -> SliceMut<'_, F32CUDASlice>
     {
-        let dev = F32CUDAMem {
+        let s = F32CUDASlice {
             buf: Rc::new(RefCell::new(DeviceBuffer::from_slice(s).unwrap())),
             sta: 0,
             end: s.len(),
-            mutator: Cell::new(CUDAMemMut::Sync),
+            mutator: Cell::new(CUDASliceMut::Sync),
+            vec: Vec::new(),
         };
-        VecMut {slc: s, dev}
-    }
-    fn get_mut<'a>(v: &'a mut VecMut<'_, f32, F32CUDAMem>) -> &'a mut[f32]
-    {
-        v.dev.sync_mut(v.slc);
-        v.slc
-    }
-    fn split_at_mut<'a>(v: &'a mut VecMut<'_, f32, F32CUDAMem>, mid: usize) -> (VecMut<'a, f32, F32CUDAMem>, VecMut<'a, f32, F32CUDAMem>)
-    {
-        let slcs = v.slc.split_at_mut(mid);
-        let devs = v.dev.split_at(mid);
-        (
-            VecMut {slc: slcs.0, dev: devs.0},
-            VecMut {slc: slcs.1, dev: devs.1},
-        )
+
+        // TODO
+        let ss = unsafe {
+            SLICE_LIST.push(Box::new(s));
+
+            let l = SLICE_LIST.len();
+
+            SLICE_LIST[l - 1].as_mut()
+        };
+
+        SliceMut {s: ss}
     }
 }
 
 impl LinAlg<f32> for F32CUDA
 {
-    type Vector = [f32];
-
-    fn norm(x: &[f32]) -> f32
+    fn norm(x: &F32CUDASlice) -> f32
     {
+        let x = x.get();
+
         let mut sum = 0.;
         for u in x {
             sum = sum + *u * *u;
@@ -208,8 +274,11 @@ impl LinAlg<f32> for F32CUDA
         sum.sqrt()
     }
     
-    fn copy(x: &[f32], y: &mut[f32])
+    fn copy(x: &F32CUDASlice, y: &mut F32CUDASlice)
     {
+        let x = x.get();
+        let y = y.get_mut();
+
         assert_eq!(x.len(), y.len());
     
         for (u, v) in x.iter().zip(y) {
@@ -217,8 +286,11 @@ impl LinAlg<f32> for F32CUDA
         }
     }
 
-    fn scale(alpha: f32, x: &mut[f32])
+    fn scale(alpha: f32, x: &mut F32CUDASlice)
     {
+        let x = x.get_mut();
+
+        // TODO
         let (_, cublas_ctx) = Self::get_context();
 
         let mut x_dev = DeviceBuffer::from_slice(x).unwrap();
@@ -233,8 +305,11 @@ impl LinAlg<f32> for F32CUDA
         x_dev.copy_to(x).unwrap();
     }
     
-    fn add(alpha: f32, x: &[f32], y: &mut[f32])
+    fn add(alpha: f32, x: &F32CUDASlice, y: &mut F32CUDASlice)
     {
+        let x = x.get();
+        let y = y.get_mut();
+
         assert_eq!(x.len(), y.len());
     
         for (u, v) in x.iter().zip(y) {
@@ -242,18 +317,18 @@ impl LinAlg<f32> for F32CUDA
         }
     }
 
-    fn adds(s: f32, y: &mut VecMut<'_, f32, F32CUDAMem>)
+    fn adds(s: f32, y: &mut F32CUDASlice)
     {
-        let y = Self::get_mut(y);
+        let y = y.get_mut();
 
         for v in y {
             *v = *v + s;
         }
     }
     
-    fn abssum(x: &VecRef<'_, f32, F32CUDAMem>, incx: usize) -> f32
+    fn abssum(x: &F32CUDASlice, incx: usize) -> f32
     {
-        let x = Self::get(x);
+        let x = x.get();
 
         if incx == 0 {
             0.
@@ -267,8 +342,12 @@ impl LinAlg<f32> for F32CUDA
         }
     }
 
-    fn transform_di(alpha: f32, mat: &[f32], x: &[f32], beta: f32, y: &mut[f32])
+    fn transform_di(alpha: f32, mat: &F32CUDASlice, x: &F32CUDASlice, beta: f32, y: &mut F32CUDASlice)
     {
+        let mat = mat.get();
+        let x = x.get();
+        let y = y.get_mut();
+
         assert_eq!(mat.len(), x.len());
         assert_eq!(mat.len(), y.len());
 
@@ -563,8 +642,12 @@ fn eig_func_worklen(n: usize) -> usize
 impl LinAlgEx<f32> for F32CUDA
 {
     // y = a*mat*x + b*y
-    fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f32, mat: &[f32], x: &[f32], beta: f32, y: &mut[f32])
+    fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f32, mat: &F32CUDASlice, x: &F32CUDASlice, beta: f32, y: &mut F32CUDASlice)
     {
+        let mat = mat.get();
+        let x = x.get();
+        let y = y.get_mut();
+
         assert_eq!(mat.len(), n_row * n_col);
         if transpose {
             assert_eq!(x.len(), n_row);
@@ -588,8 +671,12 @@ impl LinAlgEx<f32> for F32CUDA
     }
 
     // y = a*mat*x + b*y
-    fn transform_sp(n: usize, alpha: f32, mat: &[f32], x: &[f32], beta: f32, y: &mut[f32])
+    fn transform_sp(n: usize, alpha: f32, mat: &F32CUDASlice, x: &F32CUDASlice, beta: f32, y: &mut F32CUDASlice)
     {
+        let mat = mat.get();
+        let x = x.get();
+        let y = y.get_mut();
+
         assert_eq!(mat.len(), n * (n + 1) / 2);
 
         assert_eq!(x.len(), n);
@@ -616,8 +703,11 @@ impl LinAlgEx<f32> for F32CUDA
         eig_func_worklen(n)
     }
 
-    fn proj_psd(x: &mut[f32], eps_zero: f32, work: &mut[f32])
+    fn proj_psd(x: &mut F32CUDASlice, eps_zero: f32, work: &mut F32CUDASlice)
     {
+        let x = x.get_mut();
+        let work = work.get_mut();
+
         let f0 = 0.;
         let f1 = 1.;
         let f2: f32 = f1 + f1;
@@ -657,8 +747,11 @@ impl LinAlgEx<f32> for F32CUDA
         eig_func_worklen(n)
     }
 
-    fn sqrt_spmat(mat: &mut[f32], eps_zero: f32, work: &mut[f32])
+    fn sqrt_spmat(mat: &mut F32CUDASlice, eps_zero: f32, work: &mut F32CUDASlice)
     {
+        let mat = mat.get_mut();
+        let work = work.get_mut();
+
         let f0 = 0.;
 
         let sn = mat.len();
