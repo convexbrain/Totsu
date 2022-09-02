@@ -1,6 +1,6 @@
 use num_traits::Float;
 use core::marker::PhantomData;
-use crate::linalg::{SliceRef, SliceLike, LinAlgEx};
+use crate::{linalg::{SliceRef, SliceLike, LinAlgEx}, splitm};
 use super::Operator;
 
 //
@@ -102,36 +102,32 @@ impl<'a, L: LinAlgEx> MatOp<'a, L>
                 if colwise {
                     assert_eq!(nc, y.len());
                 
-                    let mut array: &L::Sl = &self.array;
-                    for e in y.get_mut() {
-                        let (col, rest) = array.split_at(nr);
-                        array = rest;
-                        *e = L::abssum(col, 1) + *e;
+                    for (i, e) in y.get_mut().iter_mut().enumerate() {
+                        splitm!(self.array, (_t; i * nr), (col; nr));
+                        *e = L::abssum(&col, 1) + *e;
                     }
                 }
                 else {
                     assert_eq!(nr, y.len());
                 
-                    let mut array: &L::Sl = &self.array;
-                    for e in y.get_mut() {
-                        *e = L::abssum(array, nr) + *e;
-                        let (_, rest) = array.split_at(1);
-                        array = rest;
+                    for (i, e) in y.get_mut().iter_mut().enumerate() {
+                        splitm!(self.array, (_t; i), (row; nr * nc - i));
+                        *e = L::abssum(&row, nr) + *e;
                     }
                 }
             },
             MatType::SymPack(n) => {
                 assert_eq!(n, y.len());
 
-                let mut array: &L::Sl = &self.array;
+                let mut sum = 0;
                 for n in 0.. {
-                    let (col, rest) = array.split_at(n + 1);
-                    y.get_mut()[n] = L::abssum(col, 1) + y.get()[n];
+                    splitm!(self.array, (_t; sum), (col; n + 1));
+                    sum += n + 1;
+                    y.get_mut()[n] = L::abssum(&col, 1) + y.get()[n];
                     for i in 0.. n {
                         y.get_mut()[i] = y.get()[i] + col.get()[i].abs();
                     }
-                    array = rest;
-                    if array.len() == 0 {
+                    if sum == self.array.len() {
                         break;
                     }
                 }

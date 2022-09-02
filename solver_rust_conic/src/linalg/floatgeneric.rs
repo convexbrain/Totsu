@@ -21,14 +21,16 @@ impl<F: Float> SliceLike for [F]
         SliceMut {s}
     }
 
-    fn split_at(&self, mid: usize) -> (&Self, &Self)
+    fn split_at(&self, mid: usize) -> (SliceRef<'_, Self>, SliceRef<'_, Self>)
     {
-        self.split_at(mid)
+        let s = self.split_at(mid);
+        (SliceRef {s: s.0}, SliceRef {s: s.1})
     }
 
-    fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self)
+    fn split_at_mut(&mut self, mid: usize) -> (SliceMut<'_, Self>, SliceMut<'_, Self>)
     {
-        self.split_at_mut(mid)
+        let s = self.split_at_mut(mid);
+        (SliceMut {s: s.0}, SliceMut {s: s.1})
     }
 
     fn len(&self) -> usize

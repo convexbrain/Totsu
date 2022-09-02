@@ -12,8 +12,8 @@ pub trait SliceLike
     fn new(s: &[Self::F]) -> SliceRef<'_, Self>;
     fn new_mut(s: &mut[Self::F]) -> SliceMut<'_, Self>;
 
-    fn split_at(&self, mid: usize) -> (&Self, &Self);
-    fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self);
+    fn split_at(&self, mid: usize) -> (SliceRef<'_, Self>, SliceRef<'_, Self>);
+    fn split_at_mut(&mut self, mid: usize) -> (SliceMut<'_, Self>, SliceMut<'_, Self>);
 
     fn drop(&self) {}
 

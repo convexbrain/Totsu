@@ -2,14 +2,11 @@
 #[macro_export]
 macro_rules! splitm {
     ($slice:expr, $( ($var:ident; $len:expr) ),+ ) => {
-        $( let $var; )*
-        {
-            let (_, mut spl) = $slice.split_at(0);
-            $(
-                ($var, spl) = spl.split_at($len);
-            )*
-            let _ = spl;
-        }
+        let (_, _splitm_rest) = $slice.split_at(0);
+        $(
+            let ($var, _splitm_rest) = _splitm_rest.split_at($len);
+        )*
+        drop(_splitm_rest);
     };
 }
 
@@ -17,14 +14,11 @@ macro_rules! splitm {
 #[macro_export]
 macro_rules! splitm_mut {
     ($slice:expr, $( ($var:ident; $len:expr) ),+ ) => {
-        $( let $var; )*
-        {
-            let (_, mut spl) = $slice.split_at_mut(0);
-            $(
-                ($var, spl) = spl.split_at_mut($len);
-            )*
-            let _ = spl;
-        }
+        let (_, mut _splitm_rest) = $slice.split_at_mut(0);
+        $(
+            let (mut $var, mut _splitm_rest) = _splitm_rest.split_at_mut($len);
+        )*
+        drop(_splitm_rest);
     };
 }
 
