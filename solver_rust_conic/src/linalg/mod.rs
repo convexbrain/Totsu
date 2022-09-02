@@ -15,7 +15,7 @@ pub trait SliceLike
     fn split_at(&self, mid: usize) -> (SliceRef<'_, Self>, SliceRef<'_, Self>);
     fn split_at_mut(&mut self, mid: usize) -> (SliceMut<'_, Self>, SliceMut<'_, Self>);
 
-    fn drop(&self) {}
+    fn drop(&self);
 
     fn len(&self) -> usize;
     fn get(&self) -> &[Self::F];
@@ -130,7 +130,7 @@ pub trait LinAlg
 /// 
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-pub trait LinAlgEx: LinAlg + Clone
+pub trait LinAlgEx: LinAlg
 {
     /// Calculate \\(\alpha G x + \beta y\\).
     /// 

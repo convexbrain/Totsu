@@ -48,8 +48,9 @@ fn test_solver1()
     let mut work = vec![0.; ASolver::query_worklen(op_a.size())];
     let mut sol_x = vec![0.; op_a.size().1];
     let mut sol_y = vec![0.; op_a.size().0];
-    let rslt = s.solve((op_c, op_a, op_b, cone, &mut work), &mut sol_x, &mut sol_y).unwrap();
-    println!("{:?}", rslt);
+    s.solve((op_c, op_a, op_b, cone, &mut work), &mut sol_x, &mut sol_y).unwrap();
+    println!("{:?}", sol_x);
+    println!("{:?}", sol_y);
 
     assert_float_eq!(sol_x[0], -2., abs_all <= 1e-3);
 }

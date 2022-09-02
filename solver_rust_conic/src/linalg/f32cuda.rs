@@ -172,7 +172,6 @@ impl SliceLike<f32> for F32CUDASlice
 */
 
 /// TODO
-#[derive(Debug, Clone)]
 pub struct F32CUDA;
 
 // TODO

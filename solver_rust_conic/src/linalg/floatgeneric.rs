@@ -1,5 +1,4 @@
 use num_traits::Float;
-use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use super::{SliceLike, SliceRef, SliceMut, LinAlg, LinAlgEx};
@@ -33,6 +32,10 @@ impl<F: Float> SliceLike for [F]
         (SliceMut {s: s.0}, SliceMut {s: s.1})
     }
 
+    fn drop(&self)
+    {
+    }
+
     fn len(&self) -> usize
     {
         self.len()
@@ -52,7 +55,6 @@ impl<F: Float> SliceLike for [F]
 /// `num::Float`-generic [`LinAlgEx`] implementation
 /// 
 /// All numeric operations are written in pure Rust, but slow.
-#[derive(Debug, Clone)]
 pub struct FloatGeneric<F>
 {
     ph_f: PhantomData<F>,
