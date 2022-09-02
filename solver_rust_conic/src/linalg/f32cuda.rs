@@ -1,10 +1,12 @@
-use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
 use core::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::vec::Vec;
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::sync::Arc;
 use std::boxed::Box;
-use super::{SliceRef, SliceMut, SliceDrop, SliceLike, LinMem, LinAlg, LinAlgEx};
+use super::{SliceRef, SliceMut, SliceLike, LinAlg, LinAlgEx};
 use crate::utils::*;
 use rustacuda::prelude::*;
 use rustacuda::memory::DeviceBuffer;
@@ -30,17 +32,73 @@ pub struct F32CUDASlice
 // TODO
 static mut SLICE_LIST: Vec<Box<F32CUDASlice>> = Vec::new();
 
-
-impl SliceDrop for F32CUDASlice {}
-
-impl SliceLike<f32> for F32CUDASlice
+struct SliceManager
 {
-    fn len(&self) -> usize
+    cnt: usize,
+    map: Option<HashMap<usize, DeviceBuffer<f32>>>,
+}
+
+impl SliceManager
+{
+    const fn new() -> Self
     {
-        self.end - self.sta
+        SliceManager { cnt: 0, map: None }
+    }
+}
+
+//static mut SLICE_MANAGER: Option<Box<SliceManager>> = None;
+static mut SLICE_MANAGER: Mutex<SliceManager> = Mutex::new(SliceManager::new());
+
+
+impl SliceLike for F32CUDASlice
+{
+    type F = f32;
+
+    fn new(s: &[f32]) -> SliceRef<'_, F32CUDASlice>
+    {
+        let s = F32CUDASlice {
+            buf: Rc::new(RefCell::new(DeviceBuffer::from_slice(s).unwrap())),
+            sta: 0,
+            end: s.len(),
+            mutator: Cell::new(CUDASliceMut::Sync),
+            vec: Vec::new(),
+        };
+
+        // TODO
+        let ss = unsafe {
+            SLICE_LIST.push(Box::new(s));
+
+            let l = SLICE_LIST.len();
+
+            SLICE_LIST[l - 1].as_ref()
+        };
+
+        SliceRef {s: ss}
     }
 
-    fn split_at(&self, mid: usize) -> (&Self, &Self)
+    fn new_mut(s: &mut[f32]) -> SliceMut<'_, F32CUDASlice>
+    {
+        let s = F32CUDASlice {
+            buf: Rc::new(RefCell::new(DeviceBuffer::from_slice(s).unwrap())),
+            sta: 0,
+            end: s.len(),
+            mutator: Cell::new(CUDASliceMut::Sync),
+            vec: Vec::new(),
+        };
+
+        // TODO
+        let ss = unsafe {
+            SLICE_LIST.push(Box::new(s));
+
+            let l = SLICE_LIST.len();
+
+            SLICE_LIST[l - 1].as_mut()
+        };
+
+        SliceMut {s: ss}
+    }
+    
+    fn split_at(&self, mid: usize) -> (SliceRef<'_, F32CUDASlice>, SliceRef<'_, F32CUDASlice>)
     {
         let s0 = F32CUDASlice {
             buf: self.buf.clone(),
@@ -67,10 +125,10 @@ impl SliceLike<f32> for F32CUDASlice
             (SLICE_LIST[l - 2].as_ref(), SLICE_LIST[l - 1].as_ref())
         };
 
-        (ss0, ss1)
+        (SliceRef {s: ss0}, SliceRef {s: ss1})
     }
 
-    fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self)
+    fn split_at_mut(&mut self, mid: usize) -> (SliceMut<'_, F32CUDASlice>, SliceMut<'_, F32CUDASlice>)
     {
         let s0 = F32CUDASlice {
             buf: self.buf.clone(),
@@ -97,7 +155,20 @@ impl SliceLike<f32> for F32CUDASlice
             (SLICE_LIST[l - 2].as_mut(), SLICE_LIST[l - 1].as_mut())
         };
 
-        (ss0, ss1)
+        (SliceMut {s: ss0}, SliceMut {s: ss1})
+    }
+
+    fn drop(&self)
+    {
+        // TODO
+        unsafe {
+            SLICE_LIST.clear();
+        }
+    }
+
+    fn len(&self) -> usize
+    {
+        self.end - self.sta
     }
 
     fn get(&self) -> &[f32]
@@ -211,57 +282,11 @@ impl F32CUDA
 }
 
 
-impl LinMem<f32> for F32CUDA
+impl LinAlg for F32CUDA
 {
-    type Slice = F32CUDASlice;
+    type F = f32;
+    type Sl = F32CUDASlice;
 
-    fn slice_ref(s: &[f32]) -> SliceRef<'_, F32CUDASlice>
-    {
-        let s = F32CUDASlice {
-            buf: Rc::new(RefCell::new(DeviceBuffer::from_slice(s).unwrap())),
-            sta: 0,
-            end: s.len(),
-            mutator: Cell::new(CUDASliceMut::Sync),
-            vec: Vec::new(),
-        };
-
-        // TODO
-        let ss = unsafe {
-            SLICE_LIST.push(Box::new(s));
-
-            let l = SLICE_LIST.len();
-
-            SLICE_LIST[l - 1].as_ref()
-        };
-
-        SliceRef {s: ss}
-    }
-
-    fn slice_mut(s: &mut[f32]) -> SliceMut<'_, F32CUDASlice>
-    {
-        let s = F32CUDASlice {
-            buf: Rc::new(RefCell::new(DeviceBuffer::from_slice(s).unwrap())),
-            sta: 0,
-            end: s.len(),
-            mutator: Cell::new(CUDASliceMut::Sync),
-            vec: Vec::new(),
-        };
-
-        // TODO
-        let ss = unsafe {
-            SLICE_LIST.push(Box::new(s));
-
-            let l = SLICE_LIST.len();
-
-            SLICE_LIST[l - 1].as_mut()
-        };
-
-        SliceMut {s: ss}
-    }
-}
-
-impl LinAlg<f32> for F32CUDA
-{
     fn norm(x: &F32CUDASlice) -> f32
     {
         let x = x.get();
@@ -638,7 +663,7 @@ fn eig_func_worklen(n: usize) -> usize
 
 //
 
-impl LinAlgEx<f32> for F32CUDA
+impl LinAlgEx for F32CUDA
 {
     // y = a*mat*x + b*y
     fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f32, mat: &F32CUDASlice, x: &F32CUDASlice, beta: f32, y: &mut F32CUDASlice)
