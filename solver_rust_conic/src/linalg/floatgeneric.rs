@@ -59,7 +59,7 @@ pub struct FloatGeneric<F>
 impl<F: Float> LinAlg for FloatGeneric<F>
 {
     type F = F;
-    type Slice = [F];
+    type Sl = [F];
 
     fn norm(x: &[F]) -> F
     {

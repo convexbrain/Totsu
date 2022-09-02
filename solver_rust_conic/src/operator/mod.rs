@@ -24,7 +24,7 @@ pub trait Operator<L: LinAlg>
     /// * `y` is a vector \\(y\\) before entry,
     ///   \\(\alpha K x + \beta y\\) on exit.
     ///   The length of `y` shall be \\(m\\).
-    fn op(&self, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice);
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl);
 
     /// Calculate \\(\alpha K^T x + \beta y\\).
     /// 
@@ -70,7 +70,7 @@ pub trait Operator<L: LinAlg>
     ///     }
     /// }
     /// ```
-    fn trans_op(&self, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice);
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl);
 
     /// Calculate \\(\left[ \tau_j + \sum_{i=0}^{m-1}|K_{ij}| \right]_{j=0,...,n-1}\\).
     /// 
@@ -109,7 +109,7 @@ pub trait Operator<L: LinAlg>
     ///     }
     /// }
     /// ```
-    fn absadd_cols(&self, tau: &mut L::Slice);
+    fn absadd_cols(&self, tau: &mut L::Sl);
 
     /// Calculate \\(\left[ \sigma_i + \sum_{j=0}^{n-1}|K_{ij}| \right]_{i=0,...,m-1}\\).
     /// 
@@ -148,7 +148,7 @@ pub trait Operator<L: LinAlg>
     ///     }
     /// }
     /// ```
-    fn absadd_rows(&self, sigma: &mut L::Slice);
+    fn absadd_rows(&self, sigma: &mut L::Sl);
 }
 
 //

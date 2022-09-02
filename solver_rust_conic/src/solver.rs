@@ -106,13 +106,13 @@ where L: LinAlg, OC: Operator<L>, OA: Operator<L>, OB: Operator<L>
     }
 
     fn norm_b(&self,
-        work_v: &mut L::Slice, work_t: &mut L::Slice) -> L::F
+        work_v: &mut L::Sl, work_t: &mut L::Sl) -> L::F
     {
         Self::fr_norm(self.b(), work_v, work_t)
     }
 
     fn norm_c(&self,
-        work_v: &mut L::Slice, work_t: &mut L::Slice) -> L::F
+        work_v: &mut L::Sl, work_t: &mut L::Sl) -> L::F
     {
         Self::fr_norm(self.c(), work_v, work_t)
     }
@@ -120,7 +120,7 @@ where L: LinAlg, OC: Operator<L>, OA: Operator<L>, OB: Operator<L>
     // Frobenius norm
     fn fr_norm<O: Operator<L>>(
         op: &O,
-        work_v: &mut L::Slice, work_t: &mut L::Slice) -> L::F
+        work_v: &mut L::Sl, work_t: &mut L::Sl) -> L::F
     {
         assert_eq!(work_v.len(), op.size().1);
         assert_eq!(work_t.len(), op.size().0);
@@ -142,7 +142,7 @@ where L: LinAlg, OC: Operator<L>, OA: Operator<L>, OB: Operator<L>
         sq_norm.sqrt()
     }
     
-    fn op(&self, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice)
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         let (m, n) = self.a.size();
         
@@ -166,7 +166,7 @@ where L: LinAlg, OC: Operator<L>, OA: Operator<L>, OB: Operator<L>
         self.b.trans_op(-alpha, x_y, f1, y_1);
     }
 
-    fn trans_op(&self, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice)
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         let (m, n) = self.a.size();
         
@@ -192,7 +192,7 @@ where L: LinAlg, OC: Operator<L>, OA: Operator<L>, OB: Operator<L>
         self.b.trans_op(alpha, x_m, f1, y_tau);
     }
 
-    fn abssum(&self, tau: &mut L::Slice, sigma: &mut L::Slice)
+    fn abssum(&self, tau: &mut L::Sl, sigma: &mut L::Sl)
     {
         let (m, n) = self.a.size();
         let f0 = L::F::zero();
@@ -322,8 +322,8 @@ where L::F: Float + Debug + LowerExp
     /// * `cone` is \\(\mathcal{K}\\) expressed by [`Cone`].
     /// * `work` slice is used for temporal variables. [`Solver::solve`] does not rely on dynamic heap allocation.
     pub fn solve<OC, OA, OB, C>(self,
-        (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut L::Slice)
-    ) -> Result<(&L::Slice, &L::Slice), SolverError>
+        (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut L::Sl)
+    ) -> Result<(&L::Sl, &L::Sl), SolverError>
     where OC: Operator<L>, OA: Operator<L>, OB: Operator<L>, C: Cone<L>
     {
         let (m, n) = op_a.size();
@@ -368,7 +368,7 @@ impl<L, OC, OA, OB, C> SolverCore<L, OC, OA, OB, C>
 where L: LinAlg, L::F: Float + Debug + LowerExp,
       OC: Operator<L>, OA: Operator<L>, OB: Operator<L>, C: Cone<L>
 {
-    fn solve(mut self, work: &mut L::Slice) -> Result<(&L::Slice, &L::Slice), SolverError>
+    fn solve(mut self, work: &mut L::Sl) -> Result<(&L::Sl, &L::Sl), SolverError>
     {
         log::info!("----- Initializing");
         let (m, n) = self.op_k.a().size();
@@ -481,11 +481,11 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         } // end of loop
     }
 
-    fn calc_norms(&mut self, work: &mut L::Slice)
+    fn calc_norms(&mut self, work: &mut L::Sl)
     -> (L::F, L::F)
     {
         let mut work1 = [L::F::zero()];
-        let mut work_one = L::Slice::new_mut(&mut work1);
+        let mut work_one = L::Sl::new_mut(&mut work1);
         
         let norm_b = {
             let (m, _) = self.op_k.b().size();
@@ -504,8 +504,8 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         (norm_b, norm_c)
     }
     
-    fn init_vecs<'b>(&self, work: &'b mut L::Slice)
-    -> (&'b mut L::Slice, &'b mut L::Slice, &'b mut L::Slice, &'b mut L::Slice, &'b mut L::Slice)
+    fn init_vecs<'b>(&self, work: &'b mut L::Sl)
+    -> (&'b mut L::Sl, &'b mut L::Sl, &'b mut L::Sl, &'b mut L::Sl, &'b mut L::Sl)
     {
         let (m, n) = self.op_k.a().size();
 
@@ -528,7 +528,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         (x, y, dp_tau, dp_sigma, tmpw)
     }
 
-    fn calc_precond(&self, dp_tau: &mut L::Slice, dp_sigma: &mut L::Slice)
+    fn calc_precond(&self, dp_tau: &mut L::Sl, dp_sigma: &mut L::Sl)
     {
         let (m, n) = self.op_k.a().size();
 
@@ -541,7 +541,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         }
 
         // grouping dependent on cone
-        let group = |tau_group: &mut L::Slice| {
+        let group = |tau_group: &mut L::Sl| {
             if tau_group.len() > 0 {
                 let mut min_t = tau_group.get()[0];
                 for t in tau_group.get() {
@@ -557,7 +557,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         self.cone.product_group(dpt_cone, group);
     }
 
-    fn update_vecs(&mut self, x: &mut L::Slice, y: &mut L::Slice, dp_tau: &L::Slice, dp_sigma: &L::Slice, tmpw: &mut L::Slice)
+    fn update_vecs(&mut self, x: &mut L::Sl, y: &mut L::Sl, dp_tau: &L::Sl, dp_sigma: &L::Sl, tmpw: &mut L::Sl)
     -> Result<L::F, SolverError>
     {
         let (m, n) = self.op_k.a().size();
@@ -603,7 +603,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         Ok(val_tau)
     }
 
-    fn criteria_conv(&self, x: &L::Slice, norm_c: L::F, norm_b: L::F, tmpw: &mut L::Slice)
+    fn criteria_conv(&self, x: &L::Sl, norm_c: L::F, norm_b: L::F, tmpw: &mut L::Sl)
     -> (L::F, L::F, L::F)
     {
         let (m, n) = self.op_k.a().size();
@@ -618,7 +618,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         assert!(val_tau > f0);
     
         let mut work1 = [f1];
-        let mut work_one = L::Slice::new_mut(&mut work1);
+        let mut work_one = L::Sl::new_mut(&mut work1);
     
         // Calc convergence criteria
         
@@ -644,7 +644,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         (cri_pri, cri_dual, cri_gap)
     }
     
-    fn criteria_inf(&self, x: &L::Slice, norm_c: L::F, norm_b: L::F, tmpw: &mut L::Slice)
+    fn criteria_inf(&self, x: &L::Sl, norm_c: L::F, norm_b: L::F, tmpw: &mut L::Sl)
     -> (L::F, L::F)
     {
         let (m, n) = self.op_k.a().size();
@@ -657,7 +657,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         let finf = L::F::infinity();
     
         let mut work1 = [f0];
-        let mut work_one = L::Slice::new_mut(&mut work1);
+        let mut work_one = L::Sl::new_mut(&mut work1);
 
         // Calc undoundness and infeasibility criteria
         

@@ -50,7 +50,7 @@ pub struct MatOp<'a, L: LinAlgEx>
 {
     ph_l: PhantomData<L>,
     typ: MatType,
-    array: SliceRef<'a, L::Slice>
+    array: SliceRef<'a, L::Sl>
 }
 
 impl<'a, L: LinAlgEx> MatOp<'a, L>
@@ -69,11 +69,11 @@ impl<'a, L: LinAlgEx> MatOp<'a, L>
         MatOp {
             ph_l: PhantomData,
             typ,
-            array: L::Slice::new(array)
+            array: L::Sl::new(array)
         }
     }
 
-    fn op_impl(&self, transpose: bool, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice)
+    fn op_impl(&self, transpose: bool, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         match self.typ {
             MatType::General(nr, nc) => {
@@ -95,14 +95,14 @@ impl<'a, L: LinAlgEx> MatOp<'a, L>
         }
     }
 
-    fn absadd_impl(&self, colwise: bool, y: &mut L::Slice)
+    fn absadd_impl(&self, colwise: bool, y: &mut L::Sl)
     {
         match self.typ {
             MatType::General(nr, nc) => {
                 if colwise {
                     assert_eq!(nc, y.len());
                 
-                    let mut array: &L::Slice = &self.array;
+                    let mut array: &L::Sl = &self.array;
                     for e in y.get_mut() {
                         let (col, rest) = array.split_at(nr);
                         array = rest;
@@ -112,7 +112,7 @@ impl<'a, L: LinAlgEx> MatOp<'a, L>
                 else {
                     assert_eq!(nr, y.len());
                 
-                    let mut array: &L::Slice = &self.array;
+                    let mut array: &L::Sl = &self.array;
                     for e in y.get_mut() {
                         *e = L::abssum(array, nr) + *e;
                         let (_, rest) = array.split_at(1);
@@ -123,7 +123,7 @@ impl<'a, L: LinAlgEx> MatOp<'a, L>
             MatType::SymPack(n) => {
                 assert_eq!(n, y.len());
 
-                let mut array: &L::Slice = &self.array;
+                let mut array: &L::Sl = &self.array;
                 for n in 0.. {
                     let (col, rest) = array.split_at(n + 1);
                     y.get_mut()[n] = L::abssum(col, 1) + y.get()[n];
@@ -147,22 +147,22 @@ impl<'a, L: LinAlgEx> Operator<L> for MatOp<'a, L>
         self.typ.size()
     }
 
-    fn op(&self, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice)
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         self.op_impl(false, alpha, x, beta, y);
     }
 
-    fn trans_op(&self, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice)
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         self.op_impl(true, alpha, x, beta, y);
     }
 
-    fn absadd_cols(&self, tau: &mut L::Slice)
+    fn absadd_cols(&self, tau: &mut L::Sl)
     {
         self.absadd_impl(true, tau);
     }
 
-    fn absadd_rows(&self, sigma: &mut L::Slice)
+    fn absadd_rows(&self, sigma: &mut L::Sl)
     {
         self.absadd_impl(false, sigma);
     }

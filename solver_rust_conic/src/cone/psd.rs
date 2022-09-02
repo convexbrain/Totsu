@@ -20,7 +20,7 @@ use super::Cone;
 pub struct ConePSD<'a, L: LinAlgEx>
 {
     ph_l: PhantomData<L>,
-    work: SliceMut<'a, L::Slice>,
+    work: SliceMut<'a, L::Sl>,
     eps_zero: L::F,
 }
 
@@ -44,7 +44,7 @@ impl<'a, L: LinAlgEx> ConePSD<'a, L>
     {
         ConePSD {
             ph_l: PhantomData::<L>,
-            work: L::Slice::new_mut(work),
+            work: L::Sl::new_mut(work),
             eps_zero,
         }
     }
@@ -52,7 +52,7 @@ impl<'a, L: LinAlgEx> ConePSD<'a, L>
 
 impl<'a, L: LinAlgEx> Cone<L> for ConePSD<'a, L>
 {
-    fn proj(&mut self, _dual_cone: bool, x: &mut L::Slice) -> Result<(), ()>
+    fn proj(&mut self, _dual_cone: bool, x: &mut L::Sl) -> Result<(), ()>
     {
         if self.work.len() < L::proj_psd_worklen(x.len()) {
             log::error!("work shortage: {} given < {} required", self.work.len(), L::proj_psd_worklen(x.len()));
@@ -64,7 +64,7 @@ impl<'a, L: LinAlgEx> Cone<L> for ConePSD<'a, L>
         Ok(())
     }
 
-    fn product_group<G: Fn(&mut L::Slice) + Copy>(&self, dp_tau: &mut L::Slice, group: G)
+    fn product_group<G: Fn(&mut L::Sl) + Copy>(&self, dp_tau: &mut L::Sl, group: G)
     {
         group(dp_tau);
     }
