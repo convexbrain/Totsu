@@ -1,6 +1,5 @@
 //! Linear operator
 
-use num_traits::Float;
 use crate::linalg::LinAlg;
 
 /// Linear operator trait
@@ -9,7 +8,7 @@ use crate::linalg::LinAlg;
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 /// 
 /// Expresses a linear operator \\(K: \mathbb{R}^n \to \mathbb{R}^m\\) (or a matrix \\(K \in \mathbb{R}^{m \times n}\\)).
-pub trait Operator<L: LinAlg<F>, F: Float>
+pub trait Operator<L: LinAlg>
 {
     /// Size of \\(K\\).
     /// 
@@ -25,7 +24,7 @@ pub trait Operator<L: LinAlg<F>, F: Float>
     /// * `y` is a vector \\(y\\) before entry,
     ///   \\(\alpha K x + \beta y\\) on exit.
     ///   The length of `y` shall be \\(m\\).
-    fn op(&self, alpha: F, x: &L::Slice, beta: F, y: &mut L::Slice);
+    fn op(&self, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice);
 
     /// Calculate \\(\alpha K^T x + \beta y\\).
     /// 
@@ -71,7 +70,7 @@ pub trait Operator<L: LinAlg<F>, F: Float>
     ///     }
     /// }
     /// ```
-    fn trans_op(&self, alpha: F, x: &L::Slice, beta: F, y: &mut L::Slice);
+    fn trans_op(&self, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice);
 
     /// Calculate \\(\left[ \tau_j + \sum_{i=0}^{m-1}|K_{ij}| \right]_{j=0,...,n-1}\\).
     /// 

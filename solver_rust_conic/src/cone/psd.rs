@@ -1,4 +1,3 @@
-use num_traits::Float;
 use core::marker::PhantomData;
 use crate::linalg::{SliceMut, SliceLike, LinAlgEx};
 use super::Cone;
@@ -18,16 +17,14 @@ use super::Cone;
 /// \\]
 /// \\( {\rm vec}(X) = (X_{11}\ \sqrt2 X_{12}\ X_{22}\ \sqrt2 X_{13}\ \sqrt2 X_{23}\ X_{33}\ \cdots)^T \\)
 /// which extracts and scales the upper-triangular part of a symmetric matrix X in column-wise.
-pub struct ConePSD<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ConePSD<'a, L: LinAlgEx>
 {
     ph_l: PhantomData<L>,
     work: SliceMut<'a, L::Slice>,
-    eps_zero: F,
+    eps_zero: L::F,
 }
 
-impl<'a, L, F> ConePSD<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> ConePSD<'a, L>
 {
     /// Query of a length of work slice.
     /// 
@@ -43,18 +40,17 @@ where L: LinAlgEx<F>, F: Float
     /// Returns [`ConePSD`] instance.
     /// * `work` slice is used for temporal variables in [`ConePSD::proj`].
     /// * `eps_zero` shall be the same value as [`crate::solver::SolverParam::eps_zero`].
-    pub fn new(work: &'a mut[F], eps_zero: F) -> Self
+    pub fn new(work: &'a mut[L::F], eps_zero: L::F) -> Self
     {
         ConePSD {
             ph_l: PhantomData::<L>,
-            work: L::slice_mut(work),
+            work: L::Slice::new_mut(work),
             eps_zero,
         }
     }
 }
 
-impl<'a, L, F> Cone<L, F> for ConePSD<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Cone<L> for ConePSD<'a, L>
 {
     fn proj(&mut self, _dual_cone: bool, x: &mut L::Slice) -> Result<(), ()>
     {
@@ -92,9 +88,9 @@ fn test_cone_psd1()
         5.,
         0., -5.,
     ];
-    assert!(ConePSD::<L, _>::query_worklen(x.len()) <= 10);
+    assert!(ConePSD::<L>::query_worklen(x.len()) <= 10);
     let w = &mut[0.; 10];
-    let mut c = ConePSD::<L, _>::new(w, 1e-12);
+    let mut c = ConePSD::<L>::new(w, 1e-12);
     c.proj(false, x).unwrap();
     assert_float_eq!(ref_x, x, abs_all <= 1e-6);
 }

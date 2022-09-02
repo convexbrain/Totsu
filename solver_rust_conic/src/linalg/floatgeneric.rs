@@ -2,18 +2,23 @@ use num_traits::Float;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
-use super::{SliceRef, SliceMut, SliceDrop, SliceLike, LinMem, LinAlg, LinAlgEx};
+use super::{SliceLike, SliceRef, SliceMut, LinAlg, LinAlgEx};
 use crate::utils::*;
 
 //
 
-impl<F: Float> SliceDrop for [F] {}
-
-impl<F: Float> SliceLike<F> for [F]
+impl<F: Float> SliceLike for [F]
 {
-    fn len(&self) -> usize
+    type F = F;
+
+    fn new(s: &[F]) -> SliceRef<'_, Self>
     {
-        self.len()
+        SliceRef {s}
+    }
+
+    fn new_mut(s: &mut[F]) -> SliceMut<'_, Self>
+    {
+        SliceMut {s}
     }
 
     fn split_at(&self, mid: usize) -> (&Self, &Self)
@@ -24,6 +29,11 @@ impl<F: Float> SliceLike<F> for [F]
     fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self)
     {
         self.split_at_mut(mid)
+    }
+
+    fn len(&self) -> usize
+    {
+        self.len()
     }
 
     fn get(&self) -> &[F]
@@ -46,22 +56,11 @@ pub struct FloatGeneric<F>
     ph_f: PhantomData<F>,
 }
 
-impl<F: Float> LinMem<F> for FloatGeneric<F>
+impl<F: Float> LinAlg for FloatGeneric<F>
 {
+    type F = F;
     type Slice = [F];
 
-    fn slice_ref(s: &[F]) -> SliceRef<'_, Self::Slice>
-    {
-        SliceRef {s}
-    }
-    fn slice_mut(s: &mut[F]) -> SliceMut<'_, Self::Slice>
-    {
-        SliceMut {s}
-    }
-}
-
-impl<F: Float> LinAlg<F> for FloatGeneric<F>
-{
     fn norm(x: &[F]) -> F
     {
         let mut sum = F::zero();
@@ -410,7 +409,7 @@ fn eig_func_worklen(n: usize) -> usize
 
 //
 
-impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
+impl<F: Float> LinAlgEx for FloatGeneric<F>
 {
     // y = a*mat*x + b*y
     fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: F, mat: &[F], x: &[F], beta: F, y: &mut[F])

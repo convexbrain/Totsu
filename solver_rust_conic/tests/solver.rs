@@ -9,9 +9,9 @@ fn test_solver1()
     let _ = env_logger::builder().is_test(true).try_init();
 
     type LA = FloatGeneric<f64>;
-    type AMatOp<'a> = MatOp<'a, LA, f64>;
-    type AConePSD<'a> = ConePSD<'a, LA, f64>;
-    type ASolver = Solver<LA, f64>;
+    type AMatOp<'a> = MatOp<'a, LA>;
+    type AConePSD<'a> = ConePSD<'a, LA>;
+    type ASolver = Solver<LA>;
 
     let op_c = AMatOp::new(MatType::General(1, 1), &[
         1.,

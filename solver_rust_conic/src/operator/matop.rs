@@ -46,16 +46,14 @@ impl MatType
 /// 
 /// Matrix struct which borrows a slice of data array and implements [`Operator`].
 #[derive(Debug)]
-pub struct MatOp<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct MatOp<'a, L: LinAlgEx>
 {
     ph_l: PhantomData<L>,
     typ: MatType,
     array: SliceRef<'a, L::Slice>
 }
 
-impl<'a, L, F> MatOp<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> MatOp<'a, L>
 {
     /// Creates an instance
     /// 
@@ -64,18 +62,18 @@ where L: LinAlgEx<F>, F: Float
     /// * `array`: data array slice.
     ///   Column-major matrix data shall be stored if [`MatType::General`].
     ///   Symmetric packed form (the upper-triangular part in column-wise) of matrix data shall be stored if [`MatType::SymPack`].
-    pub fn new(typ: MatType, array: &'a[F]) -> Self
+    pub fn new(typ: MatType, array: &'a[L::F]) -> Self
     {
         assert_eq!(typ.len(), array.len());
 
         MatOp {
             ph_l: PhantomData,
             typ,
-            array: L::slice_ref(array)
+            array: L::Slice::new(array)
         }
     }
 
-    fn op_impl(&self, transpose: bool, alpha: F, x: &L::Slice, beta: F, y: &mut L::Slice)
+    fn op_impl(&self, transpose: bool, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice)
     {
         match self.typ {
             MatType::General(nr, nc) => {
@@ -142,20 +140,19 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<'a, L, F> Operator<L, F> for MatOp<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Operator<L> for MatOp<'a, L>
 {
     fn size(&self) -> (usize, usize)
     {
         self.typ.size()
     }
 
-    fn op(&self, alpha: F, x: &L::Slice, beta: F, y: &mut L::Slice)
+    fn op(&self, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice)
     {
         self.op_impl(false, alpha, x, beta, y);
     }
 
-    fn trans_op(&self, alpha: F, x: &L::Slice, beta: F, y: &mut L::Slice)
+    fn trans_op(&self, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice)
     {
         self.op_impl(true, alpha, x, beta, y);
     }
@@ -171,10 +168,9 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<'a, L, F> AsRef<[F]> for MatOp<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> AsRef<[L::F]> for MatOp<'a, L>
 {
-    fn as_ref(&self) -> &[F]
+    fn as_ref(&self) -> &[L::F]
     {
         self.array.get()
     }
@@ -207,7 +203,7 @@ fn test_matop1()
     let x = &mut[0.; 5];
     let y = &mut[0.; 5];
 
-    let m = MatOp::<L, _>::new(MatType::SymPack(5), array);
+    let m = MatOp::<L>::new(MatType::SymPack(5), array);
 
     for i in 0.. x.len() {
         x[i] = 1.;

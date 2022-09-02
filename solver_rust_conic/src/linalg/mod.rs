@@ -5,24 +5,36 @@ use core::ops::{Deref, DerefMut, Drop};
 
 //
 
-pub trait SliceDrop
+pub trait SliceLike
 {
+    type F: Float;
+
+    fn new(s: &[Self::F]) -> SliceRef<'_, Self>;
+    fn new_mut(s: &mut[Self::F]) -> SliceMut<'_, Self>;
+
+    fn split_at(&self, mid: usize) -> (&Self, &Self);
+    fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self);
+
     fn drop(&self) {}
+
+    fn len(&self) -> usize;
+    fn get(&self) -> &[Self::F];
+    fn get_mut(&mut self) -> &mut[Self::F];
 }
 
-#[derive(Debug)] // NOTE: Do not derive clone, or the functionality of SliceDrop may break.
-pub struct SliceRef<'a, S: SliceDrop + ?Sized>
+#[derive(Debug)] // NOTE: Do not derive clone, or the functionality of SliceLike::drop may break.
+pub struct SliceRef<'a, S: SliceLike + ?Sized>
 {
     s: &'a S,
 }
 
-impl<'a, S: SliceDrop + ?Sized> Deref for SliceRef<'a, S>
+impl<'a, S: SliceLike + ?Sized> Deref for SliceRef<'a, S>
 {
     type Target = S;
     fn deref(&self) -> &Self::Target {self.s}
 }
 
-impl<'a, S: SliceDrop + ?Sized> Drop for SliceRef<'a, S>
+impl<'a, S: SliceLike + ?Sized> Drop for SliceRef<'a, S>
 {
     fn drop(&mut self) {
         self.s.drop();
@@ -30,57 +42,43 @@ impl<'a, S: SliceDrop + ?Sized> Drop for SliceRef<'a, S>
 }
 
 #[derive(Debug)]
-pub struct SliceMut<'a, S: SliceDrop + ?Sized>
+pub struct SliceMut<'a, S: SliceLike + ?Sized>
 {
     s: &'a mut S,
 }
 
-impl<'a, S: SliceDrop + ?Sized> Deref for SliceMut<'a, S>
+impl<'a, S: SliceLike + ?Sized> Deref for SliceMut<'a, S>
 {
     type Target = S;
     fn deref(&self) -> &Self::Target {self.s}
 }
 
-impl<'a, S: SliceDrop + ?Sized> DerefMut for SliceMut<'a, S>
+impl<'a, S: SliceLike + ?Sized> DerefMut for SliceMut<'a, S>
 {
     fn deref_mut(&mut self) -> &mut Self::Target {self.s}
 }
 
-impl<'a, S: SliceDrop + ?Sized> Drop for SliceMut<'a, S>
+impl<'a, S: SliceLike + ?Sized> Drop for SliceMut<'a, S>
 {
     fn drop(&mut self) {
         self.s.drop();
     }
 }
 
-pub trait SliceLike<F>: SliceDrop
-{
-    fn len(&self) -> usize;
-    fn split_at(&self, mid: usize) -> (&Self, &Self);
-    fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self);
-    fn get(&self) -> &[F];
-    fn get_mut(&mut self) -> &mut[F];
-}
-
-pub trait LinMem<F>
-{
-    type Slice: SliceLike<F> + ?Sized;
-
-    fn slice_ref(s: &[F]) -> SliceRef<'_, Self::Slice>;
-    fn slice_mut(s: &mut[F]) -> SliceMut<'_, Self::Slice>;
-}
-
 /// Linear algebra trait
 /// 
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-pub trait LinAlg<F: Float>: LinMem<F>
+pub trait LinAlg
 {
+    type F: Float;
+    type Slice: SliceLike<F=Self::F> + ?Sized;
+
     /// Calculate 2-norm (or euclidean norm) \\(\\|x\\|_2=\sqrt{\sum_i x_i^2}\\).
     /// 
     /// Returns the calculated norm.
     /// * `x` is a vector \\(x\\).
-    fn norm(x: &Self::Slice) -> F;
+    fn norm(x: &Self::Slice) -> Self::F;
 
     /// Copy from a vector to another vector.
     /// 
@@ -93,7 +91,7 @@ pub trait LinAlg<F: Float>: LinMem<F>
     /// 
     /// * `alpha` is a scalar \\(\alpha\\).
     /// * `x` is a vector \\(x\\) before entry, \\(\alpha x\\) on exit.
-    fn scale(alpha: F, x: &mut Self::Slice);
+    fn scale(alpha: Self::F, x: &mut Self::Slice);
 
     /// Calculate \\(\alpha x + y\\).
     /// 
@@ -101,20 +99,20 @@ pub trait LinAlg<F: Float>: LinMem<F>
     /// * `x` is a vector \\(x\\).
     /// * `y` is a vector \\(y\\) before entry, \\(\alpha x + y\\) on exit.
     ///   `x` and `y` shall have the same length.
-    fn add(alpha: F, x: &Self::Slice, y: &mut Self::Slice);
+    fn add(alpha: Self::F, x: &Self::Slice, y: &mut Self::Slice);
 
     /// Calculate \\(s\mathbb{1} + y\\).
     /// 
     /// * `s` is a scalar \\(s\\).
     /// * `y` is a vector \\(y\\) before entry, \\(s\mathbb{1} + y\\) on exit.
-    fn adds(s: F, y: &mut Self::Slice);
+    fn adds(s: Self::F, y: &mut Self::Slice);
 
     /// Calculate 1-norm (or sum of absolute values) \\(\\|x\\|_1=\sum_i |x_i|\\).
     /// 
     /// Returns the calculated norm.
     /// * `x` is a vector \\(x\\).
     /// * `incx` is spacing between elements of `x`
-    fn abssum(x: &Self::Slice, incx: usize) -> F;
+    fn abssum(x: &Self::Slice, incx: usize) -> Self::F;
 
     /// Calculate \\(\alpha D x + \beta y\\),
     /// where \\(D={\bf diag}(d)\\) is a diagonal matrix.
@@ -125,14 +123,14 @@ pub trait LinAlg<F: Float>: LinMem<F>
     /// * `beta` is a scalar \\(\beta\\).
     /// * `y` is a vector \\(y\\) before entry, \\(\alpha D x + \beta y\\) on exit.
     ///   `mat`, `x` and `y` shall have the same length.
-    fn transform_di(alpha: F, mat: &Self::Slice, x: &Self::Slice, beta: F, y: &mut Self::Slice);
+    fn transform_di(alpha: Self::F, mat: &Self::Slice, x: &Self::Slice, beta: Self::F, y: &mut Self::Slice);
 }
 
 /// Linear algebra extended subtrait
 /// 
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
+pub trait LinAlgEx: LinAlg + Clone
 {
     /// Calculate \\(\alpha G x + \beta y\\).
     /// 
@@ -148,7 +146,7 @@ pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
     /// * `y` is a vector \\(y\\) before entry,
     ///   \\(\alpha G x + \beta y\\) (or \\(\alpha G^T x + \beta y\\) if `transpose` is `true`) on exit.
     ///   The length of `y` shall be `n_row` (or `n_col` if `transpose` is `true`).
-    fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: F, mat: &Self::Slice, x: &Self::Slice, beta: F, y: &mut Self::Slice);
+    fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: Self::F, mat: &Self::Slice, x: &Self::Slice, beta: Self::F, y: &mut Self::Slice);
 
     /// Calculate \\(\alpha S x + \beta y\\),
     /// where \\(S\\) is a symmetric matrix, supplied in packed form.
@@ -162,7 +160,7 @@ pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
     /// * `beta` is a scalar \\(\beta\\).
     /// * `y` is a vector \\(y\\) before entry, \\(\alpha S x + \beta y\\) on exit.
     ///   The length of `y` shall be `n`.
-    fn transform_sp(n: usize, alpha: F, mat: &Self::Slice, x: &Self::Slice, beta: F, y: &mut Self::Slice);
+    fn transform_sp(n: usize, alpha: Self::F, mat: &Self::Slice, x: &Self::Slice, beta: Self::F, y: &mut Self::Slice);
 
     /// Query of a length of work slice that [`LinAlgEx::proj_psd`] requires.
     /// 
@@ -176,7 +174,7 @@ pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
     ///   The length of `x` shall be \\(\frac12k(k+1)\\)
     /// * `eps_zero` shall be the same value as [`crate::solver::SolverParam::eps_zero`].
     /// * `work` slice is used for temporal variables.
-    fn proj_psd(x: &mut Self::Slice, eps_zero: F, work: &mut Self::Slice);
+    fn proj_psd(x: &mut Self::Slice, eps_zero: Self::F, work: &mut Self::Slice);
 
     /// Query of a length of work slice that [`LinAlgEx::sqrt_spmat`] requires.
     /// 
@@ -192,7 +190,7 @@ pub trait LinAlgEx<F: Float>: LinAlg<F> + Clone
     ///   The length of `mat` shall be \\(\frac12n(n+1)\\).
     /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
     /// * `work` slice is used for temporal variables.
-    fn sqrt_spmat(mat: &mut Self::Slice, eps_zero: F, work: &mut Self::Slice);
+    fn sqrt_spmat(mat: &mut Self::Slice, eps_zero: Self::F, work: &mut Self::Slice);
 }
 
 //

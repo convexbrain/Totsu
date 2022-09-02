@@ -1,6 +1,6 @@
 //! First-order conic linear program solver
 
-use num_traits::Float;
+use num_traits::{Float, Zero, One};
 use core::marker::PhantomData;
 use core::fmt::{Debug, Display, LowerExp};
 use crate::linalg::{SliceLike, LinAlg};
@@ -78,18 +78,17 @@ impl<F: Float> Default for SolverParam<F>
 
 //
 
-struct SelfDualEmbed<F, L, OC, OA, OB>
-where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operator<L, F>
+struct SelfDualEmbed<L, OC, OA, OB>
+where L: LinAlg, OC: Operator<L>, OA: Operator<L>, OB: Operator<L>
 {
-    ph_f: PhantomData<F>,
     ph_l: PhantomData<L>,
     c: OC,
     a: OA,
     b: OB,
 }
 
-impl<F, L, OC, OA, OB> SelfDualEmbed<F, L, OC, OA, OB>
-where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operator<L, F>
+impl<L, OC, OA, OB> SelfDualEmbed<L, OC, OA, OB>
+where L: LinAlg, OC: Operator<L>, OA: Operator<L>, OB: Operator<L>
 {
     fn c(&self) -> &OC
     {
@@ -107,27 +106,27 @@ where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operat
     }
 
     fn norm_b(&self,
-        work_v: &mut L::Slice, work_t: &mut L::Slice) -> F
+        work_v: &mut L::Slice, work_t: &mut L::Slice) -> L::F
     {
         Self::fr_norm(self.b(), work_v, work_t)
     }
 
     fn norm_c(&self,
-        work_v: &mut L::Slice, work_t: &mut L::Slice) -> F
+        work_v: &mut L::Slice, work_t: &mut L::Slice) -> L::F
     {
         Self::fr_norm(self.c(), work_v, work_t)
     }
 
     // Frobenius norm
-    fn fr_norm<O: Operator<L, F>>(
+    fn fr_norm<O: Operator<L>>(
         op: &O,
-        work_v: &mut L::Slice, work_t: &mut L::Slice) -> F
+        work_v: &mut L::Slice, work_t: &mut L::Slice) -> L::F
     {
         assert_eq!(work_v.len(), op.size().1);
         assert_eq!(work_t.len(), op.size().0);
 
-        let f0 = F::zero();
-        let f1 = F::one();
+        let f0 = L::F::zero();
+        let f1 = L::F::one();
 
         L::scale(f0, work_v);
         let mut sq_norm = f0;
@@ -143,7 +142,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operat
         sq_norm.sqrt()
     }
     
-    fn op(&self, alpha: F, x: &L::Slice, beta: F, y: &mut L::Slice)
+    fn op(&self, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice)
     {
         let (m, n) = self.a.size();
         
@@ -154,7 +153,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operat
 
         splitm_mut!(y, (y_n; n), (y_m; m), (y_1; 1));
 
-        let f1 = F::one();
+        let f1 = L::F::one();
 
         self.a.trans_op(alpha, x_y, beta, y_n);
         self.c.op(alpha, x_tau, f1, y_n);
@@ -167,7 +166,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operat
         self.b.trans_op(-alpha, x_y, f1, y_1);
     }
 
-    fn trans_op(&self, alpha: F, x: &L::Slice, beta: F, y: &mut L::Slice)
+    fn trans_op(&self, alpha: L::F, x: &L::Slice, beta: L::F, y: &mut L::Slice)
     {
         let (m, n) = self.a.size();
         
@@ -178,7 +177,7 @@ where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operat
 
         splitm_mut!(y, (y_x; n), (y_y; m), (y_s; m), (y_tau; 1));
 
-        let f1 = F::one();
+        let f1 = L::F::one();
 
         self.a.trans_op(-alpha, x_m, beta, y_x);
         self.c.op(-alpha, x_1, f1, y_x);
@@ -196,8 +195,8 @@ where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operat
     fn abssum(&self, tau: &mut L::Slice, sigma: &mut L::Slice)
     {
         let (m, n) = self.a.size();
-        let f0 = F::zero();
-        let f1 = F::one();
+        let f0 = L::F::zero();
+        let f1 = L::F::one();
 
         L::scale(f0, tau);
 
@@ -253,16 +252,15 @@ where F: Float, L: LinAlg<F>, OC: Operator<L, F>, OA: Operator<L, F>, OB: Operat
 /// where
 /// * variables \\( y \in \mathbb{R}^m \\)
 /// * \\( \mathcal{K}^* \\) is the dual cone of \\( \mathcal{K} \\).
-pub struct Solver<L: LinAlg<F>, F: Float>
+pub struct Solver<L: LinAlg>
 {
     /// solver parameters.
-    pub par: SolverParam<F>,
+    pub par: SolverParam<L::F>,
 
     ph_l: PhantomData<L>,
 }
 
-impl<L, F> Solver<L, F>
-where L: LinAlg<F>, F: Float
+impl<L: LinAlg> Solver<L>
 {
     /// Query of a length of work slice.
     /// 
@@ -304,15 +302,15 @@ where L: LinAlg<F>, F: Float
     /// Returns [`Solver`] with its parameters changed.
     /// * `f` is a function to change parameters given by its argument.
     pub fn par<P>(mut self, f: P) -> Self
-    where P: FnOnce(&mut SolverParam<F>)
+    where P: FnOnce(&mut SolverParam<L::F>)
     {
         f(&mut self.par);
         self
     }
 }
 
-impl<L, F> Solver<L, F>
-where L: LinAlg<F>, F: Float + Debug + LowerExp
+impl<L: LinAlg> Solver<L>
+where L::F: Float + Debug + LowerExp
 {
     /// Starts to solve a conic linear program.
     /// 
@@ -326,7 +324,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp
     pub fn solve<OC, OA, OB, C>(self,
         (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut L::Slice)
     ) -> Result<(&L::Slice, &L::Slice), SolverError>
-    where OC: Operator<L, F>, OA: Operator<L, F>, OB: Operator<L, F>, C: Cone<L, F>
+    where OC: Operator<L>, OA: Operator<L>, OB: Operator<L>, C: Cone<L>
     {
         let (m, n) = op_a.size();
 
@@ -340,7 +338,6 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp
         }
     
         let op_k = SelfDualEmbed {
-            ph_f: PhantomData::<F>,
             ph_l: PhantomData::<L>,
             c: op_c, a: op_a, b: op_b
         };
@@ -357,19 +354,19 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp
 
 //
 
-struct SolverCore<L, F, OC, OA, OB, C>
-where L: LinAlg<F>, F: Float + Debug + LowerExp,
-      OC: Operator<L, F>, OA: Operator<L, F>, OB: Operator<L, F>, C: Cone<L, F>
+struct SolverCore<L, OC, OA, OB, C>
+where L: LinAlg, L::F: Float + Debug + LowerExp,
+      OC: Operator<L>, OA: Operator<L>, OB: Operator<L>, C: Cone<L>
 {
-    par: SolverParam<F>,
+    par: SolverParam<L::F>,
 
-    op_k: SelfDualEmbed<F, L, OC, OA, OB>,
+    op_k: SelfDualEmbed<L, OC, OA, OB>,
     cone: C,
 }
 
-impl<L, F, OC, OA, OB, C> SolverCore<L, F, OC, OA, OB, C>
-where L: LinAlg<F>, F: Float + Debug + LowerExp,
-      OC: Operator<L, F>, OA: Operator<L, F>, OB: Operator<L, F>, C: Cone<L, F>
+impl<L, OC, OA, OB, C> SolverCore<L, OC, OA, OB, C>
+where L: LinAlg, L::F: Float + Debug + LowerExp,
+      OC: Operator<L>, OA: Operator<L>, OB: Operator<L>, C: Cone<L>
 {
     fn solve(mut self, work: &mut L::Slice) -> Result<(&L::Slice, &L::Slice), SolverError>
     {
@@ -485,10 +482,10 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
     }
 
     fn calc_norms(&mut self, work: &mut L::Slice)
-    -> (F, F)
+    -> (L::F, L::F)
     {
-        let mut work1 = [F::zero()];
-        let mut work_one = L::slice_mut(&mut work1);
+        let mut work1 = [L::F::zero()];
+        let mut work_one = L::Slice::new_mut(&mut work1);
         
         let norm_b = {
             let (m, _) = self.op_k.b().size();
@@ -520,8 +517,8 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
             (tmpw; (n + m + m + 1) * 2)
         );
 
-        let f0 = F::zero();
-        let f1 = F::one();
+        let f0 = L::F::zero();
+        let f1 = L::F::one();
 
         L::scale(f0, x);
         L::scale(f0, y);
@@ -561,7 +558,7 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
     }
 
     fn update_vecs(&mut self, x: &mut L::Slice, y: &mut L::Slice, dp_tau: &L::Slice, dp_sigma: &L::Slice, tmpw: &mut L::Slice)
-    -> Result<F, SolverError>
+    -> Result<L::F, SolverError>
     {
         let (m, n) = self.op_k.a().size();
 
@@ -569,8 +566,8 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
 
         let val_tau;
 
-        let f0 = F::zero();
-        let f1 = F::one();
+        let f0 = L::F::zero();
+        let f1 = L::F::one();
     
         L::copy(x, rx); // rx := x_k
 
@@ -606,22 +603,22 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         Ok(val_tau)
     }
 
-    fn criteria_conv(&self, x: &L::Slice, norm_c: F, norm_b: F, tmpw: &mut L::Slice)
-    -> (F, F, F)
+    fn criteria_conv(&self, x: &L::Slice, norm_c: L::F, norm_b: L::F, tmpw: &mut L::Slice)
+    -> (L::F, L::F, L::F)
     {
         let (m, n) = self.op_k.a().size();
 
         splitm!(x, (x_x; n), (x_y; m), (x_s; m), (x_tau; 1));
         splitm_mut!(tmpw, (p; m), (d; n));
     
-        let f0 = F::zero();
-        let f1 = F::one();
+        let f0 = L::F::zero();
+        let f1 = L::F::one();
     
         let val_tau = x_tau.get()[0];
         assert!(val_tau > f0);
     
         let mut work1 = [f1];
-        let mut work_one = L::slice_mut(&mut work1);
+        let mut work_one = L::Slice::new_mut(&mut work1);
     
         // Calc convergence criteria
         
@@ -647,20 +644,20 @@ where L: LinAlg<F>, F: Float + Debug + LowerExp,
         (cri_pri, cri_dual, cri_gap)
     }
     
-    fn criteria_inf(&self, x: &L::Slice, norm_c: F, norm_b: F, tmpw: &mut L::Slice)
-    -> (F, F)
+    fn criteria_inf(&self, x: &L::Slice, norm_c: L::F, norm_b: L::F, tmpw: &mut L::Slice)
+    -> (L::F, L::F)
     {
         let (m, n) = self.op_k.a().size();
 
         splitm!(x, (x_x; n), (x_y; m), (x_s; m), (_x_tau; 1));
         splitm_mut!(tmpw, (p; m), (d; n));
 
-        let f0 = F::zero();
-        let f1 = F::one();
-        let finf = F::infinity();
+        let f0 = L::F::zero();
+        let f1 = L::F::one();
+        let finf = L::F::infinity();
     
         let mut work1 = [f0];
-        let mut work_one = L::slice_mut(&mut work1);
+        let mut work_one = L::Slice::new_mut(&mut work1);
 
         // Calc undoundness and infeasibility criteria
         
