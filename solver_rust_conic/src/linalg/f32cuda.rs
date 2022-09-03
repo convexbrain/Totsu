@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use std::sync::Arc;
 use std::boxed::Box;
+use std::pin::Pin;
 use super::{SliceRef, SliceMut, SliceLike, LinAlg, LinAlgEx};
 use crate::utils::*;
 use rustacuda::prelude::*;
@@ -26,17 +27,17 @@ unsafe impl Sync for F32CUDABuf {}
 pub struct F32CUDASlice
 {
     idx: usize,
-    buf: Arc<F32CUDABuf>,
+    dev_buf: Arc<F32CUDABuf>,
+    host_buf: Arc<Mutex<Vec<f32>>>,
     sta: usize,
     end: usize,
     mutator: Mutex<CUDASliceMut>,
-    vec: Arc<Mutex<Vec<f32>>>,
 }
 
 struct SliceManager
 {
     cnt: usize,
-    map: HashMap<usize, Box<F32CUDASlice>>,
+    map: HashMap<usize, Pin<Box<F32CUDASlice>>>,
 }
 
 impl SliceManager
@@ -54,16 +55,16 @@ impl SliceManager
 
         let cs = F32CUDASlice {
             idx,
-            buf: Arc::new(F32CUDABuf(DeviceBuffer::from_slice(s).unwrap())),
+            dev_buf: Arc::new(F32CUDABuf(DeviceBuffer::from_slice(s).unwrap())),
+            host_buf: Arc::new(Mutex::new(Vec::from(s))),
             sta: 0,
             end: s.len(),
             mutator: Mutex::new(CUDASliceMut::Sync),
-            vec: Arc::new(Mutex::new(Vec::from(s))),
         };
 
-        let r = self.map.insert(idx, Box::new(cs));
+        let r = self.map.insert(idx, Box::pin(cs));
         assert!(r.is_none());
-        let cs = self.map.get_mut(&idx).unwrap().as_mut();
+        let cs = self.map.get_mut(&idx).unwrap();
 
         unsafe {
             core::mem::transmute::<&mut F32CUDASlice, &'a mut F32CUDASlice>(cs)
@@ -78,18 +79,18 @@ impl SliceManager
 
         let cs = F32CUDASlice {
             idx,
-            buf: cso.buf.clone(),
+            dev_buf: cso.dev_buf.clone(),
+            host_buf: cso.host_buf.clone(),
             sta: cso.sta + sta,
             end: cso.sta + end,
             mutator: Mutex::new(*cso.mutator.lock().unwrap()),
-            vec: cso.vec.clone(),
         };
         assert!(cs.sta <= cs.end);
         assert!(cs.end <= cso.end);
 
-        let r = self.map.insert(idx, Box::new(cs));
+        let r = self.map.insert(idx, Box::pin(cs));
         assert!(r.is_none());
-        let cs = self.map.get_mut(&idx).unwrap().as_mut();
+        let cs = self.map.get_mut(&idx).unwrap();
 
         unsafe {
             core::mem::transmute::<&mut F32CUDASlice, &'a mut F32CUDASlice>(cs)
@@ -98,9 +99,28 @@ impl SliceManager
 
     fn remove(&mut self, cs: &F32CUDASlice)
     {
-        // TODO: sync mutators of split tree
+        // sync mutators of split tree
+        //
+        // parent    child(cs)
+        // Sync   -> Sync       do nothing
+        //        -> Host       change parent to Host
+        //        -> Dev        change parent to Dev
+        // Host   -> Sync       do nothing
+        //        -> Host       do nothing
+        //        -> Dev        copy from Dev to Host
+        // Dev    -> Sync       do nothing
+        //        -> Host       copy from Host to Dev
+        //        -> Dev        do nothing
+
         let idx = cs.idx;
         self.map.remove(&idx).unwrap();
+    }
+}
+
+impl Drop for SliceManager
+{
+    fn drop(&mut self) {
+        assert_eq!(self.map.len(), 0);
     }
 }
 
@@ -173,21 +193,21 @@ impl SliceLike for F32CUDASlice
         match *mutator {
             CUDASliceMut::Sync | CUDASliceMut::Host => {},
             CUDASliceMut::Dev => {
-                let ds = &self.buf.0[self.sta..self.end];
-                let mut vec = self.vec.lock().unwrap();
-                let mut vec_mut = &mut vec[self.sta..self.end];
+                let db = &self.dev_buf.0[self.sta..self.end];
+                let mut hb = self.host_buf.lock().unwrap();
+                let mut hb_mut = &mut hb[self.sta..self.end];
                 
-                ds.copy_to(&mut vec_mut).unwrap();
+                db.copy_to(&mut hb_mut).unwrap();
 
                 *mutator = CUDASliceMut::Sync;
             },
         }
 
-        let vec = self.vec.lock().unwrap();
-        let vec_ref = &vec[self.sta..self.end];
+        let hb = self.host_buf.lock().unwrap();
+        let hb_ref = &hb[self.sta..self.end];
 
         unsafe {
-            core::mem::transmute::<&[f32], &[f32]>(vec_ref)
+            core::mem::transmute::<&[f32], &[f32]>(hb_ref)
         }
     }
 
@@ -199,21 +219,21 @@ impl SliceLike for F32CUDASlice
         match *mutator {
             CUDASliceMut::Sync | CUDASliceMut::Host => {},
             CUDASliceMut::Dev => {
-                let ds = &self.buf.0[self.sta..self.end];
-                let mut vec = self.vec.lock().unwrap();
-                let mut vec_mut = &mut vec[self.sta..self.end];
+                let db = &self.dev_buf.0[self.sta..self.end];
+                let mut hb = self.host_buf.lock().unwrap();
+                let mut hb_mut = &mut hb[self.sta..self.end];
 
-                ds.copy_to(&mut vec_mut).unwrap();
+                db.copy_to(&mut hb_mut).unwrap();
 
                 *mutator = CUDASliceMut::Host;
             },
         }
 
-        let mut vec = self.vec.lock().unwrap();
-        let vec_mut = &mut vec[self.sta..self.end];
+        let mut hb = self.host_buf.lock().unwrap();
+        let hb_mut = &mut hb[self.sta..self.end];
 
         unsafe {
-            core::mem::transmute::<&mut[f32], &mut[f32]>(vec_mut)
+            core::mem::transmute::<&mut[f32], &mut[f32]>(hb_mut)
         }
     }
 }
@@ -287,6 +307,7 @@ struct CudaContext(Context);
 unsafe impl Send for CudaContext {}
 unsafe impl Sync for CudaContext {}
 
+// TODO
 static CUDA_CONTEXT: Lazy<CudaContext> = Lazy::new(|| {
     // Initialize the CUDA API
     rustacuda::init(CudaFlags::empty()).unwrap();
@@ -309,13 +330,14 @@ struct CublasContext(cublas::Context);
 unsafe impl Send for CublasContext {}
 unsafe impl Sync for CublasContext {}
 
-
+// TODO
 static CUBLAS_CONTEXT: Lazy<CublasContext> = Lazy::new(|| {
     let cublas_ctx = cublas::Context::new().unwrap();
 
     CublasContext(cublas_ctx)
 });
 
+//--------------------------------------------------
 
 impl LinAlg for F32CUDA
 {
