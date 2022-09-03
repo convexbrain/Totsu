@@ -328,8 +328,8 @@ where L::F: Float + Debug + LowerExp
     /// * `cone` is \\(\mathcal{K}\\) expressed by [`Cone`].
     /// * `work` slice is used for temporal variables. [`Solver::solve`] does not rely on dynamic heap allocation.
     pub fn solve<OC, OA, OB, C>(self,
-        (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut L::Sl),
-        sol_x: &mut[L::F], sol_y: &mut [L::F]
+        (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut[L::F]),
+        sol_x: &mut[L::F], sol_y: &mut[L::F]
     ) -> Result<(), SolverError>
     where OC: Operator<L>, OA: Operator<L>, OB: Operator<L>, C: Cone<L>
     {
@@ -363,7 +363,7 @@ where L::F: Float + Debug + LowerExp
             cone,
         };
 
-        core.solve(work, sol_x, sol_y)
+        core.solve(&mut L::Sl::new_mut(work), sol_x, sol_y)
     }
 }
 
