@@ -8,6 +8,7 @@ use super::{SliceRef, SliceMut, SliceLike, LinAlg, LinAlgEx};
 use crate::utils::SplitN;
 use rustacuda::prelude::*;
 use rustacuda::memory::{DeviceBuffer, DeviceSlice};
+use cublas_sys::*;
 use once_cell::sync::Lazy;
 
 //
@@ -16,7 +17,7 @@ use once_cell::sync::Lazy;
 pub struct CudaManager
 {
     cuda_ctx: Context,
-    cublas_ctx: cublas::Context,
+    cublas_handle: cublasHandle_t,
 }
 
 unsafe impl Send for CudaManager {}
@@ -36,9 +37,9 @@ impl CudaManager
     }
 
     /// TODO: doc
-    pub fn cublas_context(&self) -> &cublas::Context
+    pub fn cublas_handle(&self) -> &cublasHandle_t
     {
-        &self.cublas_ctx
+        &self.cublas_handle
     }
 }
 
@@ -80,16 +81,19 @@ pub static CUDA_MANAGER: Lazy<CudaManager> = Lazy::new(|| {
     let cuda_ctx = cuda_ctx.unwrap();
 
     // cuBLAS context
-    let cublas_ctx = cublas::Context::new();
-    if cublas_ctx.is_err() {
-        log::error!("cuBLAS context failed to create");
+    let mut cublas_handle: cublasHandle_t = core::ptr::null_mut();
+    unsafe {
+        let st = cublasCreate_v2(&mut cublas_handle);
+        if st != cublasStatus_t::CUBLAS_STATUS_SUCCESS {
+            log::error!("cuBLAS handle failed to create");
+        }
+        assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
     }
-    let cublas_ctx = cublas_ctx.unwrap();
 
     log::debug!("CUDA_MANAGER created");
     CudaManager {
         cuda_ctx,
-        cublas_ctx,
+        cublas_handle,
     }
 });
 
@@ -425,13 +429,15 @@ impl LinAlg for F32CUDA
     {
         let mut result = 0.;
 
-        cublas::API::nrm2(
-            CUDA_MANAGER.cublas_context(),
-            x.get_dev().as_ptr() as *mut f32,
-            &mut result,
-            x.len() as i32,
-            None
-        ).unwrap();
+        unsafe {
+            let st = cublasSnrm2_v2(
+                *CUDA_MANAGER.cublas_handle(),
+                x.len() as i32,
+                x.get_dev().as_ptr(), 1,
+                &mut result
+            );
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+        }
         
         result
     }
@@ -440,55 +446,57 @@ impl LinAlg for F32CUDA
     {
         assert_eq!(x.len(), y.len());
 
-        cublas::API::copy(
-            CUDA_MANAGER.cublas_context(),
-            x.get_dev().as_ptr() as *mut f32,
-            y.get_dev_mut().as_mut_ptr(),
-            x.len() as i32,
-            None,
-            None
-        ).unwrap();
+        unsafe {
+            let st = cublasScopy_v2(
+                *CUDA_MANAGER.cublas_handle(),
+                x.len() as i32,
+                x.get_dev().as_ptr(), 1,
+                y.get_dev_mut().as_mut_ptr(), 1
+            );
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+        }
     }
 
     fn scale(alpha: f32, x: &mut F32CUDASlice)
     {
-        cublas::API::scal(
-            CUDA_MANAGER.cublas_context(),
-            (&alpha as *const f32) as *mut f32,
-            x.get_dev_mut().as_mut_ptr(),
-            x.len() as i32,
-            None
-        ).unwrap();
+        unsafe {
+            let st = cublasSscal_v2(
+                *CUDA_MANAGER.cublas_handle(),
+                x.len() as i32,
+                &alpha, x.get_dev_mut().as_mut_ptr(), 1
+            );
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+        }
     }
     
     fn add(alpha: f32, x: &F32CUDASlice, y: &mut F32CUDASlice)
     {
         assert_eq!(x.len(), y.len());
 
-        cublas::API::axpy(
-            CUDA_MANAGER.cublas_context(),
-            (&alpha as *const f32) as *mut f32,
-            x.get_dev().as_ptr() as *mut f32,
-            y.get_dev_mut().as_mut_ptr(),
-            x.len() as i32,
-            None,
-            None
-        ).unwrap();
+        unsafe {
+            let st = cublasSaxpy_v2(
+                *CUDA_MANAGER.cublas_handle(),
+                x.len() as i32,
+                &alpha, x.get_dev().as_ptr(), 1,
+                y.get_dev_mut().as_mut_ptr(), 1
+            );
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+        }
     }
 
     fn adds(s: f32, y: &mut F32CUDASlice)
     {
         let one = CUDA_MANAGER.buf_from_slice(&[1.]);
 
-        cublas::API::axpy(
-            CUDA_MANAGER.cublas_context(),
-            (&s as *const f32) as *mut f32,
-            one.as_ptr() as *mut f32,
-            y.get_dev_mut().as_mut_ptr(),
-            y.len() as i32,
-            Some(0),
-            None
-        ).unwrap();
+        unsafe {
+            let st = cublasSaxpy_v2(
+                *CUDA_MANAGER.cublas_handle(),
+                y.len() as i32,
+                &s, one.as_ptr(), 0,
+                y.get_dev_mut().as_mut_ptr(), 1
+            );
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+        }
     }
     
     fn abssum(x: &F32CUDASlice, incx: usize) -> f32
@@ -499,13 +507,15 @@ impl LinAlg for F32CUDA
         else {
             let mut result = 0.;
 
-            cublas::API::asum(
-                CUDA_MANAGER.cublas_context(),
-                x.get_dev().as_ptr() as *mut f32,
-                &mut result,
-                ((x.len() + (incx - 1)) / incx) as i32,
-                Some(incx as i32)
-            ).unwrap();
+            unsafe {
+                let st = cublasSasum_v2(
+                    *CUDA_MANAGER.cublas_handle(),
+                    ((x.len() + (incx - 1)) / incx) as i32,
+                    x.get_dev().as_ptr(), incx as i32,
+                    &mut result
+                );
+                assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+            }
 
             result
         }
@@ -513,16 +523,16 @@ impl LinAlg for F32CUDA
 
     fn transform_di(alpha: f32, mat: &F32CUDASlice, x: &F32CUDASlice, beta: f32, y: &mut F32CUDASlice)
     {
-        // TODO: cuda
-        let mat = mat.get();
-        let x = x.get();
-        let y = y.get_mut();
-
-        assert_eq!(mat.len(), x.len());
-        assert_eq!(mat.len(), y.len());
-
-        for (i, v) in y.iter_mut().enumerate() {
-            *v = alpha * mat[i] * x[i] + beta * *v;
+        unsafe {
+            let st = cublasSsbmv_v2(
+                *CUDA_MANAGER.cublas_handle(),
+                cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+                mat.len() as i32, 0,
+                &alpha, mat.get_dev().as_ptr(), 1,
+                x.get_dev().as_ptr(), 1,
+                &beta, y.get_dev_mut().as_mut_ptr(), 1
+            );
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
         }
     }
 }
