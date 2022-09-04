@@ -29,7 +29,7 @@ unsafe impl Sync for F32CUDABuf {}
 pub struct F32CUDASlice
 {
     idx: usize,
-    parent: Option<usize>,
+    parent_idx: Option<usize>,
     dev_buf: Arc<Mutex<F32CUDABuf>>,
     host_buf: Arc<Mutex<Vec<f32>>>,
     sta: usize,
@@ -58,7 +58,7 @@ impl SliceManager
 
         let cs = F32CUDASlice {
             idx,
-            parent: None,
+            parent_idx: None,
             dev_buf: Arc::new(Mutex::new(F32CUDABuf(DeviceBuffer::from_slice(s).unwrap()))),
             host_buf: Arc::new(Mutex::new(Vec::from(s))),
             sta: 0,
@@ -83,7 +83,7 @@ impl SliceManager
 
         let cs = F32CUDASlice {
             idx,
-            parent: Some(cso.idx),
+            parent_idx: Some(cso.idx),
             dev_buf: cso.dev_buf.clone(),
             host_buf: cso.host_buf.clone(),
             sta: cso.sta + sta,
@@ -118,11 +118,11 @@ impl SliceManager
         //        -> Dev        do nothing
         let cs = &self.map[&idx];
         let cs_mut = *cs.mutator.lock().unwrap();
-        let cs_parent = cs.parent;
+        let cs_par_idx = cs.parent_idx;
         let mut cs_par_mut = None;
 
-        if let Some(parent) = cs_parent {
-            let par = self.map.get_mut(&parent).unwrap();
+        if let Some(par_idx) = cs_par_idx {
+            let par = self.map.get_mut(&par_idx).unwrap();
             let mut par_mut = par.mutator.lock().unwrap();
 
             cs_par_mut = Some(*par_mut);
