@@ -10,7 +10,67 @@ use crate::utils::*;
 use rustacuda::prelude::*;
 use rustacuda::memory::DeviceBuffer;
 use once_cell::sync::Lazy;
+
 //
+
+
+
+#[derive(Debug)]
+struct CudaManager
+{
+    cuda_ctx: Context,
+    cublas_ctx: cublas::Context,
+}
+
+unsafe impl Send for CudaManager {}
+unsafe impl Sync for CudaManager {}
+
+impl CudaManager
+{
+    fn buf_from_slice(&self, s: &[f32]) -> DeviceBuffer<f32>
+    {
+        DeviceBuffer::from_slice(s).unwrap()
+    }
+}
+
+static CUDA_MANAGER: Lazy<CudaManager> = Lazy::new(|| {
+    // Initialize the CUDA API
+    rustacuda::init(CudaFlags::empty()).unwrap();
+
+    log::info!(
+        "CUDA driver API version: {}.{}",
+        rustacuda::CudaApiVersion::get().unwrap().major(),
+        rustacuda::CudaApiVersion::get().unwrap().minor(),
+    );
+
+    // Get the first device
+    let device = Device::get_device(0).unwrap();
+
+    log::info!("CUDA device name: {}", device.name().unwrap());
+
+    // Create a context associated to this device
+    let cuda_ctx = Context::create_and_push(
+        ContextFlags::MAP_HOST | ContextFlags::SCHED_AUTO,
+        device
+    ).unwrap();
+
+    log::debug!(
+        "CUDA context created by API version: {}.{}",
+        cuda_ctx.get_api_version().unwrap().major(),
+        cuda_ctx.get_api_version().unwrap().minor(),
+    );
+
+    let cublas_ctx = cublas::Context::new().unwrap();
+
+    log::debug!("cuBLAS context created");
+
+    CudaManager {
+        cuda_ctx,
+        cublas_ctx,
+    }
+});
+
+
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 enum CUDASliceMut
@@ -24,7 +84,6 @@ struct F32CUDABuf(DeviceBuffer<f32>);
 unsafe impl Send for F32CUDABuf {}
 unsafe impl Sync for F32CUDABuf {}
 
-// TODO: Arc Mutex one struct
 /// TODO
 pub struct F32CUDASlice
 {
@@ -45,12 +104,6 @@ struct SliceManager
 
 impl SliceManager
 {
-    fn new() -> Self
-    {
-        std::println!("{:#?}", CUDA_CONTEXT.0); // TODO
-        SliceManager { cnt: 0, map: HashMap::new() }
-    }
-
     fn new_slice<'a>(&mut self, s: &'a[f32]) -> &'a mut F32CUDASlice
     {
         let idx = self.cnt;
@@ -59,7 +112,7 @@ impl SliceManager
         let cs = F32CUDASlice {
             idx,
             parent_idx: None,
-            dev_buf: Arc::new(Mutex::new(F32CUDABuf(DeviceBuffer::from_slice(s).unwrap()))),
+            dev_buf: Arc::new(Mutex::new(F32CUDABuf(CUDA_MANAGER.buf_from_slice(s)))),
             host_buf: Arc::new(Mutex::new(Vec::from(s))),
             sta: 0,
             end: s.len(),
@@ -168,7 +221,10 @@ impl Drop for SliceManager
 }
 
 static SLICE_MANAGER: Lazy<Mutex<SliceManager>> = Lazy::new(|| {
-    Mutex::new(SliceManager::new())
+    Mutex::new(SliceManager {
+        cnt: 0,
+        map: HashMap::new()
+    })
 });
 
 impl SliceLike for F32CUDASlice
@@ -281,104 +337,9 @@ impl SliceLike for F32CUDASlice
     }
 }
 
-/* TODO
-    fn sync_mut(&mut self, s: &mut[f32])
-    {
-        match self.mutator.get() {
-            CUDAMemMut::Sync | CUDAMemMut::Host => {},
-            CUDAMemMut::Dev => {
-                let ds = &self.buf.borrow()[self.sta..self.end];
-                ds.copy_to(s).unwrap();
-            },
-        }
-        self.mutator.set(CUDAMemMut::Host);
-    }
-
-    fn sync_ref(&self, s: &[f32])
-    {
-        match self.mutator.get() {
-            CUDAMemMut::Sync | CUDAMemMut::Host => {},
-            CUDAMemMut::Dev => {
-                let ds = &self.buf.borrow()[self.sta..self.end];
-
-                let us = s as *const[f32] as *mut[f32];
-                unsafe {
-                    // TODO: undefeined behaviour
-                    
-                    let us = us.as_mut().unwrap();
-                    ds.copy_to(us).unwrap();
-                }
-
-                self.mutator.set(CUDAMemMut::Sync);
-            },
-        }
-    }
-
-    fn sync_dev_mut(&mut self, s: &[f32])
-    {
-        match self.mutator.get() {
-            CUDAMemMut::Sync | CUDAMemMut::Dev => {},
-            CUDAMemMut::Host => {
-                let ds = &mut self.buf.borrow_mut()[self.sta..self.end];
-                ds.copy_from(s).unwrap();
-            },
-        }
-        self.mutator.set(CUDAMemMut::Dev);
-    }
-
-    fn sync_dev_ref(&self, s: &[f32])
-    {
-        match self.mutator.get() {
-            CUDAMemMut::Sync | CUDAMemMut::Dev => {},
-            CUDAMemMut::Host => {
-                let ds = &mut self.buf.borrow_mut()[self.sta..self.end];
-                ds.copy_from(s).unwrap();
-                self.mutator.set(CUDAMemMut::Sync);
-            },
-        }
-    }
-*/
-
 
 /// TODO
 pub struct F32CUDA;
-
-
-#[derive(Debug)]
-struct CudaContext(Context);
-
-unsafe impl Send for CudaContext {}
-unsafe impl Sync for CudaContext {}
-
-// TODO
-static CUDA_CONTEXT: Lazy<CudaContext> = Lazy::new(|| {
-    // Initialize the CUDA API
-    rustacuda::init(CudaFlags::empty()).unwrap();
-
-    // Get the first device
-    let device = Device::get_device(0).unwrap();
-
-    // Create a context associated to this device
-    let context = Context::create_and_push(
-        ContextFlags::MAP_HOST | ContextFlags::SCHED_AUTO,
-        device
-    ).unwrap();
-
-    CudaContext(context)
-});
-
-
-struct CublasContext(cublas::Context);
-
-unsafe impl Send for CublasContext {}
-unsafe impl Sync for CublasContext {}
-
-// TODO
-static CUBLAS_CONTEXT: Lazy<CublasContext> = Lazy::new(|| {
-    let cublas_ctx = cublas::Context::new().unwrap();
-
-    CublasContext(cublas_ctx)
-});
 
 //--------------------------------------------------
 
@@ -418,7 +379,7 @@ impl LinAlg for F32CUDA
             *u = alpha * *u;
         }
         /* TODO
-        let mut x_dev = DeviceBuffer::from_slice(x).unwrap();
+        let mut x_dev = CUDA_MANAGER.buf_from_slice(x);
 
         cublas::API::scal(&CUBLAS_CONTEXT.0,
             (&alpha as *const f32) as *mut f32,
