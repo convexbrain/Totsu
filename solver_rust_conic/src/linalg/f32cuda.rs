@@ -24,10 +24,13 @@ struct F32CUDABuf(DeviceBuffer<f32>);
 unsafe impl Send for F32CUDABuf {}
 unsafe impl Sync for F32CUDABuf {}
 
+// TODO: Arc Mutex one struct
+/// TODO
 pub struct F32CUDASlice
 {
     idx: usize,
-    dev_buf: Arc<F32CUDABuf>,
+    parent: Option<usize>,
+    dev_buf: Arc<Mutex<F32CUDABuf>>,
     host_buf: Arc<Mutex<Vec<f32>>>,
     sta: usize,
     end: usize,
@@ -55,7 +58,8 @@ impl SliceManager
 
         let cs = F32CUDASlice {
             idx,
-            dev_buf: Arc::new(F32CUDABuf(DeviceBuffer::from_slice(s).unwrap())),
+            parent: None,
+            dev_buf: Arc::new(Mutex::new(F32CUDABuf(DeviceBuffer::from_slice(s).unwrap()))),
             host_buf: Arc::new(Mutex::new(Vec::from(s))),
             sta: 0,
             end: s.len(),
@@ -79,6 +83,7 @@ impl SliceManager
 
         let cs = F32CUDASlice {
             idx,
+            parent: Some(cso.idx),
             dev_buf: cso.dev_buf.clone(),
             host_buf: cso.host_buf.clone(),
             sta: cso.sta + sta,
@@ -97,7 +102,7 @@ impl SliceManager
         }
     }
 
-    fn remove(&mut self, cs: &F32CUDASlice)
+    fn remove(&mut self, idx: usize)
     {
         // sync mutators of split tree
         //
@@ -111,8 +116,46 @@ impl SliceManager
         // Dev    -> Sync       do nothing
         //        -> Host       copy from Host to Dev
         //        -> Dev        do nothing
+        let cs = &self.map[&idx];
+        let cs_mut = *cs.mutator.lock().unwrap();
+        let cs_parent = cs.parent;
+        let mut cs_par_mut = None;
 
-        let idx = cs.idx;
+        if let Some(parent) = cs_parent {
+            let par = self.map.get_mut(&parent).unwrap();
+            let mut par_mut = par.mutator.lock().unwrap();
+
+            cs_par_mut = Some(*par_mut);
+
+            if *par_mut == CUDASliceMut::Sync {
+                *par_mut = cs_mut;
+            }
+        }
+
+        let cs = self.map.get_mut(&idx).unwrap();
+        if let Some(par_mut) = cs_par_mut {
+            match par_mut {
+                CUDASliceMut::Sync => {},
+                CUDASliceMut::Host => {
+                    if *cs.mutator.lock().unwrap() == CUDASliceMut::Dev {
+                        let db = &cs.dev_buf.lock().unwrap().0[cs.sta..cs.end];
+                        let mut hb = cs.host_buf.lock().unwrap();
+                        let mut hb_mut = &mut hb[cs.sta..cs.end];
+                        
+                        db.copy_to(&mut hb_mut).unwrap();
+                    }
+                },
+                CUDASliceMut::Dev => {
+                    if *cs.mutator.lock().unwrap() == CUDASliceMut::Host {
+                        let db = &mut cs.dev_buf.lock().unwrap().0[cs.sta..cs.end];
+                        let mut hb = cs.host_buf.lock().unwrap();
+                        let mut hb_mut = &mut hb[cs.sta..cs.end];
+                        
+                        db.copy_from(&mut hb_mut).unwrap();
+                    }
+                },
+            }
+        }
         self.map.remove(&idx).unwrap();
     }
 }
@@ -176,7 +219,7 @@ impl SliceLike for F32CUDASlice
     {
         //std::println!("{} drop", self.idx);
         let mut mgr = SLICE_MANAGER.lock().unwrap();
-        mgr.remove(self);
+        mgr.remove(self.idx);
     }
 
     fn len(&self) -> usize
@@ -193,7 +236,7 @@ impl SliceLike for F32CUDASlice
         match *mutator {
             CUDASliceMut::Sync | CUDASliceMut::Host => {},
             CUDASliceMut::Dev => {
-                let db = &self.dev_buf.0[self.sta..self.end];
+                let db = &self.dev_buf.lock().unwrap().0[self.sta..self.end];
                 let mut hb = self.host_buf.lock().unwrap();
                 let mut hb_mut = &mut hb[self.sta..self.end];
                 
@@ -219,7 +262,7 @@ impl SliceLike for F32CUDASlice
         match *mutator {
             CUDASliceMut::Sync | CUDASliceMut::Host => {},
             CUDASliceMut::Dev => {
-                let db = &self.dev_buf.0[self.sta..self.end];
+                let db = &self.dev_buf.lock().unwrap().0[self.sta..self.end];
                 let mut hb = self.host_buf.lock().unwrap();
                 let mut hb_mut = &mut hb[self.sta..self.end];
 
