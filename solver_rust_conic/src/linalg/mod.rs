@@ -5,6 +5,7 @@ use core::ops::{Deref, DerefMut, Drop};
 
 //
 
+// TODO: doc
 pub trait SliceLike
 {
     type F: Float;
@@ -22,6 +23,7 @@ pub trait SliceLike
     fn get_mut(&mut self) -> &mut[Self::F];
 }
 
+// TODO: doc
 #[derive(Debug)] // NOTE: Do not derive clone, or the functionality of SliceLike::drop may break.
 pub struct SliceRef<'a, S: SliceLike + ?Sized>
 {
@@ -41,6 +43,7 @@ impl<'a, S: SliceLike + ?Sized> Drop for SliceRef<'a, S>
     }
 }
 
+// TODO: doc
 #[derive(Debug)]
 pub struct SliceMut<'a, S: SliceLike + ?Sized>
 {

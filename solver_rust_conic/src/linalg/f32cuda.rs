@@ -12,6 +12,7 @@ use once_cell::sync::Lazy;
 
 //
 
+/// TODO: doc
 pub struct CudaManager
 {
     cuda_ctx: Context,
@@ -28,21 +29,29 @@ impl CudaManager
         DeviceBuffer::from_slice(s).unwrap()
     }
 
+    /// TODO: doc
     pub fn context(&self) -> &Context
     {
         &self.cuda_ctx
     }
 
+    /// TODO: doc
     pub fn cublas_context(&self) -> &cublas::Context
     {
         &self.cublas_ctx
     }
 }
 
+/// TODO: doc
 pub static CUDA_MANAGER: Lazy<CudaManager> = Lazy::new(|| {
     // Initialize the CUDA API
-    rustacuda::init(CudaFlags::empty()).unwrap();
+    let r = rustacuda::init(CudaFlags::empty());
+    if r.is_err() {
+        log::error!("CUDA driver initialization failed");
+    }
+    r.unwrap();
 
+    // API version
     log::info!(
         "CUDA driver API version: {}.{}",
         rustacuda::CudaApiVersion::get().unwrap().major(),
@@ -50,26 +59,34 @@ pub static CUDA_MANAGER: Lazy<CudaManager> = Lazy::new(|| {
     );
 
     // Get the first device
-    let device = Device::get_device(0).unwrap();
+    // TODO: num_devices
+    let device = Device::get_device(0);
+    if device.is_err() {
+        log::error!("CUDA device not found");
+    }
+    let device = device.unwrap();
 
+    // Device name
     log::info!("CUDA device name: {}", device.name().unwrap());
 
     // Create a context associated to this device
     let cuda_ctx = Context::create_and_push(
         ContextFlags::MAP_HOST | ContextFlags::SCHED_AUTO,
         device
-    ).unwrap();
-
-    log::debug!(
-        "CUDA context created by API version: {}.{}",
-        cuda_ctx.get_api_version().unwrap().major(),
-        cuda_ctx.get_api_version().unwrap().minor(),
     );
+    if cuda_ctx.is_err() {
+        log::error!("CUDA context failed to create");
+    }
+    let cuda_ctx = cuda_ctx.unwrap();
 
-    let cublas_ctx = cublas::Context::new().unwrap();
+    // cuBLAS context
+    let cublas_ctx = cublas::Context::new();
+    if cublas_ctx.is_err() {
+        log::error!("cuBLAS context failed to create");
+    }
+    let cublas_ctx = cublas_ctx.unwrap();
 
-    log::debug!("cuBLAS context created");
-
+    log::debug!("CUDA_MANAGER created");
     CudaManager {
         cuda_ctx,
         cublas_ctx,
@@ -90,7 +107,7 @@ struct F32CUDABuf(DeviceBuffer<f32>);
 unsafe impl Send for F32CUDABuf {}
 unsafe impl Sync for F32CUDABuf {}
 
-/// TODO
+/// TODO: doc
 pub struct F32CUDASlice
 {
     idx: usize,
@@ -344,6 +361,7 @@ impl SliceLike for F32CUDASlice
 
 impl F32CUDASlice
 {
+    /// TODO: doc
     pub fn get_dev(&self) -> &DeviceSlice<f32>
     {
         let mut mutator = self.mutator.lock().unwrap();
@@ -366,6 +384,7 @@ impl F32CUDASlice
         }
     }
 
+    /// TODO: doc
     pub fn get_dev_mut(&mut self) -> &mut DeviceSlice<f32>
     {
         let mut mutator = self.mutator.lock().unwrap();
@@ -392,7 +411,7 @@ impl F32CUDASlice
     }
 }
 
-/// TODO
+/// TODO: doc
 pub struct F32CUDA;
 
 //--------------------------------------------------
@@ -404,25 +423,31 @@ impl LinAlg for F32CUDA
 
     fn norm(x: &F32CUDASlice) -> f32
     {
-        let x = x.get();
+        let mut result = 0.;
 
-        let mut sum = 0.;
-        for u in x {
-            sum = sum + *u * *u;
-        }
-        sum.sqrt()
+        cublas::API::nrm2(
+            CUDA_MANAGER.cublas_context(),
+            x.get_dev().as_ptr() as *mut f32,
+            &mut result,
+            x.len() as i32,
+            None
+        ).unwrap();
+        
+        result
     }
     
     fn copy(x: &F32CUDASlice, y: &mut F32CUDASlice)
     {
-        let x = x.get();
-        let y = y.get_mut();
-
         assert_eq!(x.len(), y.len());
-    
-        for (u, v) in x.iter().zip(y) {
-            *v = *u;
-        }
+
+        cublas::API::copy(
+            CUDA_MANAGER.cublas_context(),
+            x.get_dev().as_ptr() as *mut f32,
+            y.get_dev_mut().as_mut_ptr(),
+            x.len() as i32,
+            None,
+            None
+        ).unwrap();
     }
 
     fn scale(alpha: f32, x: &mut F32CUDASlice)
@@ -438,43 +463,57 @@ impl LinAlg for F32CUDA
     
     fn add(alpha: f32, x: &F32CUDASlice, y: &mut F32CUDASlice)
     {
-        let x = x.get();
-        let y = y.get_mut();
-
         assert_eq!(x.len(), y.len());
-    
-        for (u, v) in x.iter().zip(y) {
-            *v = *v + alpha * *u;
-        }
+
+        cublas::API::axpy(
+            CUDA_MANAGER.cublas_context(),
+            (&alpha as *const f32) as *mut f32,
+            x.get_dev().as_ptr() as *mut f32,
+            y.get_dev_mut().as_mut_ptr(),
+            x.len() as i32,
+            None,
+            None
+        ).unwrap();
     }
 
     fn adds(s: f32, y: &mut F32CUDASlice)
     {
-        let y = y.get_mut();
+        let one = CUDA_MANAGER.buf_from_slice(&[1.]);
 
-        for v in y {
-            *v = *v + s;
-        }
+        cublas::API::axpy(
+            CUDA_MANAGER.cublas_context(),
+            (&s as *const f32) as *mut f32,
+            one.as_ptr() as *mut f32,
+            y.get_dev_mut().as_mut_ptr(),
+            y.len() as i32,
+            Some(0),
+            None
+        ).unwrap();
     }
     
     fn abssum(x: &F32CUDASlice, incx: usize) -> f32
     {
-        let x = x.get();
-
         if incx == 0 {
             0.
         }
         else {
-            let mut sum = 0.;
-            for u in x.chunks(incx) {
-                sum = sum + u[0].abs();
-            }
-            sum
+            let mut result = 0.;
+
+            cublas::API::asum(
+                CUDA_MANAGER.cublas_context(),
+                x.get_dev().as_ptr() as *mut f32,
+                &mut result,
+                ((x.len() + (incx - 1)) / incx) as i32,
+                Some(incx as i32)
+            ).unwrap();
+
+            result
         }
     }
 
     fn transform_di(alpha: f32, mat: &F32CUDASlice, x: &F32CUDASlice, beta: f32, y: &mut F32CUDASlice)
     {
+        // TODO: cuda
         let mat = mat.get();
         let x = x.get();
         let y = y.get_mut();
@@ -775,6 +814,7 @@ impl LinAlgEx for F32CUDA
     // y = a*mat*x + b*y
     fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f32, mat: &F32CUDASlice, x: &F32CUDASlice, beta: f32, y: &mut F32CUDASlice)
     {
+        // TODO: cuda
         let mat = mat.get();
         let x = x.get();
         let y = y.get_mut();
@@ -804,6 +844,7 @@ impl LinAlgEx for F32CUDA
     // y = a*mat*x + b*y
     fn transform_sp(n: usize, alpha: f32, mat: &F32CUDASlice, x: &F32CUDASlice, beta: f32, y: &mut F32CUDASlice)
     {
+        // TODO: cuda
         let mat = mat.get();
         let x = x.get();
         let y = y.get_mut();
@@ -828,6 +869,7 @@ impl LinAlgEx for F32CUDA
 
     fn proj_psd_worklen(sn: usize) -> usize
     {
+        // TODO: cuda
         let n = ((((8 * sn + 1) as f32).sqrt() as usize) - 1) / 2;
         assert_eq!(n * (n + 1) / 2, sn);
 
@@ -836,6 +878,7 @@ impl LinAlgEx for F32CUDA
 
     fn proj_psd(x: &mut F32CUDASlice, eps_zero: f32, work: &mut F32CUDASlice)
     {
+        // TODO: cuda
         let x = x.get_mut();
         let work = work.get_mut();
 
@@ -875,11 +918,13 @@ impl LinAlgEx for F32CUDA
 
     fn sqrt_spmat_worklen(n: usize) -> usize
     {
+        // TODO: cuda
         eig_func_worklen(n)
     }
 
     fn sqrt_spmat(mat: &mut F32CUDASlice, eps_zero: f32, work: &mut F32CUDASlice)
     {
+        // TODO: cuda
         let mat = mat.get_mut();
         let work = work.get_mut();
 
