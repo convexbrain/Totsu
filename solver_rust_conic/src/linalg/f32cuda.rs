@@ -824,37 +824,38 @@ impl LinAlgEx for F32CUDA
     // y = a*mat*x + b*y
     fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f32, mat: &F32CUDASlice, x: &F32CUDASlice, beta: f32, y: &mut F32CUDASlice)
     {
-        // TODO: cuda
-        let mat = mat.get();
-        let x = x.get();
-        let y = y.get_mut();
-
         assert_eq!(mat.len(), n_row * n_col);
-        if transpose {
+
+        let trans = if transpose {
             assert_eq!(x.len(), n_row);
             assert_eq!(y.len(), n_col);
+
+            Enum_Unnamed5::CUBLAS_OP_T
         } else {
             assert_eq!(x.len(), n_col);
             assert_eq!(y.len(), n_row);
+
+            Enum_Unnamed5::CUBLAS_OP_N
         };
 
-        let mat = MatIdx {
-            n_row, n_col, mat, transpose,
-        };
-
-        for r in 0.. y.len() {
-            let mut mat_x = 0.;
-            for c in 0.. x.len() {
-                mat_x = mat_x + mat[(r, c)] * x[c];
-            }
-            y[r] = alpha * mat_x + beta * y[r];
+        unsafe {
+            let st = cublasSgemv_v2(
+                *CUDA_MANAGER.cublas_handle(),
+                trans,
+                n_row as i32, n_col as i32,
+                &alpha, mat.get_dev().as_ptr(), n_row as i32,
+                x.get_dev().as_ptr(), 1,
+                &beta, y.get_dev_mut().as_mut_ptr(), 1
+            );
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
         }
     }
 
     // y = a*mat*x + b*y
     fn transform_sp(n: usize, alpha: f32, mat: &F32CUDASlice, x: &F32CUDASlice, beta: f32, y: &mut F32CUDASlice)
     {
-        // TODO: cuda
+        // TODO: cuda test
+        /*
         let mat = mat.get();
         let x = x.get();
         let y = y.get_mut();
@@ -875,11 +876,23 @@ impl LinAlgEx for F32CUDA
             }
             y[r] = alpha * mat_x + beta * y[r];
         }
+        */
+        unsafe {
+            let st = cublasSspmv_v2(
+                *CUDA_MANAGER.cublas_handle(),
+                cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+                n as i32,
+                &alpha, mat.get_dev().as_ptr(),
+                x.get_dev().as_ptr(), 1,
+                &beta, y.get_dev_mut().as_mut_ptr(), 1
+            );
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+        }
     }
 
     fn proj_psd_worklen(sn: usize) -> usize
     {
-        // TODO: cuda
+        // TODO: cusolver
         let n = ((((8 * sn + 1) as f32).sqrt() as usize) - 1) / 2;
         assert_eq!(n * (n + 1) / 2, sn);
 
@@ -888,7 +901,7 @@ impl LinAlgEx for F32CUDA
 
     fn proj_psd(x: &mut F32CUDASlice, eps_zero: f32, work: &mut F32CUDASlice)
     {
-        // TODO: cuda
+        // TODO: cusolver
         let x = x.get_mut();
         let work = work.get_mut();
 
@@ -928,13 +941,13 @@ impl LinAlgEx for F32CUDA
 
     fn sqrt_spmat_worklen(n: usize) -> usize
     {
-        // TODO: cuda
+        // TODO: cusolver
         eig_func_worklen(n)
     }
 
     fn sqrt_spmat(mat: &mut F32CUDASlice, eps_zero: f32, work: &mut F32CUDASlice)
     {
-        // TODO: cuda
+        // TODO: cusolver
         let mat = mat.get_mut();
         let work = work.get_mut();
 
