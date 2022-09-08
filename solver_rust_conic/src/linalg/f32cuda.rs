@@ -1,5 +1,6 @@
 use core::ops::{Index, IndexMut};
 use std::vec::Vec;
+use std::vec;
 use std::collections::HashMap;
 use std::sync::{Mutex, Arc};
 use std::boxed::Box;
@@ -9,6 +10,7 @@ use crate::utils::SplitN;
 use rustacuda::prelude::*;
 use rustacuda::memory::{DeviceBuffer, DeviceSlice};
 use cublas_sys::*;
+use cusolver_sys_partial::*;
 use once_cell::sync::Lazy;
 
 //
@@ -18,6 +20,7 @@ pub struct CudaManager
 {
     cuda_ctx: Context,
     cublas_handle: cublasHandle_t,
+    cusolver_handle: cusolverDnHandle_t,
 }
 
 unsafe impl Send for CudaManager {}
@@ -30,6 +33,13 @@ impl CudaManager
         DeviceBuffer::from_slice(s).unwrap()
     }
 
+    fn buf_zeroes<T>(&self, length: usize) -> DeviceBuffer<T>
+    {
+        unsafe {
+            DeviceBuffer::zeroed(length).unwrap()
+        }
+    }
+
     /// TODO: doc
     pub fn context(&self) -> &Context
     {
@@ -40,6 +50,12 @@ impl CudaManager
     pub fn cublas_handle(&self) -> &cublasHandle_t
     {
         &self.cublas_handle
+    }
+
+    /// TODO: doc
+    pub fn cusolver_handle(&self) -> &cusolverDnHandle_t
+    {
+        &self.cusolver_handle
     }
 }
 
@@ -80,7 +96,7 @@ pub static CUDA_MANAGER: Lazy<CudaManager> = Lazy::new(|| {
     }
     let cuda_ctx = cuda_ctx.unwrap();
 
-    // cuBLAS context
+    // cuBLAS handle
     let mut cublas_handle: cublasHandle_t = core::ptr::null_mut();
     unsafe {
         let st = cublasCreate_v2(&mut cublas_handle);
@@ -90,10 +106,21 @@ pub static CUDA_MANAGER: Lazy<CudaManager> = Lazy::new(|| {
         assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
     }
 
+    // cuSOLVER handle
+    let mut cusolver_handle: cusolverDnHandle_t = core::ptr::null_mut();
+    unsafe {
+        let st = cusolverDnCreate(&mut cusolver_handle);
+        if st != cusolverStatus_t::CUSOLVER_STATUS_SUCCESS {
+            log::error!("cuSOLVER handle failed to create");
+        }
+        assert_eq!(st, cusolverStatus_t::CUSOLVER_STATUS_SUCCESS);
+    }
+
     log::debug!("CUDA_MANAGER created");
     CudaManager {
         cuda_ctx,
         cublas_handle,
+        cusolver_handle,
     }
 });
 
@@ -155,6 +182,30 @@ impl SliceManager
         }
     }
 
+    fn new_zeroes<'a>(&mut self, length: usize) -> &'a mut F32CUDASlice
+    {
+        let idx = self.cnt;
+        self.cnt = idx + 1;
+
+        let cs = F32CUDASlice {
+            idx,
+            parent_idx: None,
+            dev_buf: Arc::new(Mutex::new(F32CUDABuf(CUDA_MANAGER.buf_zeroes(length)))),
+            host_buf: Arc::new(Mutex::new(vec![0.; length])),
+            sta: 0,
+            end: length,
+            mutator: Mutex::new(CUDASliceMut::Sync),
+        };
+
+        let r = self.map.insert(idx, Box::pin(cs));
+        assert!(r.is_none());
+        let cs = self.map.get_mut(&idx).unwrap();
+
+        unsafe {
+            core::mem::transmute::<&mut F32CUDASlice, &'a mut F32CUDASlice>(cs)
+        }
+    }
+
     fn split_slice<'a>(&mut self, cso: &'a F32CUDASlice, sta: usize, end: usize) -> &'a mut F32CUDASlice
     {
         assert!(sta <= end, "{}<={}", sta, end);
@@ -168,7 +219,7 @@ impl SliceManager
             host_buf: cso.host_buf.clone(),
             sta: cso.sta + sta,
             end: cso.sta + end,
-            mutator: Mutex::new(*cso.mutator.lock().unwrap()),
+            mutator: Mutex::new(*cso.mutator.try_lock().unwrap()),
         };
         assert!(cs.sta <= cs.end);
         assert!(cs.end <= cso.end);
@@ -197,13 +248,13 @@ impl SliceManager
         //        -> Host       copy from Host to Dev
         //        -> Dev        do nothing
         let cs = &self.map[&idx];
-        let cs_mut = *cs.mutator.lock().unwrap();
+        let cs_mut = *cs.mutator.try_lock().unwrap();
         let cs_par_idx = cs.parent_idx;
         let mut cs_par_mut = None;
 
         if let Some(par_idx) = cs_par_idx {
             let par = self.map.get_mut(&par_idx).unwrap();
-            let mut par_mut = par.mutator.lock().unwrap();
+            let mut par_mut = par.mutator.try_lock().unwrap();
 
             cs_par_mut = Some(*par_mut);
 
@@ -217,18 +268,18 @@ impl SliceManager
             match par_mut {
                 CUDASliceMut::Sync => {},
                 CUDASliceMut::Host => {
-                    if *cs.mutator.lock().unwrap() == CUDASliceMut::Dev {
-                        let db = &cs.dev_buf.lock().unwrap().0[cs.sta..cs.end];
-                        let mut hb = cs.host_buf.lock().unwrap();
+                    if *cs.mutator.try_lock().unwrap() == CUDASliceMut::Dev {
+                        let db = &cs.dev_buf.try_lock().unwrap().0[cs.sta..cs.end];
+                        let mut hb = cs.host_buf.try_lock().unwrap();
                         let mut hb_mut = &mut hb[cs.sta..cs.end];
                         
                         db.copy_to(&mut hb_mut).unwrap();
                     }
                 },
                 CUDASliceMut::Dev => {
-                    if *cs.mutator.lock().unwrap() == CUDASliceMut::Host {
-                        let db = &mut cs.dev_buf.lock().unwrap().0[cs.sta..cs.end];
-                        let mut hb = cs.host_buf.lock().unwrap();
+                    if *cs.mutator.try_lock().unwrap() == CUDASliceMut::Host {
+                        let db = &mut cs.dev_buf.try_lock().unwrap().0[cs.sta..cs.end];
+                        let mut hb = cs.host_buf.try_lock().unwrap();
                         let mut hb_mut = &mut hb[cs.sta..cs.end];
                         
                         db.copy_from(&mut hb_mut).unwrap();
@@ -247,6 +298,7 @@ impl Drop for SliceManager
     }
 }
 
+// TODO: encapsulate try_lock
 static SLICE_MANAGER: Lazy<Mutex<SliceManager>> = Lazy::new(|| {
     Mutex::new(SliceManager {
         cnt: 0,
@@ -260,7 +312,7 @@ impl SliceLike for F32CUDASlice
 
     fn new(s: &[f32]) -> SliceRef<'_, F32CUDASlice>
     {
-        let mut mgr = SLICE_MANAGER.lock().unwrap();
+        let mut mgr = SLICE_MANAGER.try_lock().unwrap();
         let cs = mgr.new_slice(s);
         
         //std::println!("{} new", cs.idx);
@@ -269,7 +321,7 @@ impl SliceLike for F32CUDASlice
 
     fn new_mut(s: &mut[f32]) -> SliceMut<'_, F32CUDASlice>
     {
-        let mut mgr = SLICE_MANAGER.lock().unwrap();
+        let mut mgr = SLICE_MANAGER.try_lock().unwrap();
         let cs = mgr.new_slice(s);
 
         //std::println!("{} new_mut", cs.idx);
@@ -278,7 +330,7 @@ impl SliceLike for F32CUDASlice
     
     fn split_at(&self, mid: usize) -> (SliceRef<'_, F32CUDASlice>, SliceRef<'_, F32CUDASlice>)
     {
-        let mut mgr = SLICE_MANAGER.lock().unwrap();
+        let mut mgr = SLICE_MANAGER.try_lock().unwrap();
         let cs0 = mgr.split_slice(self, 0, mid);
         let cs1 = mgr.split_slice(self, mid, self.len());
 
@@ -289,7 +341,7 @@ impl SliceLike for F32CUDASlice
 
     fn split_at_mut(&mut self, mid: usize) -> (SliceMut<'_, F32CUDASlice>, SliceMut<'_, F32CUDASlice>)
     {
-        let mut mgr = SLICE_MANAGER.lock().unwrap();
+        let mut mgr = SLICE_MANAGER.try_lock().unwrap();
         let cs0 = mgr.split_slice(self, 0, mid);
         let cs1 = mgr.split_slice(self, mid, self.len());
 
@@ -301,7 +353,7 @@ impl SliceLike for F32CUDASlice
     fn drop(&self)
     {
         //std::println!("{} drop", self.idx);
-        let mut mgr = SLICE_MANAGER.lock().unwrap();
+        let mut mgr = SLICE_MANAGER.try_lock().unwrap();
         mgr.remove(self.idx);
     }
 
@@ -314,13 +366,13 @@ impl SliceLike for F32CUDASlice
     fn get(&self) -> &[f32]
     {
         //std::println!("  {} get", self.idx);
-        let mut mutator = self.mutator.lock().unwrap();
+        let mut mutator = self.mutator.try_lock().unwrap();
         //std::println!("  {:?} mutator", *mutator);
         match *mutator {
             CUDASliceMut::Sync | CUDASliceMut::Host => {},
             CUDASliceMut::Dev => {
-                let db = &self.dev_buf.lock().unwrap().0[self.sta..self.end];
-                let mut hb = &mut self.host_buf.lock().unwrap()[self.sta..self.end];
+                let db = &self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
+                let mut hb = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
                 
                 db.copy_to(&mut hb).unwrap();
 
@@ -328,7 +380,7 @@ impl SliceLike for F32CUDASlice
             },
         }
 
-        let hb_ref = &self.host_buf.lock().unwrap()[self.sta..self.end];
+        let hb_ref = &self.host_buf.try_lock().unwrap()[self.sta..self.end];
 
         unsafe {
             core::mem::transmute::<&[f32], &[f32]>(hb_ref)
@@ -338,7 +390,7 @@ impl SliceLike for F32CUDASlice
     fn get_mut(&mut self) -> &mut[f32]
     {
         //std::println!("  {} get_mut", self.idx);
-        let mut mutator = self.mutator.lock().unwrap();
+        let mut mutator = self.mutator.try_lock().unwrap();
         //std::println!("    {:?} mutator", *mutator);
         match *mutator {
             CUDASliceMut::Sync => {
@@ -346,8 +398,8 @@ impl SliceLike for F32CUDASlice
             },
             CUDASliceMut::Host => {},
             CUDASliceMut::Dev => {
-                let db = &self.dev_buf.lock().unwrap().0[self.sta..self.end];
-                let mut hb = &mut self.host_buf.lock().unwrap()[self.sta..self.end];
+                let db = &self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
+                let mut hb = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
 
                 db.copy_to(&mut hb).unwrap();
 
@@ -355,7 +407,7 @@ impl SliceLike for F32CUDASlice
             },
         }
 
-        let hb_mut = &mut self.host_buf.lock().unwrap()[self.sta..self.end];
+        let hb_mut = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
 
         unsafe {
             core::mem::transmute::<&mut[f32], &mut[f32]>(hb_mut)
@@ -368,12 +420,12 @@ impl F32CUDASlice
     /// TODO: doc
     pub fn get_dev(&self) -> &DeviceSlice<f32>
     {
-        let mut mutator = self.mutator.lock().unwrap();
+        let mut mutator = self.mutator.try_lock().unwrap();
         match *mutator {
             CUDASliceMut::Sync | CUDASliceMut::Dev => {},
             CUDASliceMut::Host => {
-                let db = &mut self.dev_buf.lock().unwrap().0[self.sta..self.end];
-                let mut hb = &mut self.host_buf.lock().unwrap()[self.sta..self.end];
+                let db = &mut self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
+                let mut hb = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
                 
                 db.copy_from(&mut hb).unwrap();
 
@@ -381,7 +433,7 @@ impl F32CUDASlice
             },
         }
 
-        let db_ref = &self.dev_buf.lock().unwrap().0[self.sta..self.end];
+        let db_ref = &self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
 
         unsafe {
             core::mem::transmute::<&DeviceSlice<f32>, &DeviceSlice<f32>>(db_ref)
@@ -391,15 +443,15 @@ impl F32CUDASlice
     /// TODO: doc
     pub fn get_dev_mut(&mut self) -> &mut DeviceSlice<f32>
     {
-        let mut mutator = self.mutator.lock().unwrap();
+        let mut mutator = self.mutator.try_lock().unwrap();
         match *mutator {
             CUDASliceMut::Sync => {
                 *mutator = CUDASliceMut::Dev;
             },
             CUDASliceMut::Dev => {},
             CUDASliceMut::Host => {
-                let db = &mut self.dev_buf.lock().unwrap().0[self.sta..self.end];
-                let mut hb = &mut self.host_buf.lock().unwrap()[self.sta..self.end];
+                let db = &mut self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
+                let mut hb = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
                 
                 db.copy_from(&mut hb).unwrap();
 
@@ -407,7 +459,7 @@ impl F32CUDASlice
             },
         }
 
-        let db_mut = &mut self.dev_buf.lock().unwrap().0[self.sta..self.end];
+        let db_mut = &mut self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
 
         unsafe {
             core::mem::transmute::<&mut DeviceSlice<f32>, &mut DeviceSlice<f32>>(db_mut)
@@ -892,40 +944,28 @@ impl LinAlgEx for F32CUDA
 
     fn proj_psd_worklen(sn: usize) -> usize
     {
-        // TODO: cusolver
+        // TODO: work memory
         let n = ((((8 * sn + 1) as f32).sqrt() as usize) - 1) / 2;
         assert_eq!(n * (n + 1) / 2, sn);
 
         eig_func_worklen(n)
     }
 
-    fn proj_psd(x: &mut F32CUDASlice, eps_zero: f32, work: &mut F32CUDASlice)
+    fn proj_psd(x: &mut F32CUDASlice, _eps_zero: f32, work: &mut F32CUDASlice)
     {
-        // TODO: cusolver
-        let x = x.get_mut();
-        let work = work.get_mut();
-
-        let f0 = 0.;
-        let f1 = 1.;
-        let f2: f32 = f1 + f1;
-        let fsqrt2 = f2.sqrt();
-
+        // TODO: work memory
         let sn = x.len();
-        let n = ((((8 * sn + 1) as f32).sqrt() as usize) - 1) / 2;
 
+        let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
+        assert_eq!(n * (n + 1) / 2, sn);
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
-        let mut spmat_x = SpMatIdxMut {
-            n, mat: x,
-        };
+        let a = SLICE_MANAGER.try_lock().unwrap().new_zeroes(n * n);
 
-        // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
-        for i in 0.. n {
-            spmat_x[(i, i)] = spmat_x[(i, i)] * fsqrt2;
-        }
-
-        eig_func(&mut spmat_x, eps_zero, work, |e| {
-            if e > f0 {
+        vec_to_mat(x, a, true);
+    
+        eig_func2(a, n, |e| {
+            if e > 0. {
                 Some(e)
             }
             else {
@@ -933,10 +973,7 @@ impl LinAlgEx for F32CUDA
             }
         });
 
-        // scale diagonals to match the resulted vector norm with the matrix norm multiplied by 0.5
-        for i in 0.. n {
-            spmat_x[(i, i)] = spmat_x[(i, i)] * fsqrt2.recip();
-        }
+        mat_to_vec(a, x, true);
     }
 
     fn sqrt_spmat_worklen(n: usize) -> usize
@@ -970,6 +1007,148 @@ impl LinAlgEx for F32CUDA
                 None
             }
         });
+    }
+}
+
+// TODO: remove 2
+fn eig_func2<E>(a: &mut F32CUDASlice, n: usize, func: E)
+where E: Fn(f32)->Option<f32>
+{
+    // TODO: work memory
+    let mut meig: i32 = 0;
+    let mut lwork: i32 = 0;
+    let w = SLICE_MANAGER.try_lock().unwrap().new_zeroes(n);
+
+    unsafe {
+        let st = cusolverDnSsyevdx_bufferSize(
+            *CUDA_MANAGER.cusolver_handle(),
+            cusolverEigMode_t::CUSOLVER_EIG_MODE_VECTOR,
+            cusolverEigRange_t::CUSOLVER_EIG_RANGE_V,
+            cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+            n as i32, a.get_dev().as_ptr(), n as i32,
+            0., f32::INFINITY, 0, 0,
+            &mut meig, w.get_dev().as_ptr(),
+            &mut lwork
+        );
+        assert_eq!(st, cusolverStatus_t::CUSOLVER_STATUS_SUCCESS);
+    }
+
+    let mut work = CUDA_MANAGER.buf_zeroes(lwork as usize);
+    let mut dev_info = CUDA_MANAGER.buf_zeroes(1);
+
+    unsafe {
+        let st = cusolverDnSsyevdx(
+            *CUDA_MANAGER.cusolver_handle(),
+            cusolverEigMode_t::CUSOLVER_EIG_MODE_VECTOR,
+            cusolverEigRange_t::CUSOLVER_EIG_RANGE_V,
+            cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+            n as i32, a.get_dev_mut().as_mut_ptr(), n as i32,
+            0., f32::INFINITY, 0, 0,
+            &mut meig, w.get_dev_mut().as_mut_ptr(),
+            work.as_mut_ptr(), lwork,
+            dev_info.as_mut_ptr()
+        );
+        assert_eq!(st, cusolverStatus_t::CUSOLVER_STATUS_SUCCESS);
+    }
+
+    let mut info = [0];
+    dev_info.copy_to(&mut info).unwrap();
+    assert_eq!(info[0], 0);
+
+    let mut z = CUDA_MANAGER.buf_zeroes(n * n);
+    a.get_dev().copy_to(&mut z).unwrap();
+
+    let alpha = 0.;
+    unsafe {
+        let st = cublasSscal_v2(
+            *CUDA_MANAGER.cublas_handle(),
+            (n * n) as i32,
+            &alpha, a.get_dev_mut().as_mut_ptr(), 1
+        );
+        assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+    }
+    
+    for i in 0.. meig as usize {
+        if let Some(e) = func(w.get()[i]) {
+            let (_, ref_z) = z.split_at(i * n);
+
+            unsafe {
+                let st = cublasSsyr_v2(
+                    *CUDA_MANAGER.cublas_handle(),
+                    cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+                    n as i32,
+                    &e, ref_z.as_ptr(), 1,
+                    a.get_dev_mut().as_mut_ptr(), n as i32
+                );
+                assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+            }
+        }
+    }
+}
+
+fn vec_to_mat(v: &F32CUDASlice, m: &mut F32CUDASlice, scale: bool)
+{
+    let l = v.len();
+    let n = (m.len() as f64).sqrt() as usize;
+
+    assert_eq!(m.len(), n * n);
+    assert_eq!(n * (n + 1) / 2, l);
+
+    // The vector is a symmetric matrix, packing the upper-triangle by columns.
+    let mut iv = 0;
+    for c in 0.. n {
+        let (_, mut spl_m) = m.split_at_mut(c * n);
+        let (mut col_m, _) = spl_m.split_at_mut(c + 1);
+
+        let (_, spl_v) = v.split_at(iv);
+        let (col_v, _) = spl_v.split_at(c + 1);
+        iv += c + 1;
+        F32CUDA::copy(&col_v, &mut col_m);
+    }
+
+    if scale {
+        // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
+        unsafe {
+            let st = cublasSscal_v2(
+                *CUDA_MANAGER.cublas_handle(),
+                n as i32,
+                &2_f32.sqrt(), m.get_dev_mut().as_mut_ptr(), (n + 1) as i32
+            );
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+        }
+    }
+}
+
+fn mat_to_vec(m: &mut F32CUDASlice, v: &mut F32CUDASlice, scale: bool)
+{
+    let l = v.len();
+    let n = (m.len() as f64).sqrt() as usize;
+
+    assert_eq!(m.len(), n * n);
+    assert_eq!(n * (n + 1) / 2, l);
+
+    if scale {
+        // scale diagonals to match the resulted vector norm with the matrix norm multiplied by 0.5
+        unsafe {
+            let st = cublasSscal_v2(
+                *CUDA_MANAGER.cublas_handle(),
+                n as i32,
+                &0.5_f32.sqrt(), m.get_dev_mut().as_mut_ptr(), (n + 1) as i32
+            );
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+        }
+    }
+
+    // The vector is a symmetric matrix, packing the upper-triangle by columns.
+    let mut iv = 0;
+    for c in 0.. n {
+        let (_, spl_m) = m.split_at(c * n);
+        let (col_m, _) = spl_m.split_at(c + 1);
+
+        let (_, mut spl_v) = v.split_at_mut(iv);
+        let (mut col_v, _) = spl_v.split_at_mut(c + 1);
+        iv += c + 1;
+        F32CUDA::copy(&col_m, &mut col_v);
     }
 }
 

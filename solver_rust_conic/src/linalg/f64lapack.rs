@@ -8,8 +8,11 @@ use crate::utils::*;
 /// You need a [BLAS/LAPACK source](https://github.com/blas-lapack-rs/blas-lapack-rs.github.io/wiki#sources) to link.
 pub struct F64LAPACK;
 
-impl LinAlg<f64> for F64LAPACK
+impl LinAlg for F64LAPACK
 {
+    type F = f64;
+    type Sl = [f64];
+    
     fn norm(x: &[f64]) -> f64
     {
         unsafe { cblas::dnrm2(x.len() as i32, x, 1) }
@@ -83,9 +86,8 @@ where E: Fn(f64)->Option<f64>
             z, n as i32, &mut []);
     }
 
-    for e in a.iter_mut() {
-        *e = 0.;
-    }
+    F64LAPACK::scale(0., a);
+
     for i in 0.. m as usize {
         if let Some(e) = func(w[i]) {
             let (_, ref_z) = z.split_at(i * n);
@@ -110,7 +112,7 @@ fn eig_func_worklen(n: usize) -> usize
 
 //
 
-impl LinAlgEx<f64> for F64LAPACK
+impl LinAlgEx for F64LAPACK
 {
     // y = a*mat*x + b*y
     fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64])
