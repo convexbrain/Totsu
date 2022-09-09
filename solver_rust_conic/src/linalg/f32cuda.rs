@@ -673,27 +673,27 @@ impl LinAlgEx for F32CUDA
 
     fn proj_psd_worklen(sn: usize) -> usize
     {
-        // TODO: work memory
-        let n = ((((8 * sn + 1) as f32).sqrt() as usize) - 1) / 2;
+        let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
         assert_eq!(n * (n + 1) / 2, sn);
 
-        eig_func_worklen(n)
+        let len_a = n * n;
+
+        len_a + eig_func_worklen(n)
     }
 
     fn proj_psd(x: &mut F32CUDASlice, _eps_zero: f32, work: &mut F32CUDASlice)
     {
-        // TODO: work memory
         let sn = x.len();
 
         let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
         assert_eq!(n * (n + 1) / 2, sn);
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
-        let mut a = F32CUDASlice::new_zeroes(n * n);
+        let (mut a, mut w_z_work) = work.split_at_mut(n * n);
 
         vec_to_mat(x, &mut a, true);
     
-        eig_func(&mut a, n, |e| {
+        eig_func(&mut a, n, &mut w_z_work, |e| {
             if e > 0. {
                 Some(e)
             }
@@ -707,8 +707,9 @@ impl LinAlgEx for F32CUDA
 
     fn sqrt_spmat_worklen(n: usize) -> usize
     {
-        // TODO: work memory
-        eig_func_worklen(n)
+        let len_a = n * n;
+
+        len_a + eig_func_worklen(n)
     }
 
     fn sqrt_spmat(mat: &mut F32CUDASlice, _eps_zero: f32, work: &mut F32CUDASlice)
@@ -744,11 +745,11 @@ impl LinAlgEx for F32CUDA
         assert_eq!(n * (n + 1) / 2, sn);
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
-        let mut a = F32CUDASlice::new_zeroes(n * n);
+        let (mut a, mut w_z_work) = work.split_at_mut(n * n);
 
         vec_to_mat(mat, &mut a, false);
     
-        eig_func(&mut a, n, |e| {
+        eig_func(&mut a, n, &mut w_z_work, |e| {
             if e > 0. {
                 Some(e.sqrt())
             }
@@ -763,38 +764,38 @@ impl LinAlgEx for F32CUDA
 
 //
 
-// TODO: work memory
 fn eig_func_worklen(n: usize) -> usize
 {
-    let len_w = n;
-    let len_z = n * n;
-
-    len_w + len_z
-}
-
-fn eig_func<E>(a: &mut F32CUDASlice, n: usize, func: E)
-where E: Fn(f32)->Option<f32>
-{
-    // TODO: work memory
-    let mut meig: i32 = 0;
     let mut lwork: i32 = 0;
-    let mut w = F32CUDASlice::new_zeroes(n);
-
+    
     unsafe {
         let st = cusolverDnSsyevdx_bufferSize(
             *CUDA_MANAGER.cusolver_handle(),
             cusolverEigMode_t::CUSOLVER_EIG_MODE_VECTOR,
             cusolverEigRange_t::CUSOLVER_EIG_RANGE_V,
             cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
-            n as i32, a.get_dev().as_ptr(), n as i32,
+            n as i32, core::ptr::null(), n as i32,
             0., f32::INFINITY, 0, 0,
-            &mut meig, w.get_dev().as_ptr(),
+            core::ptr::null_mut(), core::ptr::null(),
             &mut lwork
         );
         assert_eq!(st, cusolverStatus_t::CUSOLVER_STATUS_SUCCESS);
     }
 
-    let mut work = CUDA_MANAGER.buf_zeroes(lwork as usize);
+    let len_w = n;
+    let len_z = n * n;
+
+    len_w + len_z + lwork as usize
+}
+
+fn eig_func<E>(a: &mut F32CUDASlice, n: usize, w_z_work: &mut F32CUDASlice, func: E)
+where E: Fn(f32)->Option<f32>
+{
+    let (mut w, mut z) = w_z_work.split_at_mut(n);
+    let (mut z, mut work) = z.split_at_mut(n * n);
+    let lwork = eig_func_worklen(n) - n - n * n;
+
+    let mut meig: i32 = 0;
     let mut dev_info = CUDA_MANAGER.buf_zeroes(1);
 
     unsafe {
@@ -806,7 +807,7 @@ where E: Fn(f32)->Option<f32>
             n as i32, a.get_dev_mut().as_mut_ptr(), n as i32,
             0., f32::INFINITY, 0, 0,
             &mut meig, w.get_dev_mut().as_mut_ptr(),
-            work.as_mut_ptr(), lwork,
+            work.get_dev_mut().as_mut_ptr(), lwork as i32,
             dev_info.as_mut_ptr()
         );
         assert_eq!(st, cusolverStatus_t::CUSOLVER_STATUS_SUCCESS);
@@ -816,8 +817,9 @@ where E: Fn(f32)->Option<f32>
     dev_info.copy_to(&mut info).unwrap();
     assert_eq!(info[0], 0);
 
-    let mut z = CUDA_MANAGER.buf_zeroes(n * n);
-    a.get_dev().copy_to(&mut z).unwrap();
+    //
+
+    a.get_dev().copy_to(z.get_dev_mut()).unwrap();
 
     let alpha = 0.;
     unsafe {
@@ -828,6 +830,8 @@ where E: Fn(f32)->Option<f32>
         );
         assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
     }
+
+    //
     
     for i in 0.. meig as usize {
         if let Some(e) = func(w.get()[i]) {
@@ -838,7 +842,7 @@ where E: Fn(f32)->Option<f32>
                     *CUDA_MANAGER.cublas_handle(),
                     cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
                     n as i32,
-                    &e, ref_z.as_ptr(), 1,
+                    &e, ref_z.get_dev().as_ptr(), 1,
                     a.get_dev_mut().as_mut_ptr(), n as i32
                 );
                 assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
