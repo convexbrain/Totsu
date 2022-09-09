@@ -13,115 +13,149 @@ use once_cell::sync::Lazy;
 
 //
 
-/// TODO: doc
-pub struct CudaManager
+pub mod cuda_mgr
 {
-    cuda_ctx: Context,
-    cublas_handle: cublasHandle_t,
-    cusolver_handle: cusolverDnHandle_t,
-}
+    use rustacuda::prelude::*;
+    use rustacuda::memory::DeviceBuffer;
+    use cublas_sys::*;
+    use super::cusolver_sys_partial::*;
+    use once_cell::sync::Lazy;
 
-unsafe impl Send for CudaManager {}
-unsafe impl Sync for CudaManager {}
-
-impl CudaManager
-{
-    fn buf_from_slice(&self, s: &[f32]) -> DeviceBuffer<f32>
+    struct CudaManager
     {
-        DeviceBuffer::from_slice(s).unwrap()
+        cuda_ctx: Context,
+        cublas_handle: cublasHandle_t,
+        cusolver_handle: cusolverDnHandle_t,
     }
 
-    fn buf_zeroes<T>(&self, length: usize) -> DeviceBuffer<T>
-    {
+    unsafe impl Send for CudaManager {}
+    unsafe impl Sync for CudaManager {}
+
+    // TODO: try thread_local
+    static CUDA_MANAGER: Lazy<CudaManager> = Lazy::new(|| {
+        // Initialize the CUDA API
+        let r = rustacuda::init(CudaFlags::empty());
+        if r.is_err() {
+            log::error!("CUDA driver initialization failed");
+        }
+        r.unwrap();
+
+        // API version
+        log::info!(
+            "CUDA driver API version: {}.{}",
+            rustacuda::CudaApiVersion::get().unwrap().major(),
+            rustacuda::CudaApiVersion::get().unwrap().minor(),
+        );
+
+        // Get the first device
+        // TODO: num_devices
+        let device = Device::get_device(0);
+        if device.is_err() {
+            log::error!("CUDA device not found");
+        }
+        let device = device.unwrap();
+
+        // Device name
+        log::info!("CUDA device name: {}", device.name().unwrap());
+
+        // Create a context associated to this device
+        let cuda_ctx = Context::create_and_push(
+            ContextFlags::MAP_HOST | ContextFlags::SCHED_AUTO,
+            device
+        );
+        if cuda_ctx.is_err() {
+            log::error!("CUDA context failed to create");
+        }
+        let cuda_ctx = cuda_ctx.unwrap();
+
+        // cuBLAS handle
+        let mut cublas_handle: cublasHandle_t = core::ptr::null_mut();
         unsafe {
-            DeviceBuffer::zeroed(length).unwrap()
+            let st = cublasCreate_v2(&mut cublas_handle);
+            if st != cublasStatus_t::CUBLAS_STATUS_SUCCESS {
+                log::error!("cuBLAS handle failed to create");
+            }
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+        }
+
+        // cuSOLVER handle
+        let mut cusolver_handle: cusolverDnHandle_t = core::ptr::null_mut();
+        unsafe {
+            let st = cusolverDnCreate(&mut cusolver_handle);
+            if st != cusolverStatus_t::CUSOLVER_STATUS_SUCCESS {
+                log::error!("cuSOLVER handle failed to create");
+            }
+            assert_eq!(st, cusolverStatus_t::CUSOLVER_STATUS_SUCCESS);
+        }
+
+        log::debug!("CUDA_MANAGER created");
+        CudaManager {
+            cuda_ctx,
+            cublas_handle,
+            cusolver_handle,
+        }
+    });
+
+    impl CudaManager
+    {
+        fn buf_from_slice(&self, s: &[f32]) -> DeviceBuffer<f32>
+        {
+            DeviceBuffer::from_slice(s).unwrap()
+        }
+
+        fn buf_zeroes<T>(&self, length: usize) -> DeviceBuffer<T>
+        {
+            unsafe {
+                DeviceBuffer::zeroed(length).unwrap()
+            }
+        }
+
+        fn context(&self) -> &Context
+        {
+            &self.cuda_ctx
+        }
+
+        fn cublas_handle(&self) -> cublasHandle_t
+        {
+            self.cublas_handle
+        }
+
+        fn cusolver_handle(&self) -> cusolverDnHandle_t
+        {
+            self.cusolver_handle
         }
     }
 
     /// TODO: doc
-    pub fn context(&self) -> &Context
+    pub fn buf_from_slice(s: &[f32]) -> DeviceBuffer<f32>
     {
-        &self.cuda_ctx
+        CUDA_MANAGER.buf_from_slice(s)
     }
 
     /// TODO: doc
-    pub fn cublas_handle(&self) -> &cublasHandle_t
+    pub fn buf_zeroes<T>(length: usize) -> DeviceBuffer<T>
     {
-        &self.cublas_handle
+        CUDA_MANAGER.buf_zeroes(length)
     }
 
     /// TODO: doc
-    pub fn cusolver_handle(&self) -> &cusolverDnHandle_t
+    pub fn context() -> &'static Context
     {
-        &self.cusolver_handle
+        CUDA_MANAGER.context()
+    }
+
+    /// TODO: doc
+    pub fn cublas_handle() -> cublasHandle_t
+    {
+        CUDA_MANAGER.cublas_handle()
+    }
+
+    /// TODO: doc
+    pub fn cusolver_handle() -> cusolverDnHandle_t
+    {
+        CUDA_MANAGER.cusolver_handle()
     }
 }
-
-// TODO: try thread_local
-/// TODO: doc
-pub static CUDA_MANAGER: Lazy<CudaManager> = Lazy::new(|| {
-    // Initialize the CUDA API
-    let r = rustacuda::init(CudaFlags::empty());
-    if r.is_err() {
-        log::error!("CUDA driver initialization failed");
-    }
-    r.unwrap();
-
-    // API version
-    log::info!(
-        "CUDA driver API version: {}.{}",
-        rustacuda::CudaApiVersion::get().unwrap().major(),
-        rustacuda::CudaApiVersion::get().unwrap().minor(),
-    );
-
-    // Get the first device
-    // TODO: num_devices
-    let device = Device::get_device(0);
-    if device.is_err() {
-        log::error!("CUDA device not found");
-    }
-    let device = device.unwrap();
-
-    // Device name
-    log::info!("CUDA device name: {}", device.name().unwrap());
-
-    // Create a context associated to this device
-    let cuda_ctx = Context::create_and_push(
-        ContextFlags::MAP_HOST | ContextFlags::SCHED_AUTO,
-        device
-    );
-    if cuda_ctx.is_err() {
-        log::error!("CUDA context failed to create");
-    }
-    let cuda_ctx = cuda_ctx.unwrap();
-
-    // cuBLAS handle
-    let mut cublas_handle: cublasHandle_t = core::ptr::null_mut();
-    unsafe {
-        let st = cublasCreate_v2(&mut cublas_handle);
-        if st != cublasStatus_t::CUBLAS_STATUS_SUCCESS {
-            log::error!("cuBLAS handle failed to create");
-        }
-        assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
-    }
-
-    // cuSOLVER handle
-    let mut cusolver_handle: cusolverDnHandle_t = core::ptr::null_mut();
-    unsafe {
-        let st = cusolverDnCreate(&mut cusolver_handle);
-        if st != cusolverStatus_t::CUSOLVER_STATUS_SUCCESS {
-            log::error!("cuSOLVER handle failed to create");
-        }
-        assert_eq!(st, cusolverStatus_t::CUSOLVER_STATUS_SUCCESS);
-    }
-
-    log::debug!("CUDA_MANAGER created");
-    CudaManager {
-        cuda_ctx,
-        cublas_handle,
-        cusolver_handle,
-    }
-});
 
 
 
@@ -149,6 +183,7 @@ pub struct F32CUDASlice
     mutator: Mutex<CUDASliceMut>,
 }
 
+// TODO: mod
 struct SliceManager
 {
     cnt: usize,
@@ -165,7 +200,7 @@ impl SliceManager
         let cs = F32CUDASlice {
             idx,
             parent_idx: None,
-            dev_buf: Arc::new(Mutex::new(F32CUDABuf(CUDA_MANAGER.buf_from_slice(s)))),
+            dev_buf: Arc::new(Mutex::new(F32CUDABuf(cuda_mgr::buf_from_slice(s)))),
             host_buf: Arc::new(Mutex::new(Vec::from(s))),
             sta: 0,
             end: s.len(),
@@ -189,7 +224,7 @@ impl SliceManager
         let cs = F32CUDASlice {
             idx,
             parent_idx: None,
-            dev_buf: Arc::new(Mutex::new(F32CUDABuf(CUDA_MANAGER.buf_zeroes(length)))),
+            dev_buf: Arc::new(Mutex::new(F32CUDABuf(cuda_mgr::buf_zeroes(length)))),
             host_buf: Arc::new(Mutex::new(vec![0.; length])),
             sta: 0,
             end: length,
@@ -492,7 +527,7 @@ impl LinAlg for F32CUDA
 
         unsafe {
             let st = cublasSnrm2_v2(
-                *CUDA_MANAGER.cublas_handle(),
+                cuda_mgr::cublas_handle(),
                 x.len() as i32,
                 x.get_dev().as_ptr(), 1,
                 &mut result
@@ -509,7 +544,7 @@ impl LinAlg for F32CUDA
 
         unsafe {
             let st = cublasScopy_v2(
-                *CUDA_MANAGER.cublas_handle(),
+                cuda_mgr::cublas_handle(),
                 x.len() as i32,
                 x.get_dev().as_ptr(), 1,
                 y.get_dev_mut().as_mut_ptr(), 1
@@ -522,7 +557,7 @@ impl LinAlg for F32CUDA
     {
         unsafe {
             let st = cublasSscal_v2(
-                *CUDA_MANAGER.cublas_handle(),
+                cuda_mgr::cublas_handle(),
                 x.len() as i32,
                 &alpha, x.get_dev_mut().as_mut_ptr(), 1
             );
@@ -536,7 +571,7 @@ impl LinAlg for F32CUDA
 
         unsafe {
             let st = cublasSaxpy_v2(
-                *CUDA_MANAGER.cublas_handle(),
+                cuda_mgr::cublas_handle(),
                 x.len() as i32,
                 &alpha, x.get_dev().as_ptr(), 1,
                 y.get_dev_mut().as_mut_ptr(), 1
@@ -547,11 +582,11 @@ impl LinAlg for F32CUDA
 
     fn adds(s: f32, y: &mut F32CUDASlice)
     {
-        let one = CUDA_MANAGER.buf_from_slice(&[1.]);
+        let one = cuda_mgr::buf_from_slice(&[1.]);
 
         unsafe {
             let st = cublasSaxpy_v2(
-                *CUDA_MANAGER.cublas_handle(),
+                cuda_mgr::cublas_handle(),
                 y.len() as i32,
                 &s, one.as_ptr(), 0,
                 y.get_dev_mut().as_mut_ptr(), 1
@@ -570,7 +605,7 @@ impl LinAlg for F32CUDA
 
             unsafe {
                 let st = cublasSasum_v2(
-                    *CUDA_MANAGER.cublas_handle(),
+                    cuda_mgr::cublas_handle(),
                     ((x.len() + (incx - 1)) / incx) as i32,
                     x.get_dev().as_ptr(), incx as i32,
                     &mut result
@@ -586,7 +621,7 @@ impl LinAlg for F32CUDA
     {
         unsafe {
             let st = cublasSsbmv_v2(
-                *CUDA_MANAGER.cublas_handle(),
+                cuda_mgr::cublas_handle(),
                 cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
                 mat.len() as i32, 0,
                 &alpha, mat.get_dev().as_ptr(), 1,
@@ -621,7 +656,7 @@ impl LinAlgEx for F32CUDA
 
         unsafe {
             let st = cublasSgemv_v2(
-                *CUDA_MANAGER.cublas_handle(),
+                cuda_mgr::cublas_handle(),
                 trans,
                 n_row as i32, n_col as i32,
                 &alpha, mat.get_dev().as_ptr(), n_row as i32,
@@ -660,7 +695,7 @@ impl LinAlgEx for F32CUDA
         */
         unsafe {
             let st = cublasSspmv_v2(
-                *CUDA_MANAGER.cublas_handle(),
+                cuda_mgr::cublas_handle(),
                 cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
                 n as i32,
                 &alpha, mat.get_dev().as_ptr(),
@@ -770,7 +805,7 @@ fn eig_func_worklen(n: usize) -> usize
     
     unsafe {
         let st = cusolverDnSsyevdx_bufferSize(
-            *CUDA_MANAGER.cusolver_handle(),
+            cuda_mgr::cusolver_handle(),
             cusolverEigMode_t::CUSOLVER_EIG_MODE_VECTOR,
             cusolverEigRange_t::CUSOLVER_EIG_RANGE_V,
             cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
@@ -796,11 +831,11 @@ where E: Fn(f32)->Option<f32>
     let lwork = eig_func_worklen(n) - n - n * n;
 
     let mut meig: i32 = 0;
-    let mut dev_info = CUDA_MANAGER.buf_zeroes(1);
+    let mut dev_info = cuda_mgr::buf_zeroes(1);
 
     unsafe {
         let st = cusolverDnSsyevdx(
-            *CUDA_MANAGER.cusolver_handle(),
+            cuda_mgr::cusolver_handle(),
             cusolverEigMode_t::CUSOLVER_EIG_MODE_VECTOR,
             cusolverEigRange_t::CUSOLVER_EIG_RANGE_V,
             cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
@@ -824,7 +859,7 @@ where E: Fn(f32)->Option<f32>
     let alpha = 0.;
     unsafe {
         let st = cublasSscal_v2(
-            *CUDA_MANAGER.cublas_handle(),
+            cuda_mgr::cublas_handle(),
             (n * n) as i32,
             &alpha, a.get_dev_mut().as_mut_ptr(), 1
         );
@@ -839,7 +874,7 @@ where E: Fn(f32)->Option<f32>
 
             unsafe {
                 let st = cublasSsyr_v2(
-                    *CUDA_MANAGER.cublas_handle(),
+                    cuda_mgr::cublas_handle(),
                     cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
                     n as i32,
                     &e, ref_z.get_dev().as_ptr(), 1,
@@ -875,7 +910,7 @@ fn vec_to_mat(v: &F32CUDASlice, m: &mut F32CUDASlice, scale: bool)
         // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
         unsafe {
             let st = cublasSscal_v2(
-                *CUDA_MANAGER.cublas_handle(),
+                cuda_mgr::cublas_handle(),
                 n as i32,
                 &2_f32.sqrt(), m.get_dev_mut().as_mut_ptr(), (n + 1) as i32
             );
@@ -896,7 +931,7 @@ fn mat_to_vec(m: &mut F32CUDASlice, v: &mut F32CUDASlice, scale: bool)
         // scale diagonals to match the resulted vector norm with the matrix norm multiplied by 0.5
         unsafe {
             let st = cublasSscal_v2(
-                *CUDA_MANAGER.cublas_handle(),
+                cuda_mgr::cublas_handle(),
                 n as i32,
                 &0.5_f32.sqrt(), m.get_dev_mut().as_mut_ptr(), (n + 1) as i32
             );
