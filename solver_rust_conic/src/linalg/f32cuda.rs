@@ -29,9 +29,6 @@ pub mod cuda_mgr
         cusolver_handle: cusolverDnHandle_t,
     }
 
-    unsafe impl Send for CudaManager {}
-    unsafe impl Sync for CudaManager {}
-
     impl CudaManager
     {
         fn new() -> CudaManager
@@ -658,7 +655,6 @@ impl LinAlgEx for F32CUDA
     // y = a*mat*x + b*y
     fn transform_sp(n: usize, alpha: f32, mat: &F32CUDASlice, x: &F32CUDASlice, beta: f32, y: &mut F32CUDASlice)
     {
-        // TODO: cuda test
         /*
         let mat = mat.get();
         let x = x.get();
@@ -692,6 +688,7 @@ impl LinAlgEx for F32CUDA
             );
             assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
         }
+        todo!(); // TODO: cuda test
     }
 
     fn proj_psd_worklen(sn: usize) -> usize
@@ -737,7 +734,6 @@ impl LinAlgEx for F32CUDA
 
     fn sqrt_spmat(mat: &mut F32CUDASlice, _eps_zero: f32, work: &mut F32CUDASlice)
     {
-        // TODO: cuda test
         /*
         let mat = mat.get_mut();
         let work = work.get_mut();
@@ -782,6 +778,7 @@ impl LinAlgEx for F32CUDA
         });
 
         mat_to_vec(&mut a, mat, false);
+        todo!(); // TODO: cuda test
     }
 }
 
