@@ -280,24 +280,17 @@ impl SliceManager
                 CUDASliceMut::Sync => {},
                 CUDASliceMut::Host => {
                     if *cs.mutator.try_lock().unwrap() == CUDASliceMut::Dev {
-                        let db = &cs.dev_buf.try_lock().unwrap().0[cs.sta..cs.end];
-                        let mut hb = cs.host_buf.try_lock().unwrap();
-                        let mut hb_mut = &mut hb[cs.sta..cs.end];
-                        
-                        db.copy_to(&mut hb_mut).unwrap();
+                        cs.sync_from_dev();
                     }
                 },
                 CUDASliceMut::Dev => {
                     if *cs.mutator.try_lock().unwrap() == CUDASliceMut::Host {
-                        let db = &mut cs.dev_buf.try_lock().unwrap().0[cs.sta..cs.end];
-                        let mut hb = cs.host_buf.try_lock().unwrap();
-                        let mut hb_mut = &mut hb[cs.sta..cs.end];
-                        
-                        db.copy_from(&mut hb_mut).unwrap();
+                        cs.sync_from_host();
                     }
                 },
             }
         }
+        
         self.map.remove(&idx).unwrap();
     }
 }
@@ -383,11 +376,7 @@ impl SliceLike for F32CUDASlice
         match *mutator {
             CUDASliceMut::Sync | CUDASliceMut::Host => {},
             CUDASliceMut::Dev => {
-                let db = &self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
-                let mut hb = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
-                
-                db.copy_to(&mut hb).unwrap();
-
+                self.sync_from_dev();
                 *mutator = CUDASliceMut::Sync;
             },
         }
@@ -410,11 +399,7 @@ impl SliceLike for F32CUDASlice
             },
             CUDASliceMut::Host => {},
             CUDASliceMut::Dev => {
-                let db = &self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
-                let mut hb = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
-
-                db.copy_to(&mut hb).unwrap();
-
+                self.sync_from_dev();
                 *mutator = CUDASliceMut::Host;
             },
         }
@@ -436,7 +421,23 @@ impl F32CUDASlice
         let cs = mgr.new_slice_zeroes(length);
 
         SliceMut {s: cs}
-    }    
+    }
+
+    fn sync_from_dev(&self)
+    {
+        let db = &self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
+        let mut hb = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
+
+        db.copy_to(&mut hb).unwrap();
+    }
+
+    fn sync_from_host(&self)
+    {
+        let db = &mut self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
+        let hb = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
+        
+        db.copy_from(&hb).unwrap();
+    }
 
     /// TODO: doc
     pub fn get_dev(&self) -> &DeviceSlice<f32>
@@ -445,11 +446,7 @@ impl F32CUDASlice
         match *mutator {
             CUDASliceMut::Sync | CUDASliceMut::Dev => {},
             CUDASliceMut::Host => {
-                let db = &mut self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
-                let mut hb = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
-                
-                db.copy_from(&mut hb).unwrap();
-
+                self.sync_from_host();
                 *mutator = CUDASliceMut::Sync;
             },
         }
@@ -471,11 +468,7 @@ impl F32CUDASlice
             },
             CUDASliceMut::Dev => {},
             CUDASliceMut::Host => {
-                let db = &mut self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
-                let mut hb = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
-                
-                db.copy_from(&mut hb).unwrap();
-
+                self.sync_from_host();
                 *mutator = CUDASliceMut::Dev;
             },
         }
