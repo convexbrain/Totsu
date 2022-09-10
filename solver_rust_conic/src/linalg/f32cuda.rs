@@ -61,7 +61,7 @@ pub mod cuda_mgr
             let cuda_ctx = Rc::new(cuda_ctx.unwrap());
 
             // cuBLAS handle
-            let mut cublas_handle: cublasHandle_t = core::ptr::null_mut();
+            let mut cublas_handle: cublasHandle_t = std::ptr::null_mut();
             unsafe {
                 let st = cublasCreate_v2(&mut cublas_handle);
                 if st != cublasStatus_t::CUBLAS_STATUS_SUCCESS {
@@ -71,7 +71,7 @@ pub mod cuda_mgr
             }
 
             // cuSOLVER handle
-            let mut cusolver_handle: cusolverDnHandle_t = core::ptr::null_mut();
+            let mut cusolver_handle: cusolverDnHandle_t = std::ptr::null_mut();
             unsafe {
                 let st = cusolverDnCreate(&mut cusolver_handle);
                 if st != cusolverStatus_t::CUSOLVER_STATUS_SUCCESS {
@@ -137,8 +137,8 @@ pub mod cuda_mgr
 //
 
 pub mod f32cuda_slice {
-    // TODO: Rc, Refcell
-    use std::sync::{Arc, Mutex};
+    use std::rc::Rc;
+    use std::cell::RefCell;
     use std::vec::Vec;
     use std::{vec, thread_local};
     use std::collections::HashMap;
@@ -157,20 +157,16 @@ pub mod f32cuda_slice {
         Dev,
     }
 
-    struct F32CUDABuf(DeviceBuffer<f32>);
-    unsafe impl Send for F32CUDABuf {}
-    unsafe impl Sync for F32CUDABuf {}
-
     /// TODO: doc
     pub struct F32CUDASlice
     {
         idx: usize,
         parent_idx: Option<usize>,
-        dev_buf: Arc<Mutex<F32CUDABuf>>,
-        host_buf: Arc<Mutex<Vec<f32>>>,
+        dev_buf: Rc<RefCell<DeviceBuffer<f32>>>,
+        host_buf: Rc<RefCell<Vec<f32>>>,
         sta: usize,
         end: usize,
-        mutator: Mutex<CUDASliceMut>,
+        mutator: RefCell<CUDASliceMut>,
     }
 
     struct SliceManager
@@ -202,7 +198,7 @@ pub mod f32cuda_slice {
             let cs = self.map.get_mut(&idx).unwrap();
 
             unsafe {
-                core::mem::transmute::<&mut F32CUDASlice, &'a mut F32CUDASlice>(cs)
+                std::mem::transmute::<&mut F32CUDASlice, &'a mut F32CUDASlice>(cs)
             }
         }
     }
@@ -214,22 +210,22 @@ pub mod f32cuda_slice {
         }
     }
 
-    thread_local!(static SLICE_MANAGER: Mutex<SliceManager> = Mutex::new(SliceManager::new()));
+    thread_local!(static SLICE_MANAGER: RefCell<SliceManager> = RefCell::new(SliceManager::new()));
 
     fn new_slice_from(s: &[f32]) -> &mut F32CUDASlice
     {
         SLICE_MANAGER.with(|mgr| {
-            let mut mgr = mgr.try_lock().unwrap();
+            let mut mgr = mgr.borrow_mut();
 
             mgr.new_slice(|idx| {
                 F32CUDASlice {
                     idx,
                     parent_idx: None,
-                    dev_buf: Arc::new(Mutex::new(F32CUDABuf(cuda_mgr::buf_from_slice(s)))),
-                    host_buf: Arc::new(Mutex::new(Vec::from(s))),
+                    dev_buf: Rc::new(RefCell::new(cuda_mgr::buf_from_slice(s))),
+                    host_buf: Rc::new(RefCell::new(Vec::from(s))),
                     sta: 0,
                     end: s.len(),
-                    mutator: Mutex::new(CUDASliceMut::Sync)
+                    mutator: RefCell::new(CUDASliceMut::Sync)
                 }
             })
         })
@@ -238,17 +234,17 @@ pub mod f32cuda_slice {
     fn new_slice_zeroes(length: usize) -> &'static mut F32CUDASlice
     {
         SLICE_MANAGER.with(|mgr| {
-            let mut mgr = mgr.try_lock().unwrap();
+            let mut mgr = mgr.borrow_mut();
 
             mgr.new_slice(|idx| {
                 F32CUDASlice {
                     idx,
                     parent_idx: None,
-                    dev_buf: Arc::new(Mutex::new(F32CUDABuf(cuda_mgr::buf_zeroes(length)))),
-                    host_buf: Arc::new(Mutex::new(vec![0.; length])),
+                    dev_buf: Rc::new(RefCell::new(cuda_mgr::buf_zeroes(length))),
+                    host_buf: Rc::new(RefCell::new(vec![0.; length])),
                     sta: 0,
                     end: length,
-                    mutator: Mutex::new(CUDASliceMut::Sync)
+                    mutator: RefCell::new(CUDASliceMut::Sync)
                 }
             })
         })
@@ -261,7 +257,7 @@ pub mod f32cuda_slice {
         assert!(cs.sta + end <= cs.end);
 
         SLICE_MANAGER.with(|mgr| {
-            let mut mgr = mgr.try_lock().unwrap();
+            let mut mgr = mgr.borrow_mut();
 
             mgr.new_slice(|idx| {
                 F32CUDASlice {
@@ -271,7 +267,7 @@ pub mod f32cuda_slice {
                     host_buf: cs.host_buf.clone(),
                     sta: cs.sta + sta,
                     end: cs.sta + end,
-                    mutator: Mutex::new(*cs.mutator.try_lock().unwrap())
+                    mutator: RefCell::new(*cs.mutator.borrow())
                 }
             })
         })
@@ -280,7 +276,7 @@ pub mod f32cuda_slice {
     fn remove_slice(idx: usize)
     {
         SLICE_MANAGER.with(|mgr| {
-            let mut mgr = mgr.try_lock().unwrap();
+            let mut mgr = mgr.borrow_mut();
 
             // sync mutators of split tree
             //
@@ -297,13 +293,13 @@ pub mod f32cuda_slice {
 
 
             let cs = &mgr.map[&idx];
-            let cs_mut = *cs.mutator.try_lock().unwrap();
+            let cs_mut = *cs.mutator.borrow();
             let cs_par_idx = cs.parent_idx;
             let mut cs_par_mut = None;
 
             if let Some(par_idx) = cs_par_idx {
                 let par = mgr.map.get_mut(&par_idx).unwrap();
-                let mut par_mut = par.mutator.try_lock().unwrap();
+                let mut par_mut = par.mutator.borrow_mut();
 
                 cs_par_mut = Some(*par_mut);
 
@@ -317,12 +313,12 @@ pub mod f32cuda_slice {
                 match par_mut {
                     CUDASliceMut::Sync => {},
                     CUDASliceMut::Host => {
-                        if *cs.mutator.try_lock().unwrap() == CUDASliceMut::Dev {
+                        if cs_mut == CUDASliceMut::Dev {
                             cs.sync_from_dev();
                         }
                     },
                     CUDASliceMut::Dev => {
-                        if *cs.mutator.try_lock().unwrap() == CUDASliceMut::Host {
+                        if cs_mut == CUDASliceMut::Host {
                             cs.sync_from_host();
                         }
                     },
@@ -390,7 +386,7 @@ pub mod f32cuda_slice {
         fn get(&self) -> &[f32]
         {
             //std::println!("  {} get", self.idx);
-            let mut mutator = self.mutator.try_lock().unwrap();
+            let mut mutator = self.mutator.borrow_mut();
             //std::println!("  {:?} mutator", *mutator);
             match *mutator {
                 CUDASliceMut::Sync | CUDASliceMut::Host => {},
@@ -400,17 +396,17 @@ pub mod f32cuda_slice {
                 },
             }
 
-            let hb_ref = &self.host_buf.try_lock().unwrap()[self.sta..self.end];
+            let hb_ref = &self.host_buf.as_ref().borrow()[self.sta..self.end];
 
             unsafe {
-                core::mem::transmute::<&[f32], &[f32]>(hb_ref)
+                std::mem::transmute::<&[f32], &[f32]>(hb_ref)
             }
         }
 
         fn get_mut(&mut self) -> &mut[f32]
         {
             //std::println!("  {} get_mut", self.idx);
-            let mut mutator = self.mutator.try_lock().unwrap();
+            let mut mutator = self.mutator.borrow_mut();
             //std::println!("    {:?} mutator", *mutator);
             match *mutator {
                 CUDASliceMut::Sync => {
@@ -423,10 +419,10 @@ pub mod f32cuda_slice {
                 },
             }
 
-            let hb_mut = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
+            let hb_mut = &mut self.host_buf.as_ref().borrow_mut()[self.sta..self.end];
 
             unsafe {
-                core::mem::transmute::<&mut[f32], &mut[f32]>(hb_mut)
+                std::mem::transmute::<&mut[f32], &mut[f32]>(hb_mut)
             }
         }
     }
@@ -445,16 +441,16 @@ pub mod f32cuda_slice {
 
         fn sync_from_dev(&self)
         {
-            let db = &self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
-            let mut hb = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
+            let db = &self.dev_buf.as_ref().borrow()[self.sta..self.end];
+            let mut hb = &mut self.host_buf.as_ref().borrow_mut()[self.sta..self.end];
 
             db.copy_to(&mut hb).unwrap();
         }
 
         fn sync_from_host(&self)
         {
-            let db = &mut self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
-            let hb = &mut self.host_buf.try_lock().unwrap()[self.sta..self.end];
+            let db = &mut self.dev_buf.as_ref().borrow_mut()[self.sta..self.end];
+            let hb = &mut self.host_buf.as_ref().borrow_mut()[self.sta..self.end];
             
             db.copy_from(&hb).unwrap();
         }
@@ -462,7 +458,7 @@ pub mod f32cuda_slice {
         /// TODO: doc
         pub fn get_dev(&self) -> &DeviceSlice<f32>
         {
-            let mut mutator = self.mutator.try_lock().unwrap();
+            let mut mutator = self.mutator.borrow_mut();
             match *mutator {
                 CUDASliceMut::Sync | CUDASliceMut::Dev => {},
                 CUDASliceMut::Host => {
@@ -471,17 +467,17 @@ pub mod f32cuda_slice {
                 },
             }
 
-            let db_ref = &self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
+            let db_ref = &self.dev_buf.as_ref().borrow()[self.sta..self.end];
 
             unsafe {
-                core::mem::transmute::<&DeviceSlice<f32>, &DeviceSlice<f32>>(db_ref)
+                std::mem::transmute::<&DeviceSlice<f32>, &DeviceSlice<f32>>(db_ref)
             }
         }
 
         /// TODO: doc
         pub fn get_dev_mut(&mut self) -> &mut DeviceSlice<f32>
         {
-            let mut mutator = self.mutator.try_lock().unwrap();
+            let mut mutator = self.mutator.borrow_mut();
             match *mutator {
                 CUDASliceMut::Sync => {
                     *mutator = CUDASliceMut::Dev;
@@ -493,10 +489,10 @@ pub mod f32cuda_slice {
                 },
             }
 
-            let db_mut = &mut self.dev_buf.try_lock().unwrap().0[self.sta..self.end];
+            let db_mut = &mut self.dev_buf.as_ref().borrow_mut()[self.sta..self.end];
 
             unsafe {
-                core::mem::transmute::<&mut DeviceSlice<f32>, &mut DeviceSlice<f32>>(db_mut)
+                std::mem::transmute::<&mut DeviceSlice<f32>, &mut DeviceSlice<f32>>(db_mut)
             }
         }
     }
@@ -802,9 +798,9 @@ fn eig_func_worklen(n: usize) -> usize
             cusolverEigMode_t::CUSOLVER_EIG_MODE_VECTOR,
             cusolverEigRange_t::CUSOLVER_EIG_RANGE_V,
             cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
-            n as i32, core::ptr::null(), n as i32,
+            n as i32, std::ptr::null(), n as i32,
             0., f32::INFINITY, 0, 0,
-            core::ptr::null_mut(), core::ptr::null(),
+            std::ptr::null_mut(), std::ptr::null(),
             &mut lwork
         );
         assert_eq!(st, cusolverStatus_t::CUSOLVER_STATUS_SUCCESS);
