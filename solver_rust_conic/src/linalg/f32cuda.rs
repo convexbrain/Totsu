@@ -137,15 +137,15 @@ pub mod cuda_mgr
 //
 
 pub mod f32cuda_slice {
+    // TODO: Rc, Refcell
     use std::sync::{Arc, Mutex};
     use std::vec::Vec;
-    use std::vec;
+    use std::{vec, thread_local};
     use std::collections::HashMap;
     use std::pin::Pin;
     use std::boxed::Box;
     use rustacuda::prelude::*;
     use rustacuda::memory::{DeviceBuffer, DeviceSlice};
-    use once_cell::sync::Lazy;
     use crate::linalg::{SliceRef, SliceMut, SliceLike};
     use super::cuda_mgr;
 
@@ -173,16 +173,22 @@ pub mod f32cuda_slice {
         mutator: Mutex<CUDASliceMut>,
     }
 
-    // TODO: mod
     struct SliceManager
     {
         cnt: usize,
         map: HashMap<usize, Pin<Box<F32CUDASlice>>>,
     }
 
-    // TODO: refactoring common procedures
     impl SliceManager
     {
+        fn new() -> SliceManager
+        {
+            SliceManager {
+                cnt: 0,
+                map: HashMap::new()
+            }
+        }
+
         fn new_slice<'a, F>(&mut self, func: F) -> &'a mut F32CUDASlice
         where F: FnOnce(usize) -> F32CUDASlice
         {
@@ -199,10 +205,23 @@ pub mod f32cuda_slice {
                 core::mem::transmute::<&mut F32CUDASlice, &'a mut F32CUDASlice>(cs)
             }
         }
+    }
 
-        fn new_slice_from<'a>(&mut self, s: &'a[f32]) -> &'a mut F32CUDASlice
-        {
-            self.new_slice(|idx| {
+    impl Drop for SliceManager
+    {
+        fn drop(&mut self) {
+            assert_eq!(self.map.len(), 0);
+        }
+    }
+
+    thread_local!(static SLICE_MANAGER: Mutex<SliceManager> = Mutex::new(SliceManager::new()));
+
+    fn new_slice_from(s: &[f32]) -> &mut F32CUDASlice
+    {
+        SLICE_MANAGER.with(|mgr| {
+            let mut mgr = mgr.try_lock().unwrap();
+
+            mgr.new_slice(|idx| {
                 F32CUDASlice {
                     idx,
                     parent_idx: None,
@@ -213,11 +232,15 @@ pub mod f32cuda_slice {
                     mutator: Mutex::new(CUDASliceMut::Sync)
                 }
             })
-        }
+        })
+    }
 
-        fn new_slice_zeroes<'a>(&mut self, length: usize) -> &'a mut F32CUDASlice
-        {
-            self.new_slice(|idx| {
+    fn new_slice_zeroes(length: usize) -> &'static mut F32CUDASlice
+    {
+        SLICE_MANAGER.with(|mgr| {
+            let mut mgr = mgr.try_lock().unwrap();
+
+            mgr.new_slice(|idx| {
                 F32CUDASlice {
                     idx,
                     parent_idx: None,
@@ -228,15 +251,19 @@ pub mod f32cuda_slice {
                     mutator: Mutex::new(CUDASliceMut::Sync)
                 }
             })
-        }
+        })
+    }
 
-        fn split_slice<'a>(&mut self, cs: &'a F32CUDASlice, sta: usize, end: usize) -> &'a mut F32CUDASlice
-        {
-            assert!(sta <= end);
-            assert!(cs.sta + sta <= cs.end);
-            assert!(cs.sta + end <= cs.end);
+    fn split_slice(cs: &F32CUDASlice, sta: usize, end: usize) -> &mut F32CUDASlice
+    {
+        assert!(sta <= end);
+        assert!(cs.sta + sta <= cs.end);
+        assert!(cs.sta + end <= cs.end);
 
-            self.new_slice(|idx| {
+        SLICE_MANAGER.with(|mgr| {
+            let mut mgr = mgr.try_lock().unwrap();
+
+            mgr.new_slice(|idx| {
                 F32CUDASlice {
                     idx,
                     parent_idx: Some(cs.idx),
@@ -247,10 +274,14 @@ pub mod f32cuda_slice {
                     mutator: Mutex::new(*cs.mutator.try_lock().unwrap())
                 }
             })
-        }
+        })
+    }
 
-        fn remove(&mut self, idx: usize)
-        {
+    fn remove_slice(idx: usize)
+    {
+        SLICE_MANAGER.with(|mgr| {
+            let mut mgr = mgr.try_lock().unwrap();
+
             // sync mutators of split tree
             //
             // parent    child(cs)
@@ -263,13 +294,15 @@ pub mod f32cuda_slice {
             // Dev    -> Sync       do nothing
             //        -> Host       copy from Host to Dev
             //        -> Dev        do nothing
-            let cs = &self.map[&idx];
+
+
+            let cs = &mgr.map[&idx];
             let cs_mut = *cs.mutator.try_lock().unwrap();
             let cs_par_idx = cs.parent_idx;
             let mut cs_par_mut = None;
 
             if let Some(par_idx) = cs_par_idx {
-                let par = self.map.get_mut(&par_idx).unwrap();
+                let par = mgr.map.get_mut(&par_idx).unwrap();
                 let mut par_mut = par.mutator.try_lock().unwrap();
 
                 cs_par_mut = Some(*par_mut);
@@ -279,7 +312,7 @@ pub mod f32cuda_slice {
                 }
             }
 
-            let cs = self.map.get_mut(&idx).unwrap();
+            let cs = mgr.map.get_mut(&idx).unwrap();
             if let Some(par_mut) = cs_par_mut {
                 match par_mut {
                     CUDASliceMut::Sync => {},
@@ -296,25 +329,11 @@ pub mod f32cuda_slice {
                 }
             }
 
-            self.map.remove(&idx).unwrap();
-        }
+            mgr.map.remove(&idx).unwrap();
+        });
     }
 
-    impl Drop for SliceManager
-    {
-        fn drop(&mut self) {
-            assert_eq!(self.map.len(), 0);
-        }
-    }
-
-    // TODO: try thread_local
-    // TODO: encapsulate try_lock
-    static SLICE_MANAGER: Lazy<Mutex<SliceManager>> = Lazy::new(|| {
-        Mutex::new(SliceManager {
-            cnt: 0,
-            map: HashMap::new()
-        })
-    });
+    //
 
     impl SliceLike for F32CUDASlice
     {
@@ -322,8 +341,7 @@ pub mod f32cuda_slice {
 
         fn new(s: &[f32]) -> SliceRef<'_, F32CUDASlice>
         {
-            let mut mgr = SLICE_MANAGER.try_lock().unwrap();
-            let cs = mgr.new_slice_from(s);
+            let cs = new_slice_from(s);
             
             //std::println!("{} new", cs.idx);
             SliceRef {s: cs}
@@ -331,8 +349,7 @@ pub mod f32cuda_slice {
 
         fn new_mut(s: &mut[f32]) -> SliceMut<'_, F32CUDASlice>
         {
-            let mut mgr = SLICE_MANAGER.try_lock().unwrap();
-            let cs = mgr.new_slice_from(s);
+            let cs = new_slice_from(s);
 
             //std::println!("{} new_mut", cs.idx);
             SliceMut {s: cs}
@@ -340,9 +357,8 @@ pub mod f32cuda_slice {
         
         fn split_at(&self, mid: usize) -> (SliceRef<'_, F32CUDASlice>, SliceRef<'_, F32CUDASlice>)
         {
-            let mut mgr = SLICE_MANAGER.try_lock().unwrap();
-            let cs0 = mgr.split_slice(self, 0, mid);
-            let cs1 = mgr.split_slice(self, mid, self.len());
+            let cs0 = split_slice(self, 0, mid);
+            let cs1 = split_slice(self, mid, self.len());
 
             //std::println!("{} split from {}", cs0.idx, self.idx);
             //std::println!("{} split from {}", cs1.idx, self.idx);
@@ -351,9 +367,8 @@ pub mod f32cuda_slice {
 
         fn split_at_mut(&mut self, mid: usize) -> (SliceMut<'_, F32CUDASlice>, SliceMut<'_, F32CUDASlice>)
         {
-            let mut mgr = SLICE_MANAGER.try_lock().unwrap();
-            let cs0 = mgr.split_slice(self, 0, mid);
-            let cs1 = mgr.split_slice(self, mid, self.len());
+            let cs0 = split_slice(self, 0, mid);
+            let cs1 = split_slice(self, mid, self.len());
 
             //std::println!("{} split_mut from {}", cs0.idx, self.idx);
             //std::println!("{} split_mut from {}", cs1.idx, self.idx);
@@ -363,8 +378,7 @@ pub mod f32cuda_slice {
         fn drop(&self)
         {
             //std::println!("{} drop", self.idx);
-            let mut mgr = SLICE_MANAGER.try_lock().unwrap();
-            mgr.remove(self.idx);
+            remove_slice(self.idx);
         }
 
         fn len(&self) -> usize
@@ -417,13 +431,14 @@ pub mod f32cuda_slice {
         }
     }
 
+    //
+
     impl F32CUDASlice
     {
         /// TODO: doc
         pub fn new_zeroes(length: usize) -> SliceMut<'static, F32CUDASlice>
         {
-            let mut mgr = SLICE_MANAGER.try_lock().unwrap();
-            let cs = mgr.new_slice_zeroes(length);
+            let cs = new_slice_zeroes(length);
 
             SliceMut {s: cs}
         }
