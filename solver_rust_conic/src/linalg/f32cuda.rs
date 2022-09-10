@@ -175,22 +175,16 @@ struct SliceManager
     map: HashMap<usize, Pin<Box<F32CUDASlice>>>,
 }
 
+// TODO: refactoring common procedures
 impl SliceManager
 {
-    fn new_slice<'a>(&mut self, s: &'a[f32]) -> &'a mut F32CUDASlice
+    fn new_slice<'a, F>(&mut self, func: F) -> &'a mut F32CUDASlice
+    where F: FnOnce(usize) -> F32CUDASlice
     {
         let idx = self.cnt;
         self.cnt = idx + 1;
 
-        let cs = F32CUDASlice {
-            idx,
-            parent_idx: None,
-            dev_buf: Arc::new(Mutex::new(F32CUDABuf(cuda_mgr::buf_from_slice(s)))),
-            host_buf: Arc::new(Mutex::new(Vec::from(s))),
-            sta: 0,
-            end: s.len(),
-            mutator: Mutex::new(CUDASliceMut::Sync),
-        };
+        let cs = func(idx);
 
         let r = self.map.insert(idx, Box::pin(cs));
         assert!(r.is_none());
@@ -201,55 +195,53 @@ impl SliceManager
         }
     }
 
-    fn new_zeroes<'a>(&mut self, length: usize) -> &'a mut F32CUDASlice
+    fn new_slice_from<'a>(&mut self, s: &'a[f32]) -> &'a mut F32CUDASlice
     {
-        let idx = self.cnt;
-        self.cnt = idx + 1;
-
-        let cs = F32CUDASlice {
-            idx,
-            parent_idx: None,
-            dev_buf: Arc::new(Mutex::new(F32CUDABuf(cuda_mgr::buf_zeroes(length)))),
-            host_buf: Arc::new(Mutex::new(vec![0.; length])),
-            sta: 0,
-            end: length,
-            mutator: Mutex::new(CUDASliceMut::Sync),
-        };
-
-        let r = self.map.insert(idx, Box::pin(cs));
-        assert!(r.is_none());
-        let cs = self.map.get_mut(&idx).unwrap();
-
-        unsafe {
-            core::mem::transmute::<&mut F32CUDASlice, &'a mut F32CUDASlice>(cs)
-        }
+        self.new_slice(|idx| {
+            F32CUDASlice {
+                idx,
+                parent_idx: None,
+                dev_buf: Arc::new(Mutex::new(F32CUDABuf(cuda_mgr::buf_from_slice(s)))),
+                host_buf: Arc::new(Mutex::new(Vec::from(s))),
+                sta: 0,
+                end: s.len(),
+                mutator: Mutex::new(CUDASliceMut::Sync)
+            }
+        })
     }
 
-    fn split_slice<'a>(&mut self, cso: &'a F32CUDASlice, sta: usize, end: usize) -> &'a mut F32CUDASlice
+    fn new_slice_zeroes<'a>(&mut self, length: usize) -> &'a mut F32CUDASlice
     {
-        assert!(sta <= end, "{}<={}", sta, end);
-        let idx = self.cnt;
-        self.cnt = idx + 1;
+        self.new_slice(|idx| {
+            F32CUDASlice {
+                idx,
+                parent_idx: None,
+                dev_buf: Arc::new(Mutex::new(F32CUDABuf(cuda_mgr::buf_zeroes(length)))),
+                host_buf: Arc::new(Mutex::new(vec![0.; length])),
+                sta: 0,
+                end: length,
+                mutator: Mutex::new(CUDASliceMut::Sync)
+            }
+        })
+    }
 
-        let cs = F32CUDASlice {
-            idx,
-            parent_idx: Some(cso.idx),
-            dev_buf: cso.dev_buf.clone(),
-            host_buf: cso.host_buf.clone(),
-            sta: cso.sta + sta,
-            end: cso.sta + end,
-            mutator: Mutex::new(*cso.mutator.try_lock().unwrap()),
-        };
-        assert!(cs.sta <= cs.end);
-        assert!(cs.end <= cso.end);
+    fn split_slice<'a>(&mut self, cs: &'a F32CUDASlice, sta: usize, end: usize) -> &'a mut F32CUDASlice
+    {
+        assert!(sta <= end);
+        assert!(cs.sta + sta <= cs.end);
+        assert!(cs.sta + end <= cs.end);
 
-        let r = self.map.insert(idx, Box::pin(cs));
-        assert!(r.is_none());
-        let cs = self.map.get_mut(&idx).unwrap();
-
-        unsafe {
-            core::mem::transmute::<&mut F32CUDASlice, &'a mut F32CUDASlice>(cs)
-        }
+        self.new_slice(|idx| {
+            F32CUDASlice {
+                idx,
+                parent_idx: Some(cs.idx),
+                dev_buf: cs.dev_buf.clone(),
+                host_buf: cs.host_buf.clone(),
+                sta: cs.sta + sta,
+                end: cs.sta + end,
+                mutator: Mutex::new(*cs.mutator.try_lock().unwrap())
+            }
+        })
     }
 
     fn remove(&mut self, idx: usize)
@@ -333,7 +325,7 @@ impl SliceLike for F32CUDASlice
     fn new(s: &[f32]) -> SliceRef<'_, F32CUDASlice>
     {
         let mut mgr = SLICE_MANAGER.try_lock().unwrap();
-        let cs = mgr.new_slice(s);
+        let cs = mgr.new_slice_from(s);
         
         //std::println!("{} new", cs.idx);
         SliceRef {s: cs}
@@ -342,7 +334,7 @@ impl SliceLike for F32CUDASlice
     fn new_mut(s: &mut[f32]) -> SliceMut<'_, F32CUDASlice>
     {
         let mut mgr = SLICE_MANAGER.try_lock().unwrap();
-        let cs = mgr.new_slice(s);
+        let cs = mgr.new_slice_from(s);
 
         //std::println!("{} new_mut", cs.idx);
         SliceMut {s: cs}
@@ -441,7 +433,7 @@ impl F32CUDASlice
     pub fn new_zeroes(length: usize) -> SliceMut<'static, F32CUDASlice>
     {
         let mut mgr = SLICE_MANAGER.try_lock().unwrap();
-        let cs = mgr.new_zeroes(length);
+        let cs = mgr.new_slice_zeroes(length);
 
         SliceMut {s: cs}
     }    
