@@ -1,5 +1,6 @@
-use num_traits::Float;
+use num_traits::{Float, Zero};
 use core::marker::PhantomData;
+use crate::linalg::{LinAlg, SliceLike};
 use super::Cone;
 
 //
@@ -15,12 +16,12 @@ use super::Cone;
 /// \ \middle|\ x_i \ge 0,\ i=1,\ldots,n
 /// \right\rbrace
 /// \\]
-pub struct ConeRPos<F>
+pub struct ConeRPos<L: LinAlg>
 {
-    ph_f: PhantomData<F>,
+    ph_l: PhantomData<L>,
 }
 
-impl<F> ConeRPos<F>
+impl<L: LinAlg> ConeRPos<L>
 {
     /// Creates an instance.
     /// 
@@ -28,23 +29,23 @@ impl<F> ConeRPos<F>
     pub fn new() -> Self
     {
         ConeRPos {
-            ph_f: PhantomData,
+            ph_l: PhantomData,
         }
     }
 }
 
-impl<F> Cone<F> for ConeRPos<F>
-where F: Float
+impl<L: LinAlg> Cone<L> for ConeRPos<L>
 {
-    fn proj(&mut self, _dual_cone: bool, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, _dual_cone: bool, x: &mut L::Sl) -> Result<(), ()>
     {
-        for e in x {
-            *e = e.max(F::zero());
+        let x_mut = x.get_mut();
+        for e in x_mut {
+            *e = e.max(L::F::zero());
         }
         Ok(())
     }
 
-    fn product_group<G: Fn(&mut[F]) + Copy>(&self, _dp_tau: &mut[F], _group: G)
+    fn product_group<G: Fn(&mut L::Sl) + Copy>(&self, _dp_tau: &mut L::Sl, _group: G)
     {
         // do nothing
     }

@@ -1,6 +1,6 @@
-use num_traits::Float;
+use num_traits::{Zero, One};
 use core::marker::PhantomData;
-use crate::linalg::LinAlg;
+use crate::linalg::{LinAlg, SliceLike};
 use super::Cone;
 
 //
@@ -16,15 +16,12 @@ use super::Cone;
 /// \ \middle|\ \sqrt{x_2^2+\cdots+x_n^2} \le x_1
 /// \right\rbrace
 /// \\]
-pub struct ConeSOC<L, F>
-where L: LinAlg<F>, F: Float
+pub struct ConeSOC<L: LinAlg>
 {
     ph_l: PhantomData<L>,
-    ph_f: PhantomData<F>,
 }
 
-impl<L, F> ConeSOC<L, F>
-where L: LinAlg<F>, F: Float
+impl<L: LinAlg> ConeSOC<L>
 {
     /// Creates an instance.
     /// 
@@ -33,43 +30,42 @@ where L: LinAlg<F>, F: Float
     {
         ConeSOC {
             ph_l: PhantomData,
-            ph_f: PhantomData,
         }
     }
 }
 
-impl<L, F> Cone<F> for ConeSOC<L, F>
-where L: LinAlg<F>, F: Float
+impl<L: LinAlg> Cone<L> for ConeSOC<L>
 {
-    fn proj(&mut self, _dual_cone: bool, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, _dual_cone: bool, x: &mut L::Sl) -> Result<(), ()>
     {
-        let f0 = F::zero();
-        let f1 = F::one();
+        let f0 = L::F::zero();
+        let f1 = L::F::one();
         let f2 = f1 + f1;
 
-        if let Some((s, v)) = x.split_first_mut() {
-            let norm_v = L::norm(v);
+        if x.len() > 0 {
+            let (mut s, mut v) = x.split_mut(1);
 
-            if norm_v <= -*s {
-                for e in v {
-                    *e = f0;
-                }
-                *s = f0;
+            let val_s = s.get(0);
+            let norm_v = L::norm(&v);
+
+            if norm_v <= -val_s {
+                L::scale(f0, &mut v);
+                s.set(0, f0);
             }
-            else if norm_v <= *s {
+            else if norm_v <= val_s {
                 // as they are
             }
             else {
-                let alpha = (f1 + *s / norm_v) / f2;
-                L::scale(alpha, v);
-                *s = (norm_v + *s) / f2;
+                let alpha = (f1 + val_s / norm_v) / f2;
+                L::scale(alpha, &mut v);
+                s.set(0, (norm_v + val_s) / f2);
             }
-
         }
+
         Ok(())
     }
 
-    fn product_group<G: Fn(&mut[F]) + Copy>(&self, dp_tau: &mut[F], group: G)
+    fn product_group<G: Fn(&mut L::Sl) + Copy>(&self, dp_tau: &mut L::Sl, group: G)
     {
         group(dp_tau);
     }

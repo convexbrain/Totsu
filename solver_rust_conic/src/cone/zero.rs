@@ -1,4 +1,5 @@
 use num_traits::Zero;
+use core::marker::PhantomData;
 use crate::linalg::LinAlg;
 use super::Cone;
 
@@ -15,20 +16,25 @@ use super::Cone;
 /// \ \middle|\ x=0
 /// \right\rbrace
 /// \\]
-pub struct ConeZero;
+pub struct ConeZero<L: LinAlg>
+{
+    ph_l: PhantomData<L>,
+}
 
-impl ConeZero
+impl<L: LinAlg> ConeZero<L>
 {
     /// Creates an instance.
     /// 
     /// Returns [`ConeZero`] instance.
     pub fn new() -> Self
     {
-        ConeZero
+        ConeZero {
+            ph_l: PhantomData,
+        }
     }
 }
 
-impl<L: LinAlg> Cone<L> for ConeZero
+impl<L: LinAlg> Cone<L> for ConeZero<L>
 {
     fn proj(&mut self, dual_cone: bool, x: &mut L::Sl) -> Result<(), ()>
     {
