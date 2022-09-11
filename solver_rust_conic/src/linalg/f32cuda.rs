@@ -7,6 +7,7 @@ use cusolver_sys_partial::*;
 
 pub mod cuda_mgr
 {
+    use std::prelude::v1::*;
     use std::thread_local;
     use std::rc::Rc;
     use rustacuda::prelude::*;
@@ -137,12 +138,12 @@ pub mod cuda_mgr
 //
 
 pub mod f32cuda_slice {
+    use std::prelude::v1::*;
     use std::rc::Rc;
     use std::cell::RefCell;
     use std::thread_local;
     use std::collections::HashMap;
     use std::pin::Pin;
-    use std::boxed::Box;
     use rustacuda::prelude::*;
     use rustacuda::memory::{DeviceBuffer, DeviceSlice};
     use crate::linalg::{SliceRef, SliceMut, SliceLike};

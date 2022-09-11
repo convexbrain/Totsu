@@ -174,10 +174,8 @@ pub mod linalg;
 pub mod operator;
 pub mod cone;
 
-/* TODO: revert
 #[cfg(feature = "std")]
 pub mod problem;
- */
 
 /// Prelude
 pub mod prelude // core, Float

@@ -1,3 +1,4 @@
+/* TODO: restore
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
@@ -108,3 +109,4 @@ mod f32cuda
         assert_float_eq!(rslt.0[0..2], [2., 0.].as_ref(), abs_all <= 1e-3);
     }
 }
+*/

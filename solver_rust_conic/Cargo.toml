@@ -20,7 +20,7 @@ license = "Unlicense"
 
 [features]
 #default = ["std"]
-# TODO: revert
+# TODO: restore
 default = ["std", "f64lapack", "f32cuda"]
 
 std = ["num-traits/std"]
