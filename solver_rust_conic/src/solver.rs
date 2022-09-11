@@ -399,15 +399,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
             (dp_sigma; n + m + 1),
             (tmpw; (n + m + m + 1) * 2)
         );
-        {
-            let f0 = L::F::zero();
-            let f1 = L::F::one();
-    
-            L::scale(f0, &mut x);
-            L::scale(f0, &mut y);
-        
-            x.set(n + m + m, f1); // x_tau
-        }
+        self.init_vecs(&mut x, &mut y);
 
         // Calculate diagonal preconditioning
         self.calc_precond(&mut dp_tau, &mut dp_sigma);
@@ -538,6 +530,19 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         };
     
         (norm_b, norm_c)
+    }
+
+    fn init_vecs(&self, x: &mut L::Sl, y: &mut L::Sl)
+    {
+        let (m, n) = self.op_k.a().size();
+
+        let f0 = L::F::zero();
+        let f1 = L::F::one();
+
+        L::scale(f0, x);
+        L::scale(f0, y);
+    
+        x.set(n + m + m, f1); // x_tau
     }
 
     fn calc_precond(&self, dp_tau: &mut L::Sl, dp_sigma: &mut L::Sl)

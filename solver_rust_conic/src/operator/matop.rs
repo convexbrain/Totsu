@@ -1,6 +1,7 @@
 use num_traits::Float;
 use core::marker::PhantomData;
-use crate::{linalg::{SliceRef, SliceLike, LinAlgEx}, splitm};
+use crate::linalg::{SliceRef, SliceLike, LinAlgEx};
+use crate::splitm;
 use super::Operator;
 
 //
