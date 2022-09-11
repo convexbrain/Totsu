@@ -1,4 +1,3 @@
-/* TODO: restore
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
@@ -6,7 +5,7 @@ use totsu::problem::ProbQP;
 
 //
 
-fn subtest_qp1<L: LinAlgEx<f64>>()
+fn subtest_qp1<L: LinAlgEx<F=f64>>()
 {
     let _ = env_logger::builder().is_test(true).try_init();
 
@@ -35,9 +34,8 @@ fn subtest_qp1<L: LinAlgEx<f64>>()
 
     let vec_b = MatBuild::new(MatType::General(p, 1));
 
-    let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
-    println!("{:?}", s.par);
-    let mut qp = ProbQP::<L, _>::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
+    let s = Solver::<L>::new().par(|p| {p.max_iter = Some(100_000)});
+    let mut qp = ProbQP::<L>::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
     let rslt = s.solve(qp.problem()).unwrap();
     println!("{:?}", rslt);
 
@@ -100,13 +98,11 @@ mod f32cuda
     
         let vec_b = MatBuild::new(MatType::General(p, 1));
     
-        let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
-        println!("{:?}", s.par);
-        let mut qp = ProbQP::<L, _>::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
+        let s = Solver::<L>::new().par(|p| {p.max_iter = Some(100_000)});
+        let mut qp = ProbQP::<L>::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
         let rslt = s.solve(qp.problem()).unwrap();
         println!("{:?}", rslt);
     
         assert_float_eq!(rslt.0[0..2], [2., 0.].as_ref(), abs_all <= 1e-3);
     }
 }
-*/

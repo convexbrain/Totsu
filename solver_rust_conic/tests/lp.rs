@@ -32,7 +32,7 @@ fn subtest_lp1<L: LinAlgEx<F=f64>>()
 
     let s = Solver::<L>::new().par(|p| {p.max_iter = Some(100_000)});
     let mut lp = ProbLP::<L>::new(vec_c, mat_g, vec_h, mat_a, vec_b);
-    let rslt = s.solve(lp.problem(), None, None).unwrap_err();
+    let rslt = s.solve(lp.problem()).unwrap_err();
     println!("{}", rslt);
     
     assert_eq!(rslt, SolverError::Infeasible);
@@ -74,7 +74,7 @@ fn subtest_lp2<L: LinAlgEx<F=f64>>()
 
     let s = Solver::<L>::new().par(|p| {p.max_iter = Some(100_000)});
     let mut lp = ProbLP::<L>::new(vec_c, mat_g, vec_h, mat_a, vec_b);
-    let rslt = s.solve(lp.problem(), None, None).unwrap_err();
+    let rslt = s.solve(lp.problem()).unwrap_err();
     println!("{}", rslt);
     
     assert_eq!(rslt, SolverError::Unbounded);

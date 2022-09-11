@@ -46,13 +46,10 @@ fn test_solver1()
     let cone = AConePSD::new(&mut cone_w, s.par.eps_zero);
 
     let mut work = vec![0.; ASolver::query_worklen(op_a.size())];
-    let mut sol_x = vec![0.; op_a.size().1];
-    let mut sol_y = vec![0.; op_a.size().0];
-    s.solve((op_c, op_a, op_b, cone, &mut work), Some(&mut sol_x), Some(&mut sol_y)).unwrap();
-    println!("{:?}", sol_x);
-    println!("{:?}", sol_y);
+    let rslt = s.solve((op_c, op_a, op_b, cone, &mut work)).unwrap();
+    println!("{:?}", rslt);
 
-    assert_float_eq!(sol_x[0], -2., abs_all <= 1e-3);
+    assert_float_eq!(rslt.0[0], -2., abs_all <= 1e-3);
 }
 
 #[cfg(feature = "f64lapack")]
@@ -109,12 +106,9 @@ mod f32cuda
         let cone = AConePSD::new(&mut cone_w, s.par.eps_zero);
 
         let mut work = vec![0_f32; ASolver::query_worklen(op_a.size())];
-        let mut sol_x = vec![0.; op_a.size().1];
-        let mut sol_y = vec![0.; op_a.size().0];
-        s.solve((op_c, op_a, op_b, cone, &mut work), Some(&mut sol_x), Some(&mut sol_y)).unwrap();
-        println!("{:?}", sol_x);
-        println!("{:?}", sol_y);
+        let rslt = s.solve((op_c, op_a, op_b, cone, &mut work)).unwrap();
+        println!("{:?}", rslt);
 
-        assert_float_eq!(sol_x[0], -2., abs_all <= 1e-3);
+        assert_float_eq!(rslt.0[0], -2., abs_all <= 1e-3);
     }
 }

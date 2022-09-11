@@ -689,28 +689,6 @@ impl LinAlgEx for F32CUDA
     // y = a*mat*x + b*y
     fn transform_sp(n: usize, alpha: f32, mat: &F32CUDASlice, x: &F32CUDASlice, beta: f32, y: &mut F32CUDASlice)
     {
-        /*
-        let mat = mat.get();
-        let x = x.get();
-        let y = y.get_mut();
-
-        assert_eq!(mat.len(), n * (n + 1) / 2);
-
-        assert_eq!(x.len(), n);
-        assert_eq!(y.len(), n);
-
-        let mat = SpMatIdx {
-            n, mat,
-        };
-
-        for r in 0.. y.len() {
-            let mut mat_x = 0.;
-            for c in 0.. x.len() {
-                mat_x = mat_x + mat[(r, c)] * x[c];
-            }
-            y[r] = alpha * mat_x + beta * y[r];
-        }
-        */
         unsafe {
             let st = cublasSspmv_v2(
                 cuda_mgr::cublas_handle(),
@@ -722,7 +700,6 @@ impl LinAlgEx for F32CUDA
             );
             assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
         }
-        todo!(); // TODO: cuda test
     }
 
     fn proj_psd_worklen(sn: usize) -> usize
@@ -768,30 +745,6 @@ impl LinAlgEx for F32CUDA
 
     fn sqrt_spmat(mat: &mut F32CUDASlice, _eps_zero: f32, work: &mut F32CUDASlice)
     {
-        /*
-        let mat = mat.get_mut();
-        let work = work.get_mut();
-
-        let f0 = 0.;
-
-        let sn = mat.len();
-        let n = ((((8 * sn + 1) as f32).sqrt() as usize) - 1) / 2;
-
-        assert!(work.len() >= Self::proj_psd_worklen(sn));
-
-        let mut spmat_x = SpMatIdxMut {
-            n, mat,
-        };
-
-        eig_func(&mut spmat_x, eps_zero, work, |e| {
-            if e > f0 {
-                Some(e.sqrt())
-            }
-            else {
-                None
-            }
-        });
-        */
         let sn = mat.len();
 
         let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
@@ -812,7 +765,6 @@ impl LinAlgEx for F32CUDA
         });
 
         mat_to_vec(&mut a, mat, false);
-        todo!(); // TODO: cuda test
     }
 }
 
