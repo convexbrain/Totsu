@@ -119,13 +119,15 @@ impl<'a, L: LinAlgEx> MatOp<'a, L>
             MatType::SymPack(n) => {
                 assert_eq!(n, y.len());
 
+                let y_mut = y.get_mut();
                 let mut sum = 0;
                 for n in 0.. {
                     splitm!(self.array, (_t; sum), (col; n + 1));
                     sum += n + 1;
-                    y.get_mut()[n] = L::abssum(&col, 1) + y.get()[n];
+                    y_mut[n] = L::abssum(&col, 1) + y_mut[n];
+                    let col_ref = col.get_ref();
                     for i in 0.. n {
-                        y.get_mut()[i] = y.get()[i] + col.get()[i].abs();
+                        y_mut[i] = y_mut[i] + col_ref[i].abs();
                     }
                     if sum == self.array.len() {
                         break;
@@ -168,7 +170,7 @@ impl<'a, L: LinAlgEx> AsRef<[L::F]> for MatOp<'a, L>
 {
     fn as_ref(&self) -> &[L::F]
     {
-        self.array.get()
+        self.array.get_ref()
     }
 }
 

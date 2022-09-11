@@ -41,7 +41,7 @@ impl<F: Float> SliceLike for [F]
         self.len()
     }
 
-    fn get(&self) -> &[F]
+    fn get_ref(&self) -> &[F]
     {
         self
     }

@@ -19,8 +19,21 @@ pub trait SliceLike
     fn drop(&self);
 
     fn len(&self) -> usize;
-    fn get(&self) -> &[Self::F];
+    fn get_ref(&self) -> &[Self::F];
     fn get_mut(&mut self) -> &mut[Self::F];
+
+    fn get(&self, idx: usize) -> Self::F
+    {
+        let (_, spl) = self.split_at(idx);
+        let (ind, _) = spl.split_at(1);
+        ind.get_ref()[0]
+    }
+    fn set(&mut self, idx: usize, val: Self::F)
+    {
+        let (_, mut spl) = self.split_at_mut(idx);
+        let (mut ind, _) = spl.split_at_mut(1);
+        ind.get_mut()[0] = val;
+    }
 }
 
 // TODO: doc
@@ -204,7 +217,7 @@ mod floatgeneric; // core, Float
 mod f64lapack;    // core, f64(cblas/lapacke)
 
 #[cfg(feature = "f32cuda")]
-mod f32cuda;      // TODO
+mod f32cuda;      // std, f32(rustacuda/cublas/cusolver)
 
 
 pub use floatgeneric::*;

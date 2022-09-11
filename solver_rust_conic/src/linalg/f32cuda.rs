@@ -383,7 +383,7 @@ pub mod f32cuda_slice {
             self.end - self.sta
         }
 
-        fn get(&self) -> &[f32]
+        fn get_ref(&self) -> &[f32]
         {
             //std::println!("  {} get", self.idx);
             let mut mutator = self.mutator.borrow_mut();
@@ -857,8 +857,9 @@ where E: Fn(f32)->Option<f32>
 
     //
     
+    let w_ref = w.get_ref();
     for i in 0.. meig as usize {
-        if let Some(e) = func(w.get()[i]) {
+        if let Some(e) = func(w_ref[i]) {
             let (_, ref_z) = z.split_at(i * n);
 
             unsafe {
