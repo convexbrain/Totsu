@@ -82,7 +82,7 @@ impl<'a, S: SliceLike + ?Sized> Drop for SliceMut<'a, S>
     }
 }
 
-// TODO
+// TODO: public?
 #[macro_export]
 macro_rules! splitm {
     ($slice:expr, $( ($var:ident; $len:expr) ),+ ) => {
@@ -94,7 +94,7 @@ macro_rules! splitm {
     };
 }
 
-// TODO
+// TODO: public?
 #[macro_export]
 macro_rules! splitm_mut {
     ($slice:expr, $( ($var:ident; $len:expr) ),+ ) => {

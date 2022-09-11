@@ -155,14 +155,14 @@ pub trait Operator<L: LinAlg>
 
 mod matop;    // core, Float
 
-/* TODO
+/* TODO: revert
 #[cfg(feature = "std")]
 mod matbuild; // std,  Float
  */
 
 pub use matop::*;
 
-/* TODO
+/* TODO: revert
 #[cfg(feature = "std")]
 pub use matbuild::*;
  */

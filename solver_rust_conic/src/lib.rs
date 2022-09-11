@@ -174,7 +174,7 @@ pub mod linalg;
 pub mod operator;
 pub mod cone;
 
-/* TODO
+/* TODO: revert
 #[cfg(feature = "std")]
 pub mod problem;
  */
@@ -185,7 +185,8 @@ pub mod prelude // core, Float
     pub use super::solver::{Solver, SolverError, SolverParam};
     pub use super::linalg::{LinAlg, LinAlgEx, FloatGeneric};
     pub use super::operator::{Operator, MatType, MatOp};
-    pub use super::cone::{Cone, /* TODO ConeZero, ConeRPos, ConeSOC, */ ConePSD};
+    // TODO: revert
+    pub use super::cone::{Cone, /* ConeZero, ConeRPos, ConeSOC, */ ConePSD};
 }
 
 // TODO: more tests

@@ -61,7 +61,6 @@ mod f64lapack
     use intel_mkl_src as _; // workaround in case of link failure
 }
 
-// TODO
 #[cfg(feature = "f32cuda")]
 mod f32cuda
 {
