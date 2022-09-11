@@ -25,10 +25,10 @@ pub enum SolverError
     InvalidOp,
     /// Shortage of work slice length.
     WorkShortage,
-    /// Shortage of solution x slice length.
-    SolXShortage,
-    /// Shortage of solution y slice length.
-    SolYShortage,
+    /// Invalid length of solution x slice.
+    SolXLength,
+    /// Invalid length of solution y slice.
+    SolYLength,
     /// Failure caused by [`Cone`].
     ConeFailure,
 }
@@ -41,8 +41,8 @@ impl Display for SolverError {
             SolverError::ExcessIter   => "ExcessIter: exceed max iterations",
             SolverError::InvalidOp    => "InvalidOp: invalid Operator",
             SolverError::WorkShortage => "WorkShortage: shortage of work slice length",
-            SolverError::SolXShortage => "SolXShortage: shortage of solution x slice length",
-            SolverError::SolYShortage => "SolYShortage: shortage of solution y slice length",
+            SolverError::SolXLength   => "SolXLength: invalid length of solution x slice",
+            SolverError::SolYLength   => "SolYLength: invalid length of solution y slice",
             SolverError::ConeFailure  => "ConeFailure: failure caused by Cone",
         })
     }
@@ -326,7 +326,7 @@ where L::F: Float + Debug + LowerExp
     /// * `work` slice is used for temporal variables. [`Solver::solve`] does not rely on dynamic heap allocation.
     pub fn solve<OC, OA, OB, C>(self,
         (op_c, op_a, op_b, cone, work): (OC, OA, OB, C, &mut[L::F]),
-        sol_x: &mut[L::F], sol_y: &mut[L::F]
+        sol_x: Option<&mut[L::F]>, sol_y: Option<&mut[L::F]>
     ) -> Result<(), SolverError>
     where OC: Operator<L>, OA: Operator<L>, OB: Operator<L>, C: Cone<L>
     {
@@ -338,16 +338,25 @@ where L::F: Float + Debug + LowerExp
         }
     
         if Self::query_worklen((m, n)) > work.len() {
+            log::error!("Work memory length {} must be >= {}", work.len(), Self::query_worklen((m, n)));
             return Err(SolverError::WorkShortage);
         }
 
-        if n != sol_x.len() {
-            return Err(SolverError::SolXShortage);
+        if let Some(sx) = &sol_x {
+            if n != sx.len() {
+                log::error!("Solution x memory length {} must be = {}", sx.len(), n);
+                return Err(SolverError::SolXLength);
+            }
         }
 
-        if m != sol_y.len() {
-            return Err(SolverError::SolYShortage);
+        if let Some(sy) = &sol_y {
+            if m != sy.len() {
+                log::error!("Solution y memory length {} must be = {}", sy.len(), m);
+                return Err(SolverError::SolYLength);
+            }
         }
+
+        log::debug!("{:?}", self.par);
 
         let op_k = SelfDualEmbed {
             ph_l: PhantomData::<L>,
@@ -380,7 +389,7 @@ impl<L, OC, OA, OB, C> SolverCore<L, OC, OA, OB, C>
 where L: LinAlg, L::F: Float + Debug + LowerExp,
       OC: Operator<L>, OA: Operator<L>, OB: Operator<L>, C: Cone<L>
 {
-    fn solve(mut self, work: &mut L::Sl, sol_x: &mut[L::F], sol_y: &mut[L::F]) -> Result<(), SolverError>
+    fn solve(mut self, work: &mut L::Sl, sol_x: Option<&mut[L::F]>, sol_y: Option<&mut[L::F]>) -> Result<(), SolverError>
     {
         log::info!("----- Initializing");
         let (m, n) = self.op_k.a().size();
@@ -442,11 +451,15 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
                     L::scale(val_tau.recip(), &mut x_x_ast);
                     L::scale(val_tau.recip(), &mut x_y_ast);
 
-                    sol_x.copy_from_slice(x_x_ast.get_ref());
-                    sol_y.copy_from_slice(x_y_ast.get_ref());
+                    log::trace!("{}: x {:?}", i, x_x_ast.get_ref());
+                    log::trace!("{}: y {:?}", i, x_y_ast.get_ref());
 
-                    log::trace!("{}: x {:?}", i, sol_x);
-                    log::trace!("{}: y {:?}", i, sol_y);
+                    if let Some(sx) = sol_x {
+                        sx.copy_from_slice(x_x_ast.get_ref());
+                    }
+                    if let Some(sy) = sol_y {
+                        sy.copy_from_slice(x_y_ast.get_ref());
+                    }
 
                     if term_conv {
                         log::info!("----- Converged");
@@ -477,11 +490,15 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
                 if excess_iter || term_unbdd || term_infeas {
                     splitm!(x, (x_x_cert; n), (x_y_cert; m));
 
-                    sol_x.copy_from_slice(x_x_cert.get_ref());
-                    sol_y.copy_from_slice(x_y_cert.get_ref());
+                    log::trace!("{}: x {:?}", i, x_x_cert.get_ref());
+                    log::trace!("{}: y {:?}", i, x_y_cert.get_ref());
 
-                    log::trace!("{}: x {:?}", i, sol_x);
-                    log::trace!("{}: y {:?}", i, sol_y);
+                    if let Some(sx) = sol_x {
+                        sx.copy_from_slice(x_x_cert.get_ref());
+                    }
+                    if let Some(sy) = sol_y {
+                        sy.copy_from_slice(x_y_cert.get_ref());
+                    }
 
                     if term_unbdd {
                         log::warn!("----- Unbounded");

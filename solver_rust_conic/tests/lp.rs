@@ -1,11 +1,10 @@
-/* TODO: restore
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
 use totsu::problem::ProbLP;
 
 //
 
-fn subtest_lp1<L: LinAlgEx<f64>>()
+fn subtest_lp1<L: LinAlgEx<F=f64>>()
 {
     let _ = env_logger::builder().is_test(true).try_init();
 
@@ -31,11 +30,10 @@ fn subtest_lp1<L: LinAlgEx<f64>>()
     let vec_b = MatBuild::new(MatType::General(p, 1));
 
 
-    let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
-    println!("{:?}", s.par);
-    let mut lp = ProbLP::<L, _>::new(vec_c, mat_g, vec_h, mat_a, vec_b);
-    let rslt = s.solve(lp.problem()).unwrap_err();
-    println!("{:?}", rslt);
+    let s = Solver::<L>::new().par(|p| {p.max_iter = Some(100_000)});
+    let mut lp = ProbLP::<L>::new(vec_c, mat_g, vec_h, mat_a, vec_b);
+    let rslt = s.solve(lp.problem(), None, None).unwrap_err();
+    println!("{}", rslt);
     
     assert_eq!(rslt, SolverError::Infeasible);
 }
@@ -48,7 +46,7 @@ fn test_lp1()
 
 //
 
-fn subtest_lp2<L: LinAlgEx<f64>>()
+fn subtest_lp2<L: LinAlgEx<F=f64>>()
 {
     let _ = env_logger::builder().is_test(true).try_init();
 
@@ -74,11 +72,10 @@ fn subtest_lp2<L: LinAlgEx<f64>>()
     let vec_b = MatBuild::new(MatType::General(p, 1));
 
 
-    let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
-    println!("{:?}", s.par);
-    let mut lp = ProbLP::<L, _>::new(vec_c, mat_g, vec_h, mat_a, vec_b);
-    let rslt = s.solve(lp.problem()).unwrap_err();
-    println!("{:?}", rslt);
+    let s = Solver::<L>::new().par(|p| {p.max_iter = Some(100_000)});
+    let mut lp = ProbLP::<L>::new(vec_c, mat_g, vec_h, mat_a, vec_b);
+    let rslt = s.solve(lp.problem(), None, None).unwrap_err();
+    println!("{}", rslt);
     
     assert_eq!(rslt, SolverError::Unbounded);
 }
@@ -108,4 +105,3 @@ mod f64lapack
         subtest_lp2::<F64LAPACK>();
     }
 }
-*/

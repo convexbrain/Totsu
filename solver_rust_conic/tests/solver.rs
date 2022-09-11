@@ -48,7 +48,7 @@ fn test_solver1()
     let mut work = vec![0.; ASolver::query_worklen(op_a.size())];
     let mut sol_x = vec![0.; op_a.size().1];
     let mut sol_y = vec![0.; op_a.size().0];
-    s.solve((op_c, op_a, op_b, cone, &mut work), &mut sol_x, &mut sol_y).unwrap();
+    s.solve((op_c, op_a, op_b, cone, &mut work), Some(&mut sol_x), Some(&mut sol_y)).unwrap();
     println!("{:?}", sol_x);
     println!("{:?}", sol_y);
 
@@ -104,7 +104,6 @@ mod f32cuda
         ]);
 
         let s = ASolver::new().par(|p| {p.max_iter = Some(100_000)});
-        println!("{:?}", s.par);
         
         let mut cone_w = vec![0.; AConePSD::query_worklen(op_a.size().0)];
         let cone = AConePSD::new(&mut cone_w, s.par.eps_zero);
@@ -112,7 +111,7 @@ mod f32cuda
         let mut work = vec![0_f32; ASolver::query_worklen(op_a.size())];
         let mut sol_x = vec![0.; op_a.size().1];
         let mut sol_y = vec![0.; op_a.size().0];
-        s.solve((op_c, op_a, op_b, cone, &mut work), &mut sol_x, &mut sol_y).unwrap();
+        s.solve((op_c, op_a, op_b, cone, &mut work), Some(&mut sol_x), Some(&mut sol_y)).unwrap();
         println!("{:?}", sol_x);
         println!("{:?}", sol_y);
 
