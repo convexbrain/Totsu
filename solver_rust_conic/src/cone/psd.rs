@@ -1,4 +1,3 @@
-use core::marker::PhantomData;
 use crate::linalg::{SliceMut, SliceLike, LinAlgEx};
 use super::Cone;
 
@@ -19,7 +18,6 @@ use super::Cone;
 /// which extracts and scales the upper-triangular part of a symmetric matrix X in column-wise.
 pub struct ConePSD<'a, L: LinAlgEx>
 {
-    ph_l: PhantomData<L>,
     work: SliceMut<'a, L::Sl>,
     eps_zero: L::F,
 }
@@ -43,7 +41,6 @@ impl<'a, L: LinAlgEx> ConePSD<'a, L>
     pub fn new(work: &'a mut[L::F], eps_zero: L::F) -> Self
     {
         ConePSD {
-            ph_l: PhantomData::<L>,
             work: L::Sl::new_mut(work),
             eps_zero,
         }

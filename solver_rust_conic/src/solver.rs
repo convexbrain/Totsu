@@ -262,8 +262,6 @@ pub struct Solver<L: LinAlg>
 {
     /// solver parameters.
     pub par: SolverParam<L::F>,
-
-    ph_l: PhantomData<L>,
 }
 
 impl<L: LinAlg> Solver<L>
@@ -299,7 +297,6 @@ impl<L: LinAlg> Solver<L>
     {
         Solver {
             par: SolverParam::default(),
-            ph_l: PhantomData,
         }
     }
 

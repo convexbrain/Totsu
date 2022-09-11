@@ -189,4 +189,5 @@ pub mod prelude // core, Float
     pub use super::cone::{Cone, /* ConeZero, ConeRPos, ConeSOC, */ ConePSD};
 }
 
+// TODO: remove unnecesarry PhantomData
 // TODO: more tests

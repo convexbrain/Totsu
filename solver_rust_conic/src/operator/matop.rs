@@ -1,5 +1,4 @@
 use num_traits::Float;
-use core::marker::PhantomData;
 use crate::linalg::{SliceRef, SliceLike, LinAlgEx};
 use crate::splitm;
 use super::Operator;
@@ -49,7 +48,6 @@ impl MatType
 #[derive(Debug)]
 pub struct MatOp<'a, L: LinAlgEx>
 {
-    ph_l: PhantomData<L>,
     typ: MatType,
     array: SliceRef<'a, L::Sl>
 }
@@ -68,7 +66,6 @@ impl<'a, L: LinAlgEx> MatOp<'a, L>
         assert_eq!(typ.len(), array.len());
 
         MatOp {
-            ph_l: PhantomData,
             typ,
             array: L::Sl::new_ref(array)
         }

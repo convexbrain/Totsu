@@ -30,16 +30,16 @@ pub trait Cone<L: LinAlg>
 
 //
 
-/* TODO: revert
 mod zero;    // core, Float
+/* TODO: revert
 mod rpos;    // core, Float
 mod soc;     // core, Float
 mod rotsoc;  // core, Float
  */
 mod psd;     // core, Float
 
-/* TODO: revert
 pub use zero::*;
+/* TODO: revert
 pub use rpos::*;
 pub use soc::*;
 pub use rotsoc::*;
