@@ -139,8 +139,7 @@ pub mod cuda_mgr
 pub mod f32cuda_slice {
     use std::rc::Rc;
     use std::cell::RefCell;
-    use std::vec::Vec;
-    use std::{vec, thread_local};
+    use std::thread_local;
     use std::collections::HashMap;
     use std::pin::Pin;
     use std::boxed::Box;
@@ -157,13 +156,20 @@ pub mod f32cuda_slice {
         Dev,
     }
 
+    #[derive(Eq, PartialEq, Copy, Clone)]
+    enum HostBuf
+    {
+        Ref(*const f32),
+        Mut(*mut f32),
+    }
+
     /// TODO: doc
     pub struct F32CUDASlice
     {
         idx: usize,
         parent_idx: Option<usize>,
         dev_buf: Rc<RefCell<DeviceBuffer<f32>>>,
-        host_buf: Rc<RefCell<Vec<f32>>>,
+        host_buf: HostBuf,
         sta: usize,
         end: usize,
         mutator: RefCell<CUDASliceMut>,
@@ -212,7 +218,7 @@ pub mod f32cuda_slice {
 
     thread_local!(static SLICE_MANAGER: RefCell<SliceManager> = RefCell::new(SliceManager::new()));
 
-    fn new_slice_from(s: &[f32]) -> &mut F32CUDASlice
+    fn new_slice_from_ref(s: &[f32]) -> &mut F32CUDASlice
     {
         SLICE_MANAGER.with(|mgr| {
             let mut mgr = mgr.borrow_mut();
@@ -222,7 +228,7 @@ pub mod f32cuda_slice {
                     idx,
                     parent_idx: None,
                     dev_buf: Rc::new(RefCell::new(cuda_mgr::buf_from_slice(s))),
-                    host_buf: Rc::new(RefCell::new(Vec::from(s))),
+                    host_buf: HostBuf::Ref(s.as_ptr()),
                     sta: 0,
                     end: s.len(),
                     mutator: RefCell::new(CUDASliceMut::Sync)
@@ -231,7 +237,7 @@ pub mod f32cuda_slice {
         })
     }
 
-    fn new_slice_zeroes(length: usize) -> &'static mut F32CUDASlice
+    fn new_slice_from_mut(s: &mut[f32]) -> &mut F32CUDASlice
     {
         SLICE_MANAGER.with(|mgr| {
             let mut mgr = mgr.borrow_mut();
@@ -240,10 +246,10 @@ pub mod f32cuda_slice {
                 F32CUDASlice {
                     idx,
                     parent_idx: None,
-                    dev_buf: Rc::new(RefCell::new(cuda_mgr::buf_zeroes(length))),
-                    host_buf: Rc::new(RefCell::new(vec![0.; length])),
+                    dev_buf: Rc::new(RefCell::new(cuda_mgr::buf_from_slice(s))),
+                    host_buf: HostBuf::Mut(s.as_mut_ptr()),
                     sta: 0,
-                    end: length,
+                    end: s.len(),
                     mutator: RefCell::new(CUDASliceMut::Sync)
                 }
             })
@@ -264,7 +270,7 @@ pub mod f32cuda_slice {
                     idx,
                     parent_idx: Some(cs.idx),
                     dev_buf: cs.dev_buf.clone(),
-                    host_buf: cs.host_buf.clone(),
+                    host_buf: cs.host_buf,
                     sta: cs.sta + sta,
                     end: cs.sta + end,
                     mutator: RefCell::new(*cs.mutator.borrow())
@@ -324,6 +330,11 @@ pub mod f32cuda_slice {
                     },
                 }
             }
+            else {
+                if cs_mut == CUDASliceMut::Dev {
+                    cs.sync_from_dev();
+                }
+            }
 
             mgr.map.remove(&idx).unwrap();
         });
@@ -337,7 +348,7 @@ pub mod f32cuda_slice {
 
         fn new_ref(s: &[f32]) -> SliceRef<'_, F32CUDASlice>
         {
-            let cs = new_slice_from(s);
+            let cs = new_slice_from_ref(s);
             
             //std::println!("{} new", cs.idx);
             SliceRef {s: cs}
@@ -345,7 +356,7 @@ pub mod f32cuda_slice {
 
         fn new_mut(s: &mut[f32]) -> SliceMut<'_, F32CUDASlice>
         {
-            let cs = new_slice_from(s);
+            let cs = new_slice_from_mut(s);
 
             //std::println!("{} new_mut", cs.idx);
             SliceMut {s: cs}
@@ -396,7 +407,7 @@ pub mod f32cuda_slice {
                 },
             }
 
-            let hb_ref = &self.host_buf.as_ref().borrow()[self.sta..self.end];
+            let hb_ref = self.host_buf_ref();
 
             unsafe {
                 std::mem::transmute::<&[f32], &[f32]>(hb_ref)
@@ -419,7 +430,7 @@ pub mod f32cuda_slice {
                 },
             }
 
-            let hb_mut = &mut self.host_buf.as_ref().borrow_mut()[self.sta..self.end];
+            let hb_mut = self.host_buf_mut();
 
             unsafe {
                 std::mem::transmute::<&mut[f32], &mut[f32]>(hb_mut)
@@ -431,28 +442,46 @@ pub mod f32cuda_slice {
 
     impl F32CUDASlice
     {
-        /// TODO: doc
-        pub fn new_zeroes(length: usize) -> SliceMut<'static, F32CUDASlice>
+        fn host_buf_ref(&self) -> &[f32]
         {
-            let cs = new_slice_zeroes(length);
+            let hb_ptr = match self.host_buf {
+                HostBuf::Ref(p) => {p},
+                HostBuf::Mut(p) => {p as *const f32},
+            };
 
-            SliceMut {s: cs}
+            unsafe {
+                let hb = std::ptr::slice_from_raw_parts(hb_ptr.offset(self.sta as isize), self.end - self.sta);
+
+                hb.as_ref().unwrap()
+            }
+        }
+
+        fn host_buf_mut(&self) -> &mut[f32]
+        {
+            let hb_ptr = match self.host_buf {
+                HostBuf::Ref(_) => {panic!()},
+                HostBuf::Mut(p) => {p},
+            };
+
+            unsafe {
+                let hb = std::ptr::slice_from_raw_parts_mut(hb_ptr.offset(self.sta as isize), self.end - self.sta);
+
+                hb.as_mut().unwrap()
+            }
         }
 
         fn sync_from_dev(&self)
         {
             let db = &self.dev_buf.as_ref().borrow()[self.sta..self.end];
-            let mut hb = &mut self.host_buf.as_ref().borrow_mut()[self.sta..self.end];
-
-            db.copy_to(&mut hb).unwrap();
+            let hb_mut = self.host_buf_mut();
+            db.copy_to(hb_mut).unwrap();
         }
 
         fn sync_from_host(&self)
         {
             let db = &mut self.dev_buf.as_ref().borrow_mut()[self.sta..self.end];
-            let hb = &mut self.host_buf.as_ref().borrow_mut()[self.sta..self.end];
-            
-            db.copy_from(&hb).unwrap();
+            let hb_ref = self.host_buf_ref();
+            db.copy_from(hb_ref).unwrap();
         }
 
         /// TODO: doc
