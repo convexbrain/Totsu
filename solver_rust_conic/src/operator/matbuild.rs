@@ -25,12 +25,6 @@ pub struct MatBuild<L: LinAlgEx>
 
 impl<L: LinAlgEx> MatBuild<L>
 {
-    /// TODO: doc
-    pub fn size(&self) -> (usize, usize)
-    {
-        self.typ.size()
-    }
-
     /// Creates an instance.
     /// 
     /// Returns [`MatBuild`] instance with zero data.
@@ -41,6 +35,18 @@ impl<L: LinAlgEx> MatBuild<L>
             typ,
             array: vec![L::F::zero(); typ.len()],
         }
+    }
+
+    /// TODO: doc
+    pub fn size(&self) -> (usize, usize)
+    {
+        self.typ.size()
+    }
+
+    /// TODO: doc
+    pub fn as_op(&self) -> MatOp<'_, L>
+    {
+        MatOp::new(self.typ, &self.array)
     }
 
     /// Checks if symmetric packed.
@@ -294,7 +300,6 @@ impl<L: LinAlgEx> AsMut<[L::F]> for MatBuild<L>
         &mut self.array
     }
 }
-*/
 
 impl<'a, L: LinAlgEx> From<&'a MatBuild<L>> for MatOp<'a, L>
 {
@@ -304,7 +309,6 @@ impl<'a, L: LinAlgEx> From<&'a MatBuild<L>> for MatOp<'a, L>
     }
 }
 
-/* TODO: remove if not used
 impl<L: LinAlgEx> Operator<L> for MatBuild<L>
 {
     fn size(&self) -> (usize, usize)

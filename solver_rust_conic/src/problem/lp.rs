@@ -316,15 +316,15 @@ impl<L: LinAlgEx> ProbLP<L>
         let f0 = L::F::zero();
 
         let op_c = ProbLPOpC {
-            vec_c: MatOp::from(&self.vec_c),
+            vec_c: self.vec_c.as_op(),
         };
         let op_a = ProbLPOpA {
-            mat_g: MatOp::from(&self.mat_g),
-            mat_a: MatOp::from(&self.mat_a),
+            mat_g: self.mat_g.as_op(),
+            mat_a: self.mat_a.as_op(),
         };
         let op_b = ProbLPOpB {
-            vec_h: MatOp::from(&self.vec_h),
-            vec_b: MatOp::from(&self.vec_b),
+            vec_h: self.vec_h.as_op(),
+            vec_b: self.vec_b.as_op(),
         };
 
         let cone = ProbLPCone {
