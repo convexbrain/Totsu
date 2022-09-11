@@ -335,7 +335,7 @@ pub mod f32cuda_slice {
     {
         type F = f32;
 
-        fn new(s: &[f32]) -> SliceRef<'_, F32CUDASlice>
+        fn new_ref(s: &[f32]) -> SliceRef<'_, F32CUDASlice>
         {
             let cs = new_slice_from(s);
             
@@ -351,7 +351,7 @@ pub mod f32cuda_slice {
             SliceMut {s: cs}
         }
         
-        fn split_at(&self, mid: usize) -> (SliceRef<'_, F32CUDASlice>, SliceRef<'_, F32CUDASlice>)
+        fn split_ref(&self, mid: usize) -> (SliceRef<'_, F32CUDASlice>, SliceRef<'_, F32CUDASlice>)
         {
             let cs0 = split_slice(self, 0, mid);
             let cs1 = split_slice(self, mid, self.len());
@@ -361,7 +361,7 @@ pub mod f32cuda_slice {
             (SliceRef {s: cs0}, SliceRef {s: cs1})
         }
 
-        fn split_at_mut(&mut self, mid: usize) -> (SliceMut<'_, F32CUDASlice>, SliceMut<'_, F32CUDASlice>)
+        fn split_mut(&mut self, mid: usize) -> (SliceMut<'_, F32CUDASlice>, SliceMut<'_, F32CUDASlice>)
         {
             let cs0 = split_slice(self, 0, mid);
             let cs1 = split_slice(self, mid, self.len());
@@ -713,7 +713,7 @@ impl LinAlgEx for F32CUDA
         assert_eq!(n * (n + 1) / 2, sn);
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
-        let (mut a, mut w_z_work) = work.split_at_mut(n * n);
+        let (mut a, mut w_z_work) = work.split_mut(n * n);
 
         vec_to_mat(x, &mut a, true);
     
@@ -768,7 +768,7 @@ impl LinAlgEx for F32CUDA
         assert_eq!(n * (n + 1) / 2, sn);
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
-        let (mut a, mut w_z_work) = work.split_at_mut(n * n);
+        let (mut a, mut w_z_work) = work.split_mut(n * n);
 
         vec_to_mat(mat, &mut a, false);
     
@@ -815,8 +815,8 @@ fn eig_func_worklen(n: usize) -> usize
 fn eig_func<E>(a: &mut F32CUDASlice, n: usize, w_z_work: &mut F32CUDASlice, func: E)
 where E: Fn(f32)->Option<f32>
 {
-    let (mut w, mut z) = w_z_work.split_at_mut(n);
-    let (mut z, mut work) = z.split_at_mut(n * n);
+    let (mut w, mut z) = w_z_work.split_mut(n);
+    let (mut z, mut work) = z.split_mut(n * n);
     let lwork = eig_func_worklen(n) - n - n * n;
 
     let mut meig: i32 = 0;
@@ -860,7 +860,7 @@ where E: Fn(f32)->Option<f32>
     let w_ref = w.get_ref();
     for i in 0.. meig as usize {
         if let Some(e) = func(w_ref[i]) {
-            let (_, ref_z) = z.split_at(i * n);
+            let (_, ref_z) = z.split_ref(i * n);
 
             unsafe {
                 let st = cublasSsyr_v2(
@@ -887,11 +887,11 @@ fn vec_to_mat(v: &F32CUDASlice, m: &mut F32CUDASlice, scale: bool)
     // The vector is a symmetric matrix, packing the upper-triangle by columns.
     let mut iv = 0;
     for c in 0.. n {
-        let (_, mut spl_m) = m.split_at_mut(c * n);
-        let (mut col_m, _) = spl_m.split_at_mut(c + 1);
+        let (_, mut spl_m) = m.split_mut(c * n);
+        let (mut col_m, _) = spl_m.split_mut(c + 1);
 
-        let (_, spl_v) = v.split_at(iv);
-        let (col_v, _) = spl_v.split_at(c + 1);
+        let (_, spl_v) = v.split_ref(iv);
+        let (col_v, _) = spl_v.split_ref(c + 1);
         iv += c + 1;
         F32CUDA::copy(&col_v, &mut col_m);
     }
@@ -932,11 +932,11 @@ fn mat_to_vec(m: &mut F32CUDASlice, v: &mut F32CUDASlice, scale: bool)
     // The vector is a symmetric matrix, packing the upper-triangle by columns.
     let mut iv = 0;
     for c in 0.. n {
-        let (_, spl_m) = m.split_at(c * n);
-        let (col_m, _) = spl_m.split_at(c + 1);
+        let (_, spl_m) = m.split_ref(c * n);
+        let (col_m, _) = spl_m.split_ref(c + 1);
 
-        let (_, mut spl_v) = v.split_at_mut(iv);
-        let (mut col_v, _) = spl_v.split_at_mut(c + 1);
+        let (_, mut spl_v) = v.split_mut(iv);
+        let (mut col_v, _) = spl_v.split_mut(c + 1);
         iv += c + 1;
         F32CUDA::copy(&col_m, &mut col_v);
     }

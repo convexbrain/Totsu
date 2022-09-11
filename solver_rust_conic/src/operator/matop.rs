@@ -69,7 +69,7 @@ impl<'a, L: LinAlgEx> MatOp<'a, L>
         MatOp {
             ph_l: PhantomData,
             typ,
-            array: L::Sl::new(array)
+            array: L::Sl::new_ref(array)
         }
     }
 

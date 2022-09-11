@@ -10,28 +10,29 @@ pub trait SliceLike
 {
     type F: Float;
 
-    fn new(s: &[Self::F]) -> SliceRef<'_, Self>;
+    fn new_ref(s: &[Self::F]) -> SliceRef<'_, Self>;
     fn new_mut(s: &mut[Self::F]) -> SliceMut<'_, Self>;
 
-    fn split_at(&self, mid: usize) -> (SliceRef<'_, Self>, SliceRef<'_, Self>);
-    fn split_at_mut(&mut self, mid: usize) -> (SliceMut<'_, Self>, SliceMut<'_, Self>);
+    fn split_ref(&self, mid: usize) -> (SliceRef<'_, Self>, SliceRef<'_, Self>);
+    fn split_mut(&mut self, mid: usize) -> (SliceMut<'_, Self>, SliceMut<'_, Self>);
 
     fn drop(&self);
 
     fn len(&self) -> usize;
+
     fn get_ref(&self) -> &[Self::F];
     fn get_mut(&mut self) -> &mut[Self::F];
 
     fn get(&self, idx: usize) -> Self::F
     {
-        let (_, spl) = self.split_at(idx);
-        let (ind, _) = spl.split_at(1);
+        let (_, spl) = self.split_ref(idx);
+        let (ind, _) = spl.split_ref(1);
         ind.get_ref()[0]
     }
     fn set(&mut self, idx: usize, val: Self::F)
     {
-        let (_, mut spl) = self.split_at_mut(idx);
-        let (mut ind, _) = spl.split_at_mut(1);
+        let (_, mut spl) = self.split_mut(idx);
+        let (mut ind, _) = spl.split_mut(1);
         ind.get_mut()[0] = val;
     }
 }
@@ -79,6 +80,30 @@ impl<'a, S: SliceLike + ?Sized> Drop for SliceMut<'a, S>
     fn drop(&mut self) {
         self.s.drop();
     }
+}
+
+// TODO
+#[macro_export]
+macro_rules! splitm {
+    ($slice:expr, $( ($var:ident; $len:expr) ),+ ) => {
+        let (_, _splitm_rest) = $slice.split_ref(0);
+        $(
+            let ($var, _splitm_rest) = _splitm_rest.split_ref($len);
+        )*
+        drop(_splitm_rest);
+    };
+}
+
+// TODO
+#[macro_export]
+macro_rules! splitm_mut {
+    ($slice:expr, $( ($var:ident; $len:expr) ),+ ) => {
+        let (_, mut _splitm_rest) = $slice.split_mut(0);
+        $(
+            let (mut $var, mut _splitm_rest) = _splitm_rest.split_mut($len);
+        )*
+        drop(_splitm_rest);
+    };
 }
 
 /// Linear algebra trait
