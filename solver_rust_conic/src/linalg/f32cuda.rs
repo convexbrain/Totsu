@@ -531,6 +531,7 @@ pub mod f32cuda_slice {
 use f32cuda_slice::F32CUDASlice;
 
 /// TODO: doc
+#[derive(Clone)]
 pub struct F32CUDA;
 
 //--------------------------------------------------

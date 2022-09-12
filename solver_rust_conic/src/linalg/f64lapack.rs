@@ -6,6 +6,7 @@ use crate::utils::*;
 /// `f64`-specific [`LinAlgEx`] implementation using `cblas-sys` and `lapacke-sys`
 /// 
 /// You need a [BLAS/LAPACK source](https://github.com/blas-lapack-rs/blas-lapack-rs.github.io/wiki#sources) to link.
+#[derive(Clone)]
 pub struct F64LAPACK;
 
 impl LinAlg for F64LAPACK

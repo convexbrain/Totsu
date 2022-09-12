@@ -55,6 +55,7 @@ impl<F: Float> SliceLike for [F]
 /// `num::Float`-generic [`LinAlgEx`] implementation
 /// 
 /// All numeric operations are written in pure Rust, but slow.
+#[derive(Clone)]
 pub struct FloatGeneric<F>
 {
     ph_f: PhantomData<F>,
