@@ -2,7 +2,6 @@ use num_traits::Float;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use super::{SliceLike, SliceRef, SliceMut, LinAlg, LinAlgEx};
-use crate::utils::*;
 
 //
 
@@ -378,7 +377,8 @@ where E: Fn(F)->Option<F>
 
     let n = spmat_x.n;
 
-    let (w, z) = work.split2(n, n * n).unwrap();
+    let (w, rest) = work.split_at_mut(n);
+    let (z, _) = rest.split_at_mut(n * n);
 
     let mut mat_z = MatIdxMut {
         n_row: n, n_col: n, mat: z, transpose: false,

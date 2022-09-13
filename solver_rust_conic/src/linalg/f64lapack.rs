@@ -1,5 +1,4 @@
 use super::{LinAlg, LinAlgEx};
-use crate::utils::*;
 
 //
 
@@ -75,7 +74,8 @@ impl LinAlg for F64LAPACK
 fn eig_func<E>(a: &mut[f64], n: usize, eps_zero: f64, wz: &mut[f64], func: E)
 where E: Fn(f64)->Option<f64>
 {
-    let (w, z) = wz.split2(n, n * n).unwrap();
+    let (w, rest) = wz.split_at_mut(n);
+    let (z, _) = rest.split_at_mut(n * n);
     let mut m = 0;
 
     unsafe {
@@ -176,7 +176,8 @@ impl LinAlgEx for F64LAPACK
         assert_eq!(n * (n + 1) / 2, sn);
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
-        let (a, wz) = work.split2(n * n, n + n * n).unwrap();
+        let (a, rest) = work.split_at_mut(n * n);
+        let (wz, _) = rest.split_at_mut(n + n * n);
 
         vec_to_mat(x, a, true);
     
@@ -207,7 +208,8 @@ impl LinAlgEx for F64LAPACK
         assert_eq!(n * (n + 1) / 2, sn);
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
-        let (a, wz) = work.split2(n * n, n + n * n).unwrap();
+        let (a, rest) = work.split_at_mut(n * n);
+        let (wz, _) = rest.split_at_mut(n + n * n);
 
         vec_to_mat(mat, a, false);
     

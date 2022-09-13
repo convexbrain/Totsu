@@ -261,6 +261,8 @@ impl<L: LinAlgEx> MatBuild<L>
     }
 }
 
+//
+
 impl<L: LinAlgEx> Index<(usize, usize)> for MatBuild<L>
 {
     type Output = L::F;
@@ -282,59 +284,7 @@ impl<L: LinAlgEx> IndexMut<(usize, usize)> for MatBuild<L>
     }
 }
 
-/* TODO: remove if not used
-impl<L: LinAlgEx> AsRef<[L::F]> for MatBuild<L>
-{
-    fn as_ref(&self) -> &[L::F]
-    {
-        &self.array
-    }
-}
-
-impl<L: LinAlgEx> AsMut<[L::F]> for MatBuild<L>
-{
-    fn as_mut(&mut self) -> &mut[L::F]
-    {
-        &mut self.array
-    }
-}
-
-impl<'a, L: LinAlgEx> From<&'a MatBuild<L>> for MatOp<'a, L>
-{
-    fn from(m: &'a MatBuild<L>) -> Self
-    {
-        MatOp::new(m.typ, &m.array)
-    }
-}
-
-impl<L: LinAlgEx> Operator<L> for MatBuild<L>
-{
-    fn size(&self) -> (usize, usize)
-    {
-        self.typ.size()
-    }
-
-    fn op(&self, alpha: L::F, x: &[L::F], beta: L::F, y: &mut[L::F])
-    {
-        MatOp::from(self).op(alpha, x, beta, y);
-    }
-
-    fn trans_op(&self, alpha: L::F, x: &[L::F], beta: L::F, y: &mut[L::F])
-    {
-        MatOp::from(self).trans_op(alpha, x, beta, y);
-    }
-
-    fn absadd_cols(&self, tau: &mut[L::F])
-    {
-        MatOp::from(self).absadd_cols(tau);
-    }
-
-    fn absadd_rows(&self, sigma: &mut[L::F])
-    {
-        MatOp::from(self).absadd_rows(sigma);
-    }
-}
- */
+//
 
 impl<L: LinAlgEx> core::fmt::Display for MatBuild<L>
 where L::F: Float + core::fmt::LowerExp

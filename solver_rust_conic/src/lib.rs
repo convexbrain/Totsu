@@ -165,7 +165,6 @@ More practical [examples](https://github.com/convexbrain/Totsu/tree/master/examp
 extern crate std;
 
 pub mod solver; // core, Float
-mod utils;
 
 #[cfg(feature = "std")]
 mod solver_error;
