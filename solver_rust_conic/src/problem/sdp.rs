@@ -1,21 +1,19 @@
 use std::prelude::v1::*;
-use num_traits::Float;
+use num_traits::{Float, Zero, One};
 use crate::solver::Solver;
-use crate::linalg::LinAlgEx;
-use crate::operator::{Operator, MatType, MatBuild};
+use crate::linalg::{SliceLike, LinAlgEx};
+use crate::operator::{Operator, MatType, MatOp, MatBuild};
 use crate::cone::{Cone, ConePSD, ConeZero};
-use crate::utils::*;
+use crate::{splitm, splitm_mut};
 
 //
 
-pub struct ProbSDPOpC<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbSDPOpC<'a, L: LinAlgEx>
 {
-    vec_c: &'a MatBuild<L, F>,
+    vec_c: MatOp<'a, L>,
 }
 
-impl<'a, L, F> Operator<F> for ProbSDPOpC<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Operator<L> for ProbSDPOpC<'a, L>
 {
     fn size(&self) -> (usize, usize)
     {
@@ -25,24 +23,24 @@ where L: LinAlgEx<F>, F: Float
         (n, 1)
     }
 
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         // y = a*vec_c*x + b*y;
         self.vec_c.op(alpha, x, beta, y);
     }
 
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         // y = a*vec_c^T*x + b*y;
         self.vec_c.trans_op(alpha, x, beta, y);
     }
 
-    fn absadd_cols(&self, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut L::Sl)
     {
         self.vec_c.absadd_cols(tau);
     }
 
-    fn absadd_rows(&self, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut L::Sl)
     {
         self.vec_c.absadd_rows(sigma);
     }
@@ -50,15 +48,13 @@ where L: LinAlgEx<F>, F: Float
 
 //
 
-pub struct ProbSDPOpA<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbSDPOpA<'a, L: LinAlgEx>
 {
-    symmat_f: &'a MatBuild<L, F>,
-    mat_a: &'a MatBuild<L, F>,
+    symmat_f: MatOp<'a, L>,
+    mat_a: MatOp<'a, L>,
 }
 
-impl<'a, L, F> ProbSDPOpA<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> ProbSDPOpA<'a, L>
 {
     fn dim(&self) -> (usize, usize, usize)
     {
@@ -70,8 +66,7 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<'a, L, F> Operator<F> for ProbSDPOpA<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Operator<L> for ProbSDPOpA<'a, L>
 {
     fn size(&self) -> (usize, usize)
     {
@@ -80,58 +75,56 @@ where L: LinAlgEx<F>, F: Float
         (sk + p, n)
     }
 
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         let (_n, sk, p) = self.dim();
 
-        let (y_sk, y_p) = y.split2(sk, p).unwrap();
+        splitm_mut!(y, (y_sk; sk), (y_p; p));
 
         // y_sk = a*symmat_f*x + b*y_sk
-        self.symmat_f.op(alpha, x, beta, y_sk);
+        self.symmat_f.op(alpha, x, beta, &mut y_sk);
 
         // y_p = a*mat_a*x + b*y_p
-        self.mat_a.op(alpha, x, beta, y_p);
+        self.mat_a.op(alpha, x, beta, &mut y_p);
     }
 
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         let (_n, sk, p) = self.dim();
 
-        let (x_sk, x_p) = x.split2(sk, p).unwrap();
+        splitm!(x, (x_sk; sk), (x_p; p));
 
         // y = a*symmat_f^T*x_sk + a*mat_a^T*x_p + b*y
-        self.symmat_f.trans_op(alpha, x_sk, beta, y);
-        self.mat_a.trans_op(alpha, x_p, F::one(), y);
+        self.symmat_f.trans_op(alpha, &x_sk, beta, y);
+        self.mat_a.trans_op(alpha, &x_p, L::F::one(), y);
     }
 
-    fn absadd_cols(&self, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut L::Sl)
     {
         self.symmat_f.absadd_cols(tau);
         self.mat_a.absadd_cols(tau);
     }
 
-    fn absadd_rows(&self, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut L::Sl)
     {
         let (_n, sk, p) = self.dim();
 
-        let (sigma_sk, sigma_p) = sigma.split2(sk, p).unwrap();
+        splitm_mut!(sigma, (sigma_sk; sk), (sigma_p; p));
 
-        self.symmat_f.absadd_rows(sigma_sk);
-        self.mat_a.absadd_rows(sigma_p);
+        self.symmat_f.absadd_rows(&mut sigma_sk);
+        self.mat_a.absadd_rows(&mut sigma_p);
     }
 }
 
 //
 
-pub struct ProbSDPOpB<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbSDPOpB<'a, L: LinAlgEx>
 {
-    symvec_f_n: &'a MatBuild<L, F>,
-    vec_b: &'a MatBuild<L, F>,
+    symvec_f_n: MatOp<'a, L>,
+    vec_b: MatOp<'a, L>,
 }
 
-impl<'a, L, F> ProbSDPOpB<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> ProbSDPOpB<'a, L>
 {
     fn dim(&self) -> (usize, usize, usize)
     {
@@ -143,8 +136,7 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<'a, L, F> Operator<F> for ProbSDPOpB<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Operator<L> for ProbSDPOpB<'a, L>
 {
     fn size(&self) -> (usize, usize)
     {
@@ -153,78 +145,78 @@ where L: LinAlgEx<F>, F: Float
         (sk + p, 1)
     }
 
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         let (_n, sk, p) = self.dim();
 
-        let (y_sk, y_p) = y.split2(sk, p).unwrap();
+        splitm_mut!(y, (y_sk; sk), (y_p; p));
 
         // y_sk = a*-symmat_f*x + b*y_sk
-        self.symvec_f_n.op(-alpha, x, beta, y_sk);
+        self.symvec_f_n.op(-alpha, x, beta, &mut y_sk);
 
         // y_p = a*vec_b*x + b*y_p
-        self.vec_b.op(alpha, x, beta, y_p);
+        self.vec_b.op(alpha, x, beta, &mut y_p);
     }
 
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         let (_n, sk, p) = self.dim();
 
-        let (x_sk, x_p) = x.split2(sk, p).unwrap();
+        splitm!(x, (x_sk; sk), (x_p; p));
 
         // y = a*-symvec_f_n^T*x_sk + a*vec_b^T*x_p + b*y
-        self.symvec_f_n.trans_op(-alpha, x_sk, beta, y);
-        self.vec_b.trans_op(alpha, x_p, F::one(), y);
+        self.symvec_f_n.trans_op(-alpha, &x_sk, beta, y);
+        self.vec_b.trans_op(alpha, &x_p, L::F::one(), y);
     }
 
-    fn absadd_cols(&self, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut L::Sl)
     {
         self.symvec_f_n.absadd_cols(tau);
         self.vec_b.absadd_cols(tau);
     }
 
-    fn absadd_rows(&self, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut L::Sl)
     {
         let (_n, sk, p) = self.dim();
 
-        let (sigma_sk, sigma_p) = sigma.split2(sk, p).unwrap();
+        splitm_mut!(sigma, (sigma_sk; sk), (sigma_p; p));
 
-        self.symvec_f_n.absadd_rows(sigma_sk);
-        self.vec_b.absadd_rows(sigma_p);
+        self.symvec_f_n.absadd_rows(&mut sigma_sk);
+        self.vec_b.absadd_rows(&mut sigma_p);
     }
 }
 
 //
 
-pub struct ProbSDPCone<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbSDPCone<'a, L: LinAlgEx>
 {
     sk: usize,
     p: usize,
-    cone_psd: ConePSD<'a, L, F>,
-    cone_zero: ConeZero<F>,
+    cone_psd: ConePSD<'a, L>,
+    cone_zero: ConeZero<L>,
 }
 
-impl<'a, L, F> Cone<F> for ProbSDPCone<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Cone<L> for ProbSDPCone<'a, L>
 {
-    fn proj(&mut self, dual_cone: bool, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, dual_cone: bool, x: &mut L::Sl) -> Result<(), ()>
     {
         let (sk, p) = (self.sk, self.p);
-        let (x_sk, x_p) = x.split2(sk, p).unwrap();
 
-        self.cone_psd.proj(dual_cone, x_sk)?;
-        self.cone_zero.proj(dual_cone, x_p)?;
+        splitm_mut!(x, (x_sk; sk), (x_p; p));
+
+        self.cone_psd.proj(dual_cone, &mut x_sk)?;
+        self.cone_zero.proj(dual_cone, &mut x_p)?;
         Ok(())
     }
 
-    fn product_group<G: Fn(&mut[F]) + Copy>(&self, dp_tau: &mut[F], group: G)
+    fn product_group<G: Fn(&mut L::Sl) + Copy>(&self, dp_tau: &mut L::Sl, group: G)
     {
         let (sk, p) = (self.sk, self.p);
-        let (t_sk, t_p) = dp_tau.split2(sk, p).unwrap();
 
-        self.cone_psd.product_group(t_sk, group);
-        self.cone_zero.product_group(t_p, group);
+        splitm_mut!(dp_tau, (t_sk; sk), (t_p; p));
+
+        self.cone_psd.product_group(&mut t_sk, group);
+        self.cone_zero.product_group(&mut t_p, group);
     }
     
 }
@@ -271,23 +263,21 @@ where L: LinAlgEx<F>, F: Float
 /// \\( {\rm vec}(X) = (X_{11}\ \sqrt2 X_{12}\ X_{22}\ \sqrt2 X_{13}\ \sqrt2 X_{23}\ X_{33}\ \cdots)^T \\)
 /// which extracts and scales the upper-triangular part of a symmetric matrix X in column-wise.
 /// [`ConePSD`] is used for \\( {\rm vec}(\mathcal{S}_+^k) \\).
-pub struct ProbSDP<L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbSDP<L: LinAlgEx>
 {
-    vec_c: MatBuild<L, F>,
-    mat_a: MatBuild<L, F>,
-    vec_b: MatBuild<L, F>,
+    vec_c: MatBuild<L>,
+    mat_a: MatBuild<L>,
+    vec_b: MatBuild<L>,
 
-    symmat_f: MatBuild<L, F>,
-    symvec_f_n: MatBuild<L, F>,
+    symmat_f: MatBuild<L>,
+    symvec_f_n: MatBuild<L>,
 
-    eps_zero: F,
-    w_cone_psd: Vec<F>,
-    w_solver: Vec<F>,
+    eps_zero: L::F,
+    w_cone_psd: Vec<L::F>,
+    w_solver: Vec<L::F>,
 }
 
-impl<L, F> ProbSDP<L, F>
-where L: LinAlgEx<F>, F: Float
+impl<L: LinAlgEx> ProbSDP<L>
 {
     /// Creates a SDP with given data.
     /// 
@@ -298,10 +288,10 @@ where L: LinAlgEx<F>, F: Float
     /// * `vec_b` is \\(b\\).
     /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
     pub fn new(
-        vec_c: MatBuild<L, F>,
-        mut syms_f: Vec<MatBuild<L, F>>,
-        mat_a: MatBuild<L, F>, vec_b: MatBuild<L, F>,
-        eps_zero: F) -> Self
+        vec_c: MatBuild<L>,
+        mut syms_f: Vec<MatBuild<L>>,
+        mat_a: MatBuild<L>, vec_b: MatBuild<L>,
+        eps_zero: L::F) -> Self
     {
         let n = vec_c.size().0;
         let p = vec_b.size().0;
@@ -316,7 +306,7 @@ where L: LinAlgEx<F>, F: Float
         assert_eq!(mat_a.size(), (p, n));
         assert_eq!(vec_b.size(), (p, 1));
 
-        let f1 = F::one();
+        let f1 = L::F::one();
         let f2 = f1 + f1;
         let fsqrt2 = f2.sqrt();
     
@@ -346,33 +336,33 @@ where L: LinAlgEx<F>, F: Float
     /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
     /// 
     /// Returns a tuple of operators, a cone and a work slice.
-    pub fn problem(&mut self) -> (ProbSDPOpC<L, F>, ProbSDPOpA<L, F>, ProbSDPOpB<L, F>, ProbSDPCone<'_, L, F>, &mut[F])
+    pub fn problem(&mut self) -> (ProbSDPOpC<L>, ProbSDPOpA<L>, ProbSDPOpB<L>, ProbSDPCone<'_, L>, &mut[L::F])
     {
         let p = self.vec_b.size().0;
         let sk = self.symvec_f_n.size().0;
 
-        let f0 = F::zero();
+        let f0 = L::F::zero();
 
         let op_c = ProbSDPOpC {
-            vec_c: &self.vec_c,
+            vec_c: self.vec_c.as_op(),
         };
         let op_a = ProbSDPOpA {
-            symmat_f: &self.symmat_f,
-            mat_a: &self.mat_a,
+            symmat_f: self.symmat_f.as_op(),
+            mat_a: self.mat_a.as_op(),
         };
         let op_b = ProbSDPOpB {
-            symvec_f_n: &self.symvec_f_n,
-            vec_b: &self.vec_b,
+            symvec_f_n: self.symvec_f_n.as_op(),
+            vec_b: self.vec_b.as_op(),
         };
 
-        self.w_cone_psd.resize(ConePSD::<L, _>::query_worklen(sk), f0);
+        self.w_cone_psd.resize(ConePSD::<L>::query_worklen(sk), f0);
         let cone = ProbSDPCone {
             sk, p,
             cone_psd: ConePSD::new(self.w_cone_psd.as_mut(), self.eps_zero),
             cone_zero: ConeZero::new(),
         };
 
-        self.w_solver.resize(Solver::<L, _>::query_worklen(op_a.size()), f0);
+        self.w_solver.resize(Solver::<L>::query_worklen(op_a.size()), f0);
 
         (op_c, op_a, op_b, cone, self.w_solver.as_mut())
     }
