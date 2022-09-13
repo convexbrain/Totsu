@@ -1,4 +1,3 @@
-/* TODO: restore
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
@@ -6,7 +5,7 @@ use totsu::problem::ProbSDP;
 
 //
 
-fn subtest_sdp1<L: LinAlgEx<f64>>()
+fn subtest_sdp1<L: LinAlgEx<F=f64>>()
 {
     let _ = env_logger::builder().is_test(true).try_init();
 
@@ -37,9 +36,8 @@ fn subtest_sdp1<L: LinAlgEx<f64>>()
 
     let vec_b = MatBuild::new(MatType::General(p, 1));
 
-    let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
-    println!("{:?}", s.par);
-    let mut sdp = ProbSDP::<L, _>::new(vec_c, syms_f, mat_a, vec_b, s.par.eps_zero);
+    let s = Solver::<L>::new().par(|p| {p.max_iter = Some(100_000)});
+    let mut sdp = ProbSDP::<L>::new(vec_c, syms_f, mat_a, vec_b, s.par.eps_zero);
     let rslt = s.solve(sdp.problem()).unwrap();
     println!("{:?}", rslt);
 
@@ -65,4 +63,3 @@ mod f64lapack
         subtest_sdp1::<F64LAPACK>();
     }
 }
-*/

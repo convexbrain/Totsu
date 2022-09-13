@@ -33,7 +33,6 @@ fn subtest_socp1<L: LinAlgEx<F=f64>>()
     let vec_b = MatBuild::new(MatType::General(p, 1));
 
     let s = Solver::<L>::new();
-    println!("{:?}", s.par);
     let mut socp = ProbSOCP::new(vec_f, mats_g, vecs_h, vecs_c, scls_d, mat_a, vec_b);
     let rslt = s.solve(socp.problem()).unwrap();
     println!("{:?}", rslt);
@@ -86,7 +85,6 @@ fn subtest_socp2<L: LinAlgEx<F=f64>>()
     let vec_b = MatBuild::new(MatType::General(p, 1));
 
     let s = Solver::<L>::new().par(|p| {p.max_iter = Some(100_000)});
-    println!("{:?}", s.par);
     let mut socp = ProbSOCP::new(vec_f, mats_g, vecs_h, vecs_c, scls_d, mat_a, vec_b);
     let rslt = s.solve(socp.problem()).unwrap();
     println!("{:?}", rslt);
