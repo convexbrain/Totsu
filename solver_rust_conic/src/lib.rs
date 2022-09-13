@@ -97,10 +97,10 @@ use totsu::problem::ProbQP;
 
 //env_logger::init(); // Use any logger crate as `totsu` uses `log` crate. 
 
-type LA = FloatGeneric<f64>;
-type AMatBuild = MatBuild<LA, f64>;
-type AProbQP = ProbQP<LA, f64>;
-type ASolver = Solver<LA, f64>;
+type La = FloatGeneric<f64>;
+type AMatBuild = MatBuild<La>;
+type AProbQP = ProbQP<La>;
+type ASolver = Solver<La>;
 
 let n = 2; // x0, x1
 let m = 1;
@@ -185,5 +185,4 @@ pub mod prelude // core, Float
     pub use super::cone::{Cone, ConeZero, ConeRPos, ConeSOC, ConePSD};
 }
 
-// TODO: restore doctest
 // TODO: repair docs

@@ -38,34 +38,35 @@ pub trait Operator<L: LinAlg>
     /// 
     /// The calculation shall be equivalent to the general reference implementation shown below.
     /// ```
-    /// # use num_traits::Float;
-    /// # use totsu::linalg::LinAlgEx;
+    /// # use num_traits::{Zero, One};
+    /// # use totsu::linalg::{SliceLike, LinAlgEx};
     /// # use totsu::operator::Operator;
-    /// # struct OpRef<L, F>(std::marker::PhantomData<L>, std::marker::PhantomData<F>);
-    /// impl<L: LinAlgEx<F>, F: Float> Operator<F> for OpRef<L, F>
+    /// # use totsu::{splitm, splitm_mut};
+    /// # struct OpRef<L>(std::marker::PhantomData<L>);
+    /// impl<L: LinAlgEx> Operator<L> for OpRef<L>
     /// {
     /// #   fn size(&self) -> (usize, usize) {(0, 0)}
-    /// #   fn op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector) {}
-    /// #   fn absadd_cols(&self, tau: &mut L::Vector) {}
-    /// #   fn absadd_rows(&self, sigma: &mut L::Vector) {}
-    ///     fn trans_op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector)
+    /// #   fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl) {}
+    /// #   fn absadd_cols(&self, tau: &mut L::Sl) {}
+    /// #   fn absadd_rows(&self, sigma: &mut L::Sl) {}
+    ///     fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     ///     {
-    ///         let f0 = F::zero();
-    ///         let f1 = F::one();
+    ///         let f0 = L::F::zero();
+    ///         let f1 = L::F::one();
     ///         let (m, n) = self.size();
     /// 
-    ///         let mut col = std::vec![f0; m];
-    ///         let mut row = std::vec![f0; n];
+    ///         let mut col_v = std::vec![f0; m];
+    ///         let mut row_v = std::vec![f0; n];
+    ///         let mut col = L::Sl::new_mut(&mut col_v);
+    ///         let mut row = L::Sl::new_mut(&mut row_v);
     /// 
-    ///         let mut y_rest = y;
     ///         for c in 0.. n {
-    ///             row[c] = f1;
+    ///             row.set(c, f1);
     ///             self.op(f1, &row, f0, &mut col);
-    ///             row[c] = f0;
+    ///             row.set(c, f0);
     /// 
-    ///             let (yc, y_lh) = y_rest.split_at_mut(1);
-    ///             y_rest = y_lh;
-    ///             L::transform_ge(true, m, 1, alpha, &col, x, beta, yc);
+    ///             splitm_mut!(y, (_y_done; c), (yc; 1));
+    ///             L::transform_ge(true, m, 1, alpha, &col, x, beta, &mut yc);
     ///         }
     ///     }
     /// }
@@ -80,31 +81,34 @@ pub trait Operator<L: LinAlg>
     /// 
     /// The calculation shall be equivalent to the general reference implementation shown below.
     /// ```
-    /// # use num_traits::Float;
-    /// # use totsu::linalg::LinAlg;
+    /// # use num_traits::{Zero, One};
+    /// # use totsu::linalg::{SliceLike, LinAlg};
     /// # use totsu::operator::Operator;
-    /// # struct OpRef<L, F>(std::marker::PhantomData<L>, std::marker::PhantomData<F>);
-    /// impl<L: LinAlg<F>, F: Float> Operator<F> for OpRef<L, F>
+    /// # struct OpRef<L>(std::marker::PhantomData<L>);
+    /// impl<L: LinAlg> Operator<L> for OpRef<L>
     /// {
     /// #   fn size(&self) -> (usize, usize) {(0, 0)}
-    /// #   fn op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector) {}
-    /// #   fn trans_op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector) {}
-    /// #   fn absadd_rows(&self, sigma: &mut L::Vector) {}
-    ///     fn absadd_cols(&self, tau: &mut L::Vector)
+    /// #   fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl) {}
+    /// #   fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl) {}
+    /// #   fn absadd_rows(&self, sigma: &mut L::Sl) {}
+    ///     fn absadd_cols(&self, tau: &mut L::Sl)
     ///     {
-    ///         let f0 = F::zero();
-    ///         let f1 = F::one();
+    ///         let f0 = L::F::zero();
+    ///         let f1 = L::F::one();
     ///         let (m, n) = self.size();
     /// 
-    ///         let mut col = std::vec![f0; m];
-    ///         let mut row = std::vec![f0; n];
+    ///         let mut col_v = std::vec![f0; m];
+    ///         let mut row_v = std::vec![f0; n];
+    ///         let mut col = L::Sl::new_mut(&mut col_v);
+    ///         let mut row = L::Sl::new_mut(&mut row_v);
     /// 
-    ///         for (c, t) in tau.iter_mut().enumerate() {
-    ///             row[c] = f1;
+    ///         for c in 0.. tau.len() {
+    ///             row.set(c, f1);
     ///             self.op(f1, &row, f0, &mut col);
-    ///             row[c] = f0;
+    ///             row.set(c, f0);
     /// 
-    ///             *t = L::abssum(&col, 1) + *t;
+    ///             let val_tau = tau.get(c) + L::abssum(&col, 1);
+    ///             tau.set(c, val_tau);
     ///         }
     ///     }
     /// }
@@ -119,31 +123,34 @@ pub trait Operator<L: LinAlg>
     /// 
     /// The calculation shall be equivalent to the general reference implementation shown below.
     /// ```
-    /// # use num_traits::Float;
-    /// # use totsu::linalg::LinAlg;
+    /// # use num_traits::{Zero, One};
+    /// # use totsu::linalg::{SliceLike, LinAlg};
     /// # use totsu::operator::Operator;
-    /// # struct OpRef<L, F>(std::marker::PhantomData<L>, std::marker::PhantomData<F>);
-    /// impl<L: LinAlg<F>, F: Float> Operator<F> for OpRef<L, F>
+    /// # struct OpRef<L>(std::marker::PhantomData<L>);
+    /// impl<L: LinAlg> Operator<L> for OpRef<L>
     /// {
     /// #   fn size(&self) -> (usize, usize) {(0, 0)}
-    /// #   fn op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector) {}
-    /// #   fn trans_op(&self, alpha: F, x: &L::Vector, beta: F, y: &mut L::Vector) {}
-    /// #   fn absadd_cols(&self, tau: &mut L::Vector) {}
-    ///     fn absadd_rows(&self, sigma: &mut L::Vector)
+    /// #   fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl) {}
+    /// #   fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl) {}
+    /// #   fn absadd_cols(&self, tau: &mut L::Sl) {}
+    ///     fn absadd_rows(&self, sigma: &mut L::Sl)
     ///     {
-    ///         let f0 = F::zero();
-    ///         let f1 = F::one();
+    ///         let f0 = L::F::zero();
+    ///         let f1 = L::F::one();
     ///         let (m, n) = self.size();
     /// 
-    ///         let mut col = std::vec![f0; m];
-    ///         let mut row = std::vec![f0; n];
+    ///         let mut col_v = std::vec![f0; m];
+    ///         let mut row_v = std::vec![f0; n];
+    ///         let mut col = L::Sl::new_mut(&mut col_v);
+    ///         let mut row = L::Sl::new_mut(&mut row_v);
     /// 
-    ///         for (r, s) in sigma.iter_mut().enumerate() {
-    ///             col[r] = f1;
+    ///         for r in 0.. sigma.len() {
+    ///             col.set(r, f1);
     ///             self.trans_op(f1, &col, f0, &mut row);
-    ///             col[r] = f0;
+    ///             col.set(r, f0);
     /// 
-    ///             *s = L::abssum(&row, 1) + *s;
+    ///             let val_sigma = sigma.get(r) + L::abssum(&row, 1);
+    ///             sigma.set(r, val_sigma);
     ///         }
     ///     }
     /// }
