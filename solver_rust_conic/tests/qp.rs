@@ -35,7 +35,7 @@ fn subtest_qp1<L: LinAlgEx<F=f64>>()
     let vec_b = MatBuild::new(MatType::General(p, 1));
 
     let s = Solver::<L>::new().par(|p| {p.max_iter = Some(100_000)});
-    let mut qp = ProbQP::<L>::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
+    let mut qp = ProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
     let rslt = s.solve(qp.problem()).unwrap();
     println!("{:?}", rslt);
 
@@ -99,7 +99,7 @@ mod f32cuda
         let vec_b = MatBuild::new(MatType::General(p, 1));
     
         let s = Solver::<L>::new().par(|p| {p.max_iter = Some(100_000)});
-        let mut qp = ProbQP::<L>::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
+        let mut qp = ProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
         let rslt = s.solve(qp.problem()).unwrap();
         println!("{:?}", rslt);
     

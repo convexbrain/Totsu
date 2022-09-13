@@ -1,5 +1,3 @@
-// TODO: more useful methods and operator overrides from examples
-
 use std::vec;
 use std::prelude::v1::*;
 use num_traits::{Float, Zero};

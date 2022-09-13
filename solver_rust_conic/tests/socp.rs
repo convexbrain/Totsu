@@ -1,4 +1,3 @@
-/* TODO: restore
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
 use totsu::operator::MatBuild;
@@ -6,7 +5,7 @@ use totsu::problem::ProbSOCP;
 
 //
 
-fn subtest_socp1<L: LinAlgEx<f64>>()
+fn subtest_socp1<L: LinAlgEx<F=f64>>()
 {
     let _ = env_logger::builder().is_test(true).try_init();
 
@@ -33,9 +32,9 @@ fn subtest_socp1<L: LinAlgEx<f64>>()
 
     let vec_b = MatBuild::new(MatType::General(p, 1));
 
-    let s = Solver::<L, _>::new();
+    let s = Solver::<L>::new();
     println!("{:?}", s.par);
-    let mut socp = ProbSOCP::<L, _>::new(vec_f, mats_g, vecs_h, vecs_c, scls_d, mat_a, vec_b);
+    let mut socp = ProbSOCP::new(vec_f, mats_g, vecs_h, vecs_c, scls_d, mat_a, vec_b);
     let rslt = s.solve(socp.problem()).unwrap();
     println!("{:?}", rslt);
 
@@ -50,7 +49,7 @@ fn test_socp1()
 
 //
 
-fn subtest_socp2<L: LinAlgEx<f64>>()
+fn subtest_socp2<L: LinAlgEx<F=f64>>()
 {
     let _ = env_logger::builder().is_test(true).try_init();
 
@@ -86,9 +85,9 @@ fn subtest_socp2<L: LinAlgEx<f64>>()
 
     let vec_b = MatBuild::new(MatType::General(p, 1));
 
-    let s = Solver::<L, _>::new().par(|p| {p.max_iter = Some(100_000)});
+    let s = Solver::<L>::new().par(|p| {p.max_iter = Some(100_000)});
     println!("{:?}", s.par);
-    let mut socp = ProbSOCP::<L, _>::new(vec_f, mats_g, vecs_h, vecs_c, scls_d, mat_a, vec_b);
+    let mut socp = ProbSOCP::new(vec_f, mats_g, vecs_h, vecs_c, scls_d, mat_a, vec_b);
     let rslt = s.solve(socp.problem()).unwrap();
     println!("{:?}", rslt);
 
@@ -120,4 +119,3 @@ mod f64lapack
         subtest_socp2::<F64LAPACK>();
     }
 }
-*/

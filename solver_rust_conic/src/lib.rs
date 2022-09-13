@@ -186,4 +186,5 @@ pub mod prelude // core, Float
     pub use super::cone::{Cone, ConeZero, ConeRPos, ConeSOC, ConePSD};
 }
 
-// TODO: more tests
+// TODO: restore doctest
+// TODO: repair docs
