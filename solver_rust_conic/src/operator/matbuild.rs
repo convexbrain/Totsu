@@ -1,12 +1,9 @@
-// TODO: more useful methods and operator overrides from examples
-
 use std::vec;
 use std::prelude::v1::*;
-use num_traits::Float;
+use num_traits::{Float, Zero};
 use core::ops::{Index, IndexMut, Deref};
-use core::marker::PhantomData;
-use crate::linalg::LinAlgEx;
-use super::{Operator, MatType, MatOp};
+use crate::linalg::{SliceLike, LinAlgEx};
+use super::{MatType, MatOp};
 
 //
 
@@ -18,16 +15,13 @@ use super::{Operator, MatType, MatOp};
 /// Matrix struct which owns a `Vec` of data array and implements [`Operator`].
 /// This struct relies on dynamic heap allocation.
 #[derive(Debug, Clone)]
-pub struct MatBuild<L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct MatBuild<L: LinAlgEx>
 {
-    ph_l: PhantomData<L>,
     typ: MatType,
-    array: Vec<F>,
+    array: Vec<L::F>,
 }
 
-impl<L, F> MatBuild<L, F>
-where L: LinAlgEx<F>, F: Float
+impl<L: LinAlgEx> MatBuild<L>
 {
     /// Creates an instance.
     /// 
@@ -36,10 +30,21 @@ where L: LinAlgEx<F>, F: Float
     pub fn new(typ: MatType) -> Self
     {
         MatBuild {
-            ph_l: PhantomData,
             typ,
-            array: vec![F::zero(); typ.len()],
+            array: vec![L::F::zero(); typ.len()],
         }
+    }
+
+    /// TODO: doc
+    pub fn size(&self) -> (usize, usize)
+    {
+        self.typ.size()
+    }
+
+    /// TODO: doc
+    pub fn as_op(&self) -> MatOp<'_, L>
+    {
+        MatOp::new(self.typ, &self.array)
     }
 
     /// Checks if symmetric packed.
@@ -59,7 +64,7 @@ where L: LinAlgEx<F>, F: Float
     /// 
     /// * `func` takes a row and a column of the matrix and returns data of each element.
     pub fn set_by_fn<M>(&mut self, mut func: M)
-    where M: FnMut(usize, usize) -> F
+    where M: FnMut(usize, usize) -> L::F
     {
         match self.typ {
             MatType::General(nr, nc) => {
@@ -80,7 +85,7 @@ where L: LinAlgEx<F>, F: Float
     }
     /// Builder pattern of [`MatBuild::set_by_fn`].
     pub fn by_fn<M>(mut self, func: M) -> Self
-    where M: FnMut(usize, usize) -> F
+    where M: FnMut(usize, usize) -> L::F
     {
         self.set_by_fn(func);
         self
@@ -90,7 +95,7 @@ where L: LinAlgEx<F>, F: Float
     /// 
     /// * `iter` iterates matrix data in column-major.
     pub fn set_iter_colmaj<T, I>(&mut self, iter: T)
-    where T: IntoIterator<Item=I>, I: Deref<Target=F>
+    where T: IntoIterator<Item=I>, I: Deref<Target=L::F>
     {
         let mut i = iter.into_iter();
         let (nr, nc) = self.typ.size();
@@ -108,7 +113,7 @@ where L: LinAlgEx<F>, F: Float
     }
     /// Builder pattern of [`MatBuild::set_iter_colmaj`].
     pub fn iter_colmaj<T, I>(mut self, iter: T) -> Self
-    where T: IntoIterator<Item=I>, I: Deref<Target=F>
+    where T: IntoIterator<Item=I>, I: Deref<Target=L::F>
     {
         self.set_iter_colmaj(iter);
         self
@@ -118,7 +123,7 @@ where L: LinAlgEx<F>, F: Float
     /// 
     /// * `iter` iterates matrix data in row-major.
     pub fn set_iter_rowmaj<T, I>(&mut self, iter: T)
-    where T: IntoIterator<Item=I>, I: Deref<Target=F>
+    where T: IntoIterator<Item=I>, I: Deref<Target=L::F>
     {
         let mut i = iter.into_iter();
         let (nr, nc) = self.typ.size();
@@ -136,7 +141,7 @@ where L: LinAlgEx<F>, F: Float
     }
     /// Builder pattern of [`MatBuild::set_iter_rowmaj`].
     pub fn iter_rowmaj<T, I>(mut self, iter: T) -> Self
-    where T: IntoIterator<Item=I>, I: Deref<Target=F>
+    where T: IntoIterator<Item=I>, I: Deref<Target=L::F>
     {
         self.set_iter_rowmaj(iter);
         self
@@ -145,12 +150,13 @@ where L: LinAlgEx<F>, F: Float
     /// Scales by \\(\alpha\\).
     /// 
     /// * `alpha` is a scalar \\(\alpha\\).
-    pub fn set_scale(&mut self, alpha: F)
+    pub fn set_scale(&mut self, alpha: L::F)
     {
-        L::scale(alpha, self.as_mut());
+        L::scale(alpha, &mut L::Sl::new_mut(&mut self.array));
+
     }
     /// Builder pattern of [`MatBuild::set_scale`].
-    pub fn scale(mut self, alpha: F) -> Self
+    pub fn scale(mut self, alpha: L::F) -> Self
     {
         self.set_scale(alpha);
         self
@@ -159,34 +165,34 @@ where L: LinAlgEx<F>, F: Float
     /// Scales by \\(\alpha\\) except diagonal elements.
     /// 
     /// * `alpha` is a scalar \\(\alpha\\).
-    pub fn set_scale_nondiag(&mut self, alpha: F)
+    pub fn set_scale_nondiag(&mut self, alpha: L::F)
     {
         match self.typ {
             MatType::General(nr, nc) => {
                 let n = nr.min(nc);
                 for c in 0.. n - 1 {
                     let i = self.index((c, c));
-                    let (_, spl) = self.as_mut().split_at_mut(i + 1);
+                    let (_, spl) = self.array.split_at_mut(i + 1);
                     let (spl, _) = spl.split_at_mut(nc);
-                    L::scale(alpha, spl);
+                    L::scale(alpha, &mut L::Sl::new_mut(spl));
                 }
                 let i = self.index((n, n));
-                let (_, spl) = self.as_mut().split_at_mut(i + 1);
-                L::scale(alpha, spl);
+                let (_, spl) = self.array.split_at_mut(i + 1);
+                L::scale(alpha, &mut L::Sl::new_mut(spl));
             },
             MatType::SymPack(n) => {
                 for c in 0.. n - 1 {
                     let i = self.index((c, c));
                     let ii = self.index((c + 1, c + 1));
-                    let (_, spl) = self.as_mut().split_at_mut(i + 1);
+                    let (_, spl) = self.array.split_at_mut(i + 1);
                     let (spl, _) = spl.split_at_mut(ii - i - 1);
-                    L::scale(alpha, spl);
+                    L::scale(alpha, &mut L::Sl::new_mut(spl));
                 }
             },
         }
     }
     /// Builder pattern of [`MatBuild::set_scale_nondiag`].
-    pub fn scale_nondiag(mut self, alpha: F) -> Self
+    pub fn scale_nondiag(mut self, alpha: L::F) -> Self
     {
         self.set_scale_nondiag(alpha);
         self
@@ -195,7 +201,7 @@ where L: LinAlgEx<F>, F: Float
     /// Reshapes the internal data array as it is into a one-column matrix.
     pub fn set_reshape_colvec(&mut self)
     {
-        let sz = self.as_ref().len();
+        let sz = self.array.len();
         self.typ = MatType::General(sz, 1);
     }
     /// Builder pattern of [`MatBuild::set_reshape_colvec`].
@@ -209,20 +215,21 @@ where L: LinAlgEx<F>, F: Float
     /// 
     /// The matrix shall belong to [`MatType::SymPack`].
     /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
-    pub fn set_sqrt(&mut self, eps_zero: F)
+    pub fn set_sqrt(&mut self, eps_zero: L::F)
     {
         match self.typ {
             MatType::General(_, _) => {
                 unimplemented!()
             },
             MatType::SymPack(n) => {
-                let mut work = vec![F::zero(); L::sqrt_spmat_worklen(n)];
-                L::sqrt_spmat(self.as_mut(), eps_zero, &mut work);
+                let mut work_vec = vec![L::F::zero(); L::sqrt_spmat_worklen(n)];
+                let mut work = L::Sl::new_mut(&mut work_vec);
+                L::sqrt_spmat(&mut L::Sl::new_mut(&mut self.array), eps_zero, &mut work);
             }
         }
     }
     /// Builder pattern of [`MatBuild::set_sqrt`].
-    pub fn sqrt(mut self, eps_zero: F) -> Self
+    pub fn sqrt(mut self, eps_zero: L::F) -> Self
     {
         self.set_sqrt(eps_zero);
         self
@@ -254,11 +261,12 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<L, F> Index<(usize, usize)> for MatBuild<L, F>
-where L: LinAlgEx<F>, F: Float
+//
+
+impl<L: LinAlgEx> Index<(usize, usize)> for MatBuild<L>
 {
-    type Output = F;
-    fn index(&self, index: (usize, usize)) -> &F
+    type Output = L::F;
+    fn index(&self, index: (usize, usize)) -> &Self::Output
     {
         let i = self.index(index);
 
@@ -266,10 +274,9 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<L, F> IndexMut<(usize, usize)> for MatBuild<L, F>
-where L: LinAlgEx<F>, F: Float
+impl<L: LinAlgEx> IndexMut<(usize, usize)> for MatBuild<L>
 {
-    fn index_mut(&mut self, index: (usize, usize)) -> &mut F
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output
     {
         let i = self.index(index);
 
@@ -277,64 +284,10 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<L, F> AsRef<[F]> for MatBuild<L, F>
-where L: LinAlgEx<F>, F: Float
-{
-    fn as_ref(&self) -> &[F]
-    {
-        &self.array
-    }
-}
+//
 
-impl<L, F> AsMut<[F]> for MatBuild<L, F>
-where L: LinAlgEx<F>, F: Float
-{
-    fn as_mut(&mut self) -> &mut[F]
-    {
-        &mut self.array
-    }
-}
-
-impl<'a, L, F> From<&'a MatBuild<L, F>> for MatOp<'a, L, F>
-where L: LinAlgEx<F>, F: Float
-{
-    fn from(m: &'a MatBuild<L, F>) -> Self
-    {
-        MatOp::new(m.typ, m.as_ref())
-    }
-}
-
-impl<L, F> Operator<F> for MatBuild<L, F>
-where L: LinAlgEx<F>, F: Float
-{
-    fn size(&self) -> (usize, usize)
-    {
-        self.typ.size()
-    }
-
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
-    {
-        MatOp::from(self).op(alpha, x, beta, y);
-    }
-
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
-    {
-        MatOp::from(self).trans_op(alpha, x, beta, y);
-    }
-
-    fn absadd_cols(&self, tau: &mut[F])
-    {
-        MatOp::from(self).absadd_cols(tau);
-    }
-
-    fn absadd_rows(&self, sigma: &mut[F])
-    {
-        MatOp::from(self).absadd_rows(sigma);
-    }
-}
-
-impl<L, F> core::fmt::Display for MatBuild<L, F>
-where L: LinAlgEx<F>, F: Float + core::fmt::LowerExp
+impl<L: LinAlgEx> core::fmt::Display for MatBuild<L>
+where L::F: Float + core::fmt::LowerExp
 {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error>
     {
@@ -404,9 +357,10 @@ fn test_matbuild1()
        11., 12., 13., 14., 15.,
     ];
 
-    let m = MatBuild::<L, _>::new(MatType::SymPack(5))
+    let m = MatBuild::<L>::new(MatType::SymPack(5))
             .iter_colmaj(array)
             .scale_nondiag(1.4);
 
-    assert_float_eq!(m.as_ref(), ref_array.as_ref(), abs_all <= 1e-3);
+    let m_array: &[f64] = m.array.as_ref();
+    assert_float_eq!(m_array, ref_array.as_ref(), abs_all <= 1e-3);
 }

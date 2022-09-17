@@ -1,23 +1,70 @@
 use num_traits::Float;
-use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
-use super::{LinAlg, LinAlgEx};
-use crate::utils::*;
+use super::{SliceLike, SliceRef, SliceMut, LinAlg, LinAlgEx};
 
 //
+
+impl<F: Float> SliceLike for [F]
+{
+    type F = F;
+
+    fn new_ref(s: &[F]) -> SliceRef<'_, Self>
+    {
+        SliceRef {s}
+    }
+
+    fn new_mut(s: &mut[F]) -> SliceMut<'_, Self>
+    {
+        SliceMut {s}
+    }
+
+    fn split_ref(&self, mid: usize) -> (SliceRef<'_, Self>, SliceRef<'_, Self>)
+    {
+        let s = self.split_at(mid);
+        (SliceRef {s: s.0}, SliceRef {s: s.1})
+    }
+
+    fn split_mut(&mut self, mid: usize) -> (SliceMut<'_, Self>, SliceMut<'_, Self>)
+    {
+        let s = self.split_at_mut(mid);
+        (SliceMut {s: s.0}, SliceMut {s: s.1})
+    }
+
+    fn drop(&self)
+    {
+    }
+
+    fn len(&self) -> usize
+    {
+        self.len()
+    }
+
+    fn get_ref(&self) -> &[F]
+    {
+        self
+    }
+
+    fn get_mut(&mut self) -> &mut[F]
+    {
+        self
+    }
+}
 
 /// `num::Float`-generic [`LinAlgEx`] implementation
 /// 
 /// All numeric operations are written in pure Rust, but slow.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct FloatGeneric<F>
 {
     ph_f: PhantomData<F>,
 }
 
-impl<F: Float> LinAlg<F> for FloatGeneric<F>
+impl<F: Float> LinAlg for FloatGeneric<F>
 {
+    type F = F;
+    type Sl = [F];
+
     fn norm(x: &[F]) -> F
     {
         let mut sum = F::zero();
@@ -96,7 +143,7 @@ struct MatIdx<'a, F: Float>
 
 impl<'a, F: Float> MatIdx<'a, F>
 {
-    fn index(&self, (r, c): (usize, usize)) -> usize
+    fn idx(&self, (r, c): (usize, usize)) -> usize
     {
         let (r, c) = if !self.transpose {(r, c)} else {(c, r)};
         
@@ -111,9 +158,9 @@ impl<'a, F: Float> Index<(usize, usize)> for MatIdx<'a, F>
 {
     type Output = F;
 
-    fn index(&self, index: (usize, usize)) -> &F
+    fn index(&self, index: (usize, usize)) -> &Self::Output
     {
-        &self.mat[self.index(index)]
+        &self.mat[self.idx(index)]
     }
 }
 
@@ -152,7 +199,7 @@ impl<'a, F: Float> Index<(usize, usize)> for MatIdxMut<'a, F>
 {
     type Output = F;
 
-    fn index(&self, index: (usize, usize)) -> &F
+    fn index(&self, index: (usize, usize)) -> &Self::Output
     {
         let mat_idx = MatIdx {
             n_row: self.n_row,
@@ -161,13 +208,13 @@ impl<'a, F: Float> Index<(usize, usize)> for MatIdxMut<'a, F>
             transpose: self.transpose,
         };
         
-        &self.mat[mat_idx.index(index)]
+        &self.mat[mat_idx.idx(index)]
     }
 }
 
 impl<'a, F: Float> IndexMut<(usize, usize)> for MatIdxMut<'a, F>
 {
-    fn index_mut(&mut self, index: (usize, usize)) -> &mut F
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output
     {
         let mat_idx = MatIdx {
             n_row: self.n_row,
@@ -176,7 +223,7 @@ impl<'a, F: Float> IndexMut<(usize, usize)> for MatIdxMut<'a, F>
             transpose: self.transpose,
         };
         
-        &mut self.mat[mat_idx.index(index)]
+        &mut self.mat[mat_idx.idx(index)]
     }
 }
 
@@ -190,7 +237,7 @@ struct SpMatIdx<'a, F: Float>
 
 impl<'a, F: Float> SpMatIdx<'a, F>
 {
-    fn index(&self, (r, c): (usize, usize)) -> usize
+    fn idx(&self, (r, c): (usize, usize)) -> usize
     {
         assert!(r < self.n);
         assert!(c < self.n);
@@ -205,9 +252,9 @@ impl<'a, F: Float> Index<(usize, usize)> for SpMatIdx<'a, F>
 {
     type Output = F;
 
-    fn index(&self, index: (usize, usize)) -> &F
+    fn index(&self, index: (usize, usize)) -> &Self::Output
     {
-        &self.mat[self.index(index)]
+        &self.mat[self.idx(index)]
     }
 }
 
@@ -244,27 +291,27 @@ impl<'a, F: Float> Index<(usize, usize)> for SpMatIdxMut<'a, F>
 {
     type Output = F;
 
-    fn index(&self, index: (usize, usize)) -> &F
+    fn index(&self, index: (usize, usize)) -> &Self::Output
     {
         let sp_mat_idx = SpMatIdx {
             n: self.n,
             mat: self.mat,
         };
         
-        &self.mat[sp_mat_idx.index(index)]
+        &self.mat[sp_mat_idx.idx(index)]
     }
 }
 
 impl<'a, F: Float> IndexMut<(usize, usize)> for SpMatIdxMut<'a, F>
 {
-    fn index_mut(&mut self, index: (usize, usize)) -> &mut F
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output
     {
         let sp_mat_idx = SpMatIdx {
             n: self.n,
             mat: self.mat,
         };
         
-        &mut self.mat[sp_mat_idx.index(index)]
+        &mut self.mat[sp_mat_idx.idx(index)]
     }
 }
 
@@ -330,7 +377,8 @@ where E: Fn(F)->Option<F>
 
     let n = spmat_x.n;
 
-    let (w, z) = work.split2(n, n * n).unwrap();
+    let (w, rest) = work.split_at_mut(n);
+    let (z, _) = rest.split_at_mut(n * n);
 
     let mut mat_z = MatIdxMut {
         n_row: n, n_col: n, mat: z, transpose: false,
@@ -366,7 +414,7 @@ fn eig_func_worklen(n: usize) -> usize
 
 //
 
-impl<F: Float> LinAlgEx<F> for FloatGeneric<F>
+impl<F: Float> LinAlgEx for FloatGeneric<F>
 {
     // y = a*mat*x + b*y
     fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: F, mat: &[F], x: &[F], beta: F, y: &mut[F])

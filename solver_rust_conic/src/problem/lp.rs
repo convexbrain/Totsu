@@ -1,21 +1,19 @@
 use std::prelude::v1::*;
-use num_traits::Float;
+use num_traits::{Zero, One};
 use crate::solver::Solver;
-use crate::linalg::LinAlgEx;
-use crate::operator::{Operator, MatBuild};
+use crate::linalg::{SliceLike, LinAlgEx};
+use crate::operator::{Operator, MatOp, MatBuild};
 use crate::cone::{Cone, ConeRPos, ConeZero};
-use crate::utils::*;
+use crate::{splitm, splitm_mut};
 
 //
 
-pub struct ProbLPOpC<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbLPOpC<'a, L: LinAlgEx>
 {
-    vec_c: &'a MatBuild<L, F>,
+    vec_c: MatOp<'a, L>,
 }
 
-impl<'a, L, F> Operator<F> for ProbLPOpC<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Operator<L> for ProbLPOpC<'a, L>
 {
     fn size(&self) -> (usize, usize)
     {
@@ -25,24 +23,24 @@ where L: LinAlgEx<F>, F: Float
         (n, 1)
     }
 
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         // y = a*vec_c*x + b*y;
         self.vec_c.op(alpha, x, beta, y);
     }
 
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         // y = a*vec_c^T*x + b*y;
         self.vec_c.trans_op(alpha, x, beta, y);
     }
 
-    fn absadd_cols(&self, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut L::Sl)
     {
         self.vec_c.absadd_cols(tau);
     }
 
-    fn absadd_rows(&self, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut L::Sl)
     {
         self.vec_c.absadd_rows(sigma);
     }
@@ -50,15 +48,13 @@ where L: LinAlgEx<F>, F: Float
 
 //
 
-pub struct ProbLPOpA<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbLPOpA<'a, L: LinAlgEx>
 {
-    mat_g: &'a MatBuild<L, F>,
-    mat_a: &'a MatBuild<L, F>,
+    mat_g: MatOp<'a, L>,
+    mat_a: MatOp<'a, L>,
 }
 
-impl<'a, L, F> ProbLPOpA<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> ProbLPOpA<'a, L>
 {
     fn dim(&self) -> (usize, usize, usize)
     {
@@ -70,8 +66,7 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<'a, L, F> Operator<F> for ProbLPOpA<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Operator<L> for ProbLPOpA<'a, L>
 {
     fn size(&self) -> (usize, usize)
     {
@@ -80,58 +75,56 @@ where L: LinAlgEx<F>, F: Float
         (m + p, n)
     }
 
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         let (_n, m, p) = self.dim();
 
-        let (y_m, y_p) = y.split2(m, p).unwrap();
+        splitm_mut!(y, (y_m; m), (y_p; p));
 
         // y_m = a*mat_g*x + b*y_m
-        self.mat_g.op(alpha, x, beta, y_m);
+        self.mat_g.op(alpha, x, beta, &mut y_m);
 
         // y_p = a*mat_a*x + b*y_p
-        self.mat_a.op(alpha, x, beta, y_p);
+        self.mat_a.op(alpha, x, beta, &mut y_p);
     }
 
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         let (_n, m, p) = self.dim();
 
-        let (x_m, x_p) = x.split2(m, p).unwrap();
+        splitm!(x, (x_m; m), (x_p; p));
 
         // y = a*mat_g^T*x_m + a*mat_a^T*x_p + b*y
-        self.mat_g.trans_op(alpha, x_m, beta, y);
-        self.mat_a.trans_op(alpha, x_p, F::one(), y);
+        self.mat_g.trans_op(alpha, &x_m, beta, y);
+        self.mat_a.trans_op(alpha, &x_p, L::F::one(), y);
     }
 
-    fn absadd_cols(&self, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut L::Sl)
     {
         self.mat_g.absadd_cols(tau);
         self.mat_a.absadd_cols(tau);
     }
 
-    fn absadd_rows(&self, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut L::Sl)
     {
         let (_n, m, p) = self.dim();
 
-        let (sigma_m, sigma_p) = sigma.split2(m, p).unwrap();
+        splitm_mut!(sigma, (sigma_m; m), (sigma_p; p));
 
-        self.mat_g.absadd_rows(sigma_m);
-        self.mat_a.absadd_rows(sigma_p);
+        self.mat_g.absadd_rows(&mut sigma_m);
+        self.mat_a.absadd_rows(&mut sigma_p);
     }
 }
 
 //
 
-pub struct ProbLPOpB<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbLPOpB<'a, L: LinAlgEx>
 {
-    vec_h: &'a MatBuild<L, F>,
-    vec_b: &'a MatBuild<L, F>,
+    vec_h: MatOp<'a, L>,
+    vec_b: MatOp<'a, L>,
 }
 
-impl<'a, L, F> ProbLPOpB<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> ProbLPOpB<'a, L>
 {
     fn dim(&self) -> (usize, usize)
     {
@@ -144,8 +137,7 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<'a, L, F> Operator<F> for ProbLPOpB<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Operator<L> for ProbLPOpB<'a, L>
 {
     fn size(&self) -> (usize, usize)
     {
@@ -154,78 +146,76 @@ where L: LinAlgEx<F>, F: Float
         (m + p, 1)
     }
 
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         let (m, p) = self.dim();
 
-        let (y_m, y_p) = y.split2(m, p).unwrap();
+        splitm_mut!(y, (y_m; m), (y_p; p));
 
         // y_m = a*vec_h*x + b*y_m
-        self.vec_h.op(alpha, x, beta, y_m);
+        self.vec_h.op(alpha, x, beta, &mut y_m);
 
         // y_p = a*vec_b*x + b*y_p
-        self.vec_b.op(alpha, x, beta, y_p);
+        self.vec_b.op(alpha, x, beta, &mut y_p);
     }
 
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         let (m, p) = self.dim();
 
-        let (x_m, x_p) = x.split2(m, p).unwrap();
+        splitm!(x, (x_m; m), (x_p; p));
 
         // y = a*vec_h^T*x_m + a*vec_b^T*x_p + b*y
-        self.vec_h.trans_op(alpha, x_m, beta, y);
-        self.vec_b.trans_op(alpha, x_p, F::one(), y);
+        self.vec_h.trans_op(alpha, &x_m, beta, y);
+        self.vec_b.trans_op(alpha, &x_p, L::F::one(), y);
     }
 
-    fn absadd_cols(&self, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut L::Sl)
     {
         self.vec_h.absadd_cols(tau);
         self.vec_b.absadd_cols(tau);
     }
 
-    fn absadd_rows(&self, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut L::Sl)
     {
         let (m, p) = self.dim();
 
-        let (sigma_m, sigma_p) = sigma.split2(m, p).unwrap();
+        splitm_mut!(sigma, (sigma_m; m), (sigma_p; p));
 
-        self.vec_h.absadd_rows(sigma_m);
-        self.vec_b.absadd_rows(sigma_p);
+        self.vec_h.absadd_rows(&mut sigma_m);
+        self.vec_b.absadd_rows(&mut sigma_p);
     }
 }
 
 //
 
-pub struct ProbLPCone<F>
-where F: Float
+pub struct ProbLPCone<L: LinAlgEx>
 {
     m: usize,
     p: usize,
-    cone_rpos: ConeRPos<F>,
-    cone_zero: ConeZero<F>,
+    cone_rpos: ConeRPos<L>,
+    cone_zero: ConeZero<L>,
 }
 
-impl<F> Cone<F> for ProbLPCone<F>
-where F: Float
+impl<L: LinAlgEx> Cone<L> for ProbLPCone<L>
 {
-    fn proj(&mut self, dual_cone: bool, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, dual_cone: bool, x: &mut L::Sl) -> Result<(), ()>
     {
         let (m, p) = (self.m, self.p);
-        let (x_m, x_p) = x.split2(m, p).unwrap();
+        splitm_mut!(x, (x_m; m), (x_p; p));
 
-        self.cone_rpos.proj(dual_cone, x_m)?;
-        self.cone_zero.proj(dual_cone, x_p)?;
+        self.cone_rpos.proj(dual_cone, &mut x_m)?;
+        self.cone_zero.proj(dual_cone, &mut x_p)?;
         Ok(())
     }
 
-    fn product_group<G: Fn(&mut[F]) + Copy>(&self, dp_tau: &mut[F], group: G)
+    fn product_group<G: Fn(&mut L::Sl) + Copy>(&self, dp_tau: &mut L::Sl, group: G)
     {
         let (m, p) = (self.m, self.p);
-        let (t_m, t_p) = dp_tau.split2(m, p).unwrap();
+        splitm_mut!(dp_tau, (t_m; m), (t_p; p));
 
-        self.cone_rpos.product_group(t_m, group);
-        self.cone_zero.product_group(t_p, group);
+        self.cone_rpos.product_group(&mut t_m, group);
+        self.cone_zero.product_group(&mut t_p, group);
     }
 }
 
@@ -269,20 +259,18 @@ where F: Float
 /// & s \in \mathbb{R}_+^m \times \lbrace 0 \rbrace^n.
 /// \end{array}
 /// \\]
-pub struct ProbLP<L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbLP<L: LinAlgEx>
 {
-    vec_c: MatBuild<L, F>,
-    mat_g: MatBuild<L, F>,
-    vec_h: MatBuild<L, F>,
-    mat_a: MatBuild<L, F>,
-    vec_b: MatBuild<L, F>,
+    vec_c: MatBuild<L>,
+    mat_g: MatBuild<L>,
+    vec_h: MatBuild<L>,
+    mat_a: MatBuild<L>,
+    vec_b: MatBuild<L>,
 
-    w_solver: Vec<F>,
+    w_solver: Vec<L::F>,
 }
 
-impl<L, F> ProbLP<L, F>
-where L: LinAlgEx<F>, F: Float
+impl<L: LinAlgEx> ProbLP<L>
 {
     /// Creates a LP with given data.
     /// 
@@ -293,9 +281,9 @@ where L: LinAlgEx<F>, F: Float
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
     pub fn new(
-        vec_c: MatBuild<L, F>,
-        mat_g: MatBuild<L, F>, vec_h: MatBuild<L, F>,
-        mat_a: MatBuild<L, F>, vec_b: MatBuild<L, F>) -> Self
+        vec_c: MatBuild<L>,
+        mat_g: MatBuild<L>, vec_h: MatBuild<L>,
+        mat_a: MatBuild<L>, vec_b: MatBuild<L>) -> Self
     {
         let n = vec_c.size().0;
         let m = vec_h.size().0;
@@ -320,23 +308,23 @@ where L: LinAlgEx<F>, F: Float
     /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
     /// 
     /// Returns a tuple of operators, a cone and a work slice.
-    pub fn problem(&mut self) -> (ProbLPOpC<L, F>, ProbLPOpA<L, F>, ProbLPOpB<L, F>, ProbLPCone<F>, &mut[F])
+    pub fn problem(&mut self) -> (ProbLPOpC<L>, ProbLPOpA<L>, ProbLPOpB<L>, ProbLPCone<L>, &mut[L::F])
     {
         let m = self.vec_h.size().0;
         let p = self.vec_b.size().0;
 
-        let f0 = F::zero();
+        let f0 = L::F::zero();
 
         let op_c = ProbLPOpC {
-            vec_c: &self.vec_c,
+            vec_c: self.vec_c.as_op(),
         };
         let op_a = ProbLPOpA {
-            mat_g: &self.mat_g,
-            mat_a: &self.mat_a,
+            mat_g: self.mat_g.as_op(),
+            mat_a: self.mat_a.as_op(),
         };
         let op_b = ProbLPOpB {
-            vec_h: &self.vec_h,
-            vec_b: &self.vec_b,
+            vec_h: self.vec_h.as_op(),
+            vec_b: self.vec_b.as_op(),
         };
 
         let cone = ProbLPCone {
@@ -345,7 +333,7 @@ where L: LinAlgEx<F>, F: Float
             cone_zero: ConeZero::new(),
         };
 
-        self.w_solver.resize(Solver::<L, _>::query_worklen(op_a.size()), f0);
+        self.w_solver.resize(Solver::<L>::query_worklen(op_a.size()), f0);
 
         (op_c, op_a, op_b, cone, self.w_solver.as_mut())
     }

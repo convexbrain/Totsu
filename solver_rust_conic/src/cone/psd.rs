@@ -1,6 +1,4 @@
-use num_traits::Float;
-use core::marker::PhantomData;
-use crate::linalg::LinAlgEx;
+use crate::linalg::{SliceMut, SliceLike, LinAlgEx};
 use super::Cone;
 
 //
@@ -18,16 +16,13 @@ use super::Cone;
 /// \\]
 /// \\( {\rm vec}(X) = (X_{11}\ \sqrt2 X_{12}\ X_{22}\ \sqrt2 X_{13}\ \sqrt2 X_{23}\ X_{33}\ \cdots)^T \\)
 /// which extracts and scales the upper-triangular part of a symmetric matrix X in column-wise.
-pub struct ConePSD<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ConePSD<'a, L: LinAlgEx>
 {
-    ph_l: PhantomData<L>,
-    work: &'a mut[F],
-    eps_zero: F,
+    work: SliceMut<'a, L::Sl>,
+    eps_zero: L::F,
 }
 
-impl<'a, L, F> ConePSD<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> ConePSD<'a, L>
 {
     /// Query of a length of work slice.
     /// 
@@ -43,32 +38,30 @@ where L: LinAlgEx<F>, F: Float
     /// Returns [`ConePSD`] instance.
     /// * `work` slice is used for temporal variables in [`ConePSD::proj`].
     /// * `eps_zero` shall be the same value as [`crate::solver::SolverParam::eps_zero`].
-    pub fn new(work: &'a mut[F], eps_zero: F) -> Self
+    pub fn new(work: &'a mut[L::F], eps_zero: L::F) -> Self
     {
         ConePSD {
-            ph_l: PhantomData::<L>,
-            work,
+            work: L::Sl::new_mut(work),
             eps_zero,
         }
     }
 }
 
-impl<'a, L, F> Cone<F> for ConePSD<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Cone<L> for ConePSD<'a, L>
 {
-    fn proj(&mut self, _dual_cone: bool, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, _dual_cone: bool, x: &mut L::Sl) -> Result<(), ()>
     {
         if self.work.len() < L::proj_psd_worklen(x.len()) {
             log::error!("work shortage: {} given < {} required", self.work.len(), L::proj_psd_worklen(x.len()));
             return Err(());
         }
 
-        L::proj_psd(x, self.eps_zero, self.work);
+        L::proj_psd(x, self.eps_zero, &mut self.work);
 
         Ok(())
     }
 
-    fn product_group<G: Fn(&mut[F]) + Copy>(&self, dp_tau: &mut[F], group: G)
+    fn product_group<G: Fn(&mut L::Sl) + Copy>(&self, dp_tau: &mut L::Sl, group: G)
     {
         group(dp_tau);
     }
@@ -92,9 +85,9 @@ fn test_cone_psd1()
         5.,
         0., -5.,
     ];
-    assert!(ConePSD::<L, _>::query_worklen(x.len()) <= 10);
+    assert!(ConePSD::<L>::query_worklen(x.len()) <= 10);
     let w = &mut[0.; 10];
-    let mut c = ConePSD::<L, _>::new(w, 1e-12);
+    let mut c = ConePSD::<L>::new(w, 1e-12);
     c.proj(false, x).unwrap();
     assert_float_eq!(ref_x, x, abs_all <= 1e-6);
 }

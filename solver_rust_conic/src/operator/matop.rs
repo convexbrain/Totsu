@@ -1,6 +1,6 @@
 use num_traits::Float;
-use core::marker::PhantomData;
-use crate::linalg::LinAlgEx;
+use crate::linalg::{SliceRef, SliceLike, LinAlgEx};
+use crate::splitm;
 use super::Operator;
 
 //
@@ -45,17 +45,14 @@ impl MatType
 /// Matrix operator
 /// 
 /// Matrix struct which borrows a slice of data array and implements [`Operator`].
-#[derive(Debug, Clone)]
-pub struct MatOp<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+#[derive(Debug)]
+pub struct MatOp<'a, L: LinAlgEx>
 {
-    ph_l: PhantomData<L>,
     typ: MatType,
-    array: &'a[F]
+    array: SliceRef<'a, L::Sl>
 }
 
-impl<'a, L, F> MatOp<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> MatOp<'a, L>
 {
     /// Creates an instance
     /// 
@@ -64,22 +61,22 @@ where L: LinAlgEx<F>, F: Float
     /// * `array`: data array slice.
     ///   Column-major matrix data shall be stored if [`MatType::General`].
     ///   Symmetric packed form (the upper-triangular part in column-wise) of matrix data shall be stored if [`MatType::SymPack`].
-    pub fn new(typ: MatType, array: &'a[F]) -> Self
+    pub fn new(typ: MatType, array: &'a[L::F]) -> Self
     {
         assert_eq!(typ.len(), array.len());
 
         MatOp {
-            ph_l: PhantomData,
-            typ, array,
+            typ,
+            array: L::Sl::new_ref(array)
         }
     }
 
-    fn op_impl(&self, transpose: bool, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op_impl(&self, transpose: bool, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         match self.typ {
             MatType::General(nr, nc) => {
                 if nr > 0 && nc > 0 {
-                    L::transform_ge(transpose, nr, nc, alpha, self.as_ref(), x, beta, y)
+                    L::transform_ge(transpose, nr, nc, alpha, &self.array, x, beta, y)
                 }
                 else {
                     L::scale(beta, y);
@@ -87,7 +84,7 @@ where L: LinAlgEx<F>, F: Float
             },
             MatType::SymPack(n) => {
                 if n > 0 {
-                    L::transform_sp(n, alpha, self.as_ref(), x, beta, y)
+                    L::transform_sp(n, alpha, &self.array, x, beta, y)
                 }
                 else {
                     L::scale(beta, y);
@@ -96,43 +93,41 @@ where L: LinAlgEx<F>, F: Float
         }
     }
 
-    fn absadd_impl(&self, colwise: bool, y: &mut[F])
+    fn absadd_impl(&self, colwise: bool, y: &mut L::Sl)
     {
         match self.typ {
             MatType::General(nr, nc) => {
                 if colwise {
                     assert_eq!(nc, y.len());
                 
-                    let mut array = self.array;
-                    for e in y {
-                        let (col, rest) = array.split_at(nr);
-                        array = rest;
-                        *e = L::abssum(col, 1) + *e;
+                    for (i, e) in y.get_mut().iter_mut().enumerate() {
+                        splitm!(self.array, (_t; i * nr), (col; nr));
+                        *e = L::abssum(&col, 1) + *e;
                     }
                 }
                 else {
                     assert_eq!(nr, y.len());
                 
-                    let mut array = self.array;
-                    for e in y {
-                        *e = L::abssum(array, nr) + *e;
-                        let (_, rest) = array.split_at(1);
-                        array = rest;
+                    for (i, e) in y.get_mut().iter_mut().enumerate() {
+                        splitm!(self.array, (_t; i), (row; nr * nc - i));
+                        *e = L::abssum(&row, nr) + *e;
                     }
                 }
             },
             MatType::SymPack(n) => {
                 assert_eq!(n, y.len());
 
-                let mut array = self.array;
+                let y_mut = y.get_mut();
+                let mut sum = 0;
                 for n in 0.. {
-                    let (col, rest) = array.split_at(n + 1);
-                    y[n] = L::abssum(col, 1) + y[n];
+                    splitm!(self.array, (_t; sum), (col; n + 1));
+                    sum += n + 1;
+                    y_mut[n] = L::abssum(&col, 1) + y_mut[n];
+                    let col_ref = col.get_ref();
                     for i in 0.. n {
-                        y[i] = y[i] + col[i].abs();
+                        y_mut[i] = y_mut[i] + col_ref[i].abs();
                     }
-                    array = rest;
-                    if array.len() == 0 {
+                    if sum == self.array.len() {
                         break;
                     }
                 }
@@ -141,41 +136,39 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<'a, L, F> Operator<F> for MatOp<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Operator<L> for MatOp<'a, L>
 {
     fn size(&self) -> (usize, usize)
     {
         self.typ.size()
     }
 
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         self.op_impl(false, alpha, x, beta, y);
     }
 
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         self.op_impl(true, alpha, x, beta, y);
     }
 
-    fn absadd_cols(&self, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut L::Sl)
     {
         self.absadd_impl(true, tau);
     }
 
-    fn absadd_rows(&self, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut L::Sl)
     {
         self.absadd_impl(false, sigma);
     }
 }
 
-impl<'a, L, F> AsRef<[F]> for MatOp<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> AsRef<[L::F]> for MatOp<'a, L>
 {
-    fn as_ref(&self) -> &[F]
+    fn as_ref(&self) -> &[L::F]
     {
-        self.array
+        self.array.get_ref()
     }
 }
 
@@ -206,7 +199,7 @@ fn test_matop1()
     let x = &mut[0.; 5];
     let y = &mut[0.; 5];
 
-    let m = MatOp::<L, _>::new(MatType::SymPack(5), array);
+    let m = MatOp::<L>::new(MatType::SymPack(5), array);
 
     for i in 0.. x.len() {
         x[i] = 1.;

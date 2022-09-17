@@ -1,5 +1,6 @@
-use num_traits::Float;
+use num_traits::Zero;
 use core::marker::PhantomData;
+use crate::linalg::LinAlg;
 use super::Cone;
 
 //
@@ -15,12 +16,12 @@ use super::Cone;
 /// \ \middle|\ x=0
 /// \right\rbrace
 /// \\]
-pub struct ConeZero<F>
+pub struct ConeZero<L: LinAlg>
 {
-    ph_f: PhantomData<F>,
+    ph_l: PhantomData<L>,
 }
 
-impl<F> ConeZero<F>
+impl<L: LinAlg> ConeZero<L>
 {
     /// Creates an instance.
     /// 
@@ -28,25 +29,22 @@ impl<F> ConeZero<F>
     pub fn new() -> Self
     {
         ConeZero {
-            ph_f: PhantomData,
+            ph_l: PhantomData,
         }
     }
 }
 
-impl<F> Cone<F> for ConeZero<F>
-where F: Float
+impl<L: LinAlg> Cone<L> for ConeZero<L>
 {
-    fn proj(&mut self, dual_cone: bool, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, dual_cone: bool, x: &mut L::Sl) -> Result<(), ()>
     {
         if !dual_cone {
-            for e in x {
-                *e = F::zero();
-            }
+            L::scale(L::F::zero(), x);
         }
         Ok(())
     }
 
-    fn product_group<G: Fn(&mut[F]) + Copy>(&self, _dp_tau: &mut[F], _group: G)
+    fn product_group<G: Fn(&mut L::Sl) + Copy>(&self, _dp_tau: &mut L::Sl, _group: G)
     {
         // do nothing
     }

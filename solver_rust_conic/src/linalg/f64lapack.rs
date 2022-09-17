@@ -1,17 +1,18 @@
 use super::{LinAlg, LinAlgEx};
-use core::fmt::Debug;
-use crate::utils::*;
 
 //
 
 /// `f64`-specific [`LinAlgEx`] implementation using `cblas-sys` and `lapacke-sys`
 /// 
 /// You need a [BLAS/LAPACK source](https://github.com/blas-lapack-rs/blas-lapack-rs.github.io/wiki#sources) to link.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct F64LAPACK;
 
-impl LinAlg<f64> for F64LAPACK
+impl LinAlg for F64LAPACK
 {
+    type F = f64;
+    type Sl = [f64];
+    
     fn norm(x: &[f64]) -> f64
     {
         unsafe { cblas::dnrm2(x.len() as i32, x, 1) }
@@ -73,7 +74,8 @@ impl LinAlg<f64> for F64LAPACK
 fn eig_func<E>(a: &mut[f64], n: usize, eps_zero: f64, wz: &mut[f64], func: E)
 where E: Fn(f64)->Option<f64>
 {
-    let (w, z) = wz.split2(n, n * n).unwrap();
+    let (w, rest) = wz.split_at_mut(n);
+    let (z, _) = rest.split_at_mut(n * n);
     let mut m = 0;
 
     unsafe {
@@ -85,9 +87,8 @@ where E: Fn(f64)->Option<f64>
             z, n as i32, &mut []);
     }
 
-    for e in a.iter_mut() {
-        *e = 0.;
-    }
+    F64LAPACK::scale(0., a);
+
     for i in 0.. m as usize {
         if let Some(e) = func(w[i]) {
             let (_, ref_z) = z.split_at(i * n);
@@ -112,7 +113,7 @@ fn eig_func_worklen(n: usize) -> usize
 
 //
 
-impl LinAlgEx<f64> for F64LAPACK
+impl LinAlgEx for F64LAPACK
 {
     // y = a*mat*x + b*y
     fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: f64, mat: &[f64], x: &[f64], beta: f64, y: &mut[f64])
@@ -175,7 +176,8 @@ impl LinAlgEx<f64> for F64LAPACK
         assert_eq!(n * (n + 1) / 2, sn);
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
-        let (a, wz) = work.split2(n * n, n + n * n).unwrap();
+        let (a, rest) = work.split_at_mut(n * n);
+        let (wz, _) = rest.split_at_mut(n + n * n);
 
         vec_to_mat(x, a, true);
     
@@ -206,7 +208,8 @@ impl LinAlgEx<f64> for F64LAPACK
         assert_eq!(n * (n + 1) / 2, sn);
         assert!(work.len() >= Self::proj_psd_worklen(sn));
 
-        let (a, wz) = work.split2(n * n, n + n * n).unwrap();
+        let (a, rest) = work.split_at_mut(n * n);
+        let (wz, _) = rest.split_at_mut(n + n * n);
 
         vec_to_mat(mat, a, false);
     

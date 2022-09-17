@@ -97,10 +97,10 @@ use totsu::problem::ProbQP;
 
 //env_logger::init(); // Use any logger crate as `totsu` uses `log` crate. 
 
-type LA = FloatGeneric<f64>;
-type AMatBuild = MatBuild<LA, f64>;
-type AProbQP = ProbQP<LA, f64>;
-type ASolver = Solver<LA, f64>;
+type La = FloatGeneric<f64>;
+type AMatBuild = MatBuild<La>;
+type AProbQP = ProbQP<La>;
+type ASolver = Solver<La>;
 
 let n = 2; // x0, x1
 let m = 1;
@@ -165,7 +165,6 @@ More practical [examples](https://github.com/convexbrain/Totsu/tree/master/examp
 extern crate std;
 
 pub mod solver; // core, Float
-mod utils;
 
 #[cfg(feature = "std")]
 mod solver_error;
@@ -186,4 +185,4 @@ pub mod prelude // core, Float
     pub use super::cone::{Cone, ConeZero, ConeRPos, ConeSOC, ConePSD};
 }
 
-// TODO: more tests
+// TODO: repair docs

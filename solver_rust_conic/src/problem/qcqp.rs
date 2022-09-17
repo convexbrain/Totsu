@@ -1,77 +1,76 @@
 use std::prelude::v1::*;
-use num_traits::Float;
+use num_traits::{Float, Zero, One, cast};
 use core::marker::PhantomData;
 use crate::solver::Solver;
-use crate::linalg::LinAlgEx;
-use crate::operator::{Operator, MatBuild};
+use crate::linalg::{SliceLike, LinAlgEx};
+use crate::operator::{Operator, MatOp, MatBuild};
 use crate::cone::{Cone, ConeRotSOC, ConeZero};
-use crate::utils::*;
+use crate::{splitm, splitm_mut};
 
 //
 
-pub struct ProbQCQPOpC<L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbQCQPOpC<L: LinAlgEx>
 {
     ph_l: PhantomData<L>,
-    ph_f: PhantomData<F>,
     n: usize,
 }
 
-impl<L, F> Operator<F> for ProbQCQPOpC<L, F>
-where L: LinAlgEx<F>, F: Float
+impl<L: LinAlgEx> Operator<L> for ProbQCQPOpC<L>
 {
     fn size(&self) -> (usize, usize)
     {
         (self.n + 1, 1)
     }
 
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         let n = self.n;
-        let (y_n, y_t) = y.split2(n, 1).unwrap();
+
+        splitm_mut!(y, (y_n; n), (y_t; 1));
 
         // y_n = 0*x + b*y_n;
-        L::scale(beta, y_n);
+        L::scale(beta, &mut y_n);
 
         // y_t = a*1*x + b*y_t;
-        L::scale(beta, y_t);
-        L::add(alpha, x, y_t);
+        L::scale(beta, &mut y_t);
+        L::add(alpha, x, &mut y_t);
     }
 
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
         let n = self.n;
-        let (_x_n, x_t) = x.split2(n, 1).unwrap();
+
+        splitm!(x, (_x_n; n), (x_t; 1));
 
         // y = 0*x_n + a*1*x_t + b*y;
         L::scale(beta, y);
-        L::add(alpha, x_t, y);
+        L::add(alpha, &x_t, y);
     }
 
-    fn absadd_cols(&self, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut L::Sl)
     {
-        tau[0] = tau[0] + F::one();
+        let val_tau = tau.get(0) + L::F::one();
+        tau.set(0, val_tau);
     }
 
-    fn absadd_rows(&self, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut L::Sl)
     {
         let n = self.n;
-        sigma[n] = sigma[n] + F::one();
+        let val_sigma = sigma.get(n) + L::F::one();
+        sigma.set(n, val_sigma);
     }
 }
 
 //
 
-pub struct ProbQCQPOpA<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbQCQPOpA<'a, L: LinAlgEx>
 {
-    syms_p_sqrt: &'a[MatBuild<L, F>],
-    vecs_q: &'a[MatBuild<L, F>],
-    mat_a: &'a MatBuild<L, F>,
+    syms_p_sqrt: Vec<MatOp<'a, L>>,
+    vecs_q: Vec<MatOp<'a, L>>,
+    mat_a: MatOp<'a, L>,
 }
 
-impl<'a, L, F> ProbQCQPOpA<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> ProbQCQPOpA<'a, L>
 {
     fn dim(&self) -> (usize, usize, usize)
     {
@@ -82,8 +81,7 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<'a, L, F> Operator<F> for ProbQCQPOpA<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Operator<L> for ProbQCQPOpA<'a, L>
 {
     fn size(&self) -> (usize, usize)
     {
@@ -92,138 +90,121 @@ where L: LinAlgEx<F>, F: Float
         (m1 * (2 + n) + p, n + 1)
     }
 
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
-        let (n, _m1, _p) = self.dim();
-        let (x_n, x_t) = x.split2(n, 1).unwrap();
+        let (n, m1, p) = self.dim();
 
-        let mut i = 0;
-        let mut spl_y = y;
-        for (sym_p_sqrt, vec_q) in self.syms_p_sqrt.iter().zip(self.vecs_q) {
-            let (y_r, spl) = spl_y.split_at_mut(1);
-            let (y_s, spl) = spl.split_at_mut(1);
-            let (y_n, spl) = spl.split_at_mut(n);
-            spl_y = spl;
+        splitm!(x, (x_n; n), (x_t; 1));
+
+        for (i, (sym_p_sqrt, vec_q)) in self.syms_p_sqrt.iter().zip(&self.vecs_q).enumerate() {
+            splitm_mut!(y, (_y_done; i * (2 + n)), (y_r; 1), (y_s; 1), (y_n; n));
 
             // y_r = 0*x_n + 0*x_t + b*y_r
-            L::scale(beta, y_r);
+            L::scale(beta, &mut y_r);
 
             // y_s = a*vec_q^T*x_n * a*-1*x_t + b*y_s  (i = 0)
             //     = a*vec_q^T*x_n *    0*x_t + b*y_s  (i > 0)
-            vec_q.trans_op(alpha, x_n, beta, y_s);
+            vec_q.trans_op(alpha, &x_n, beta, &mut y_s);
             if i == 0 {
-                L::add(-alpha, x_t, y_s);
+                L::add(-alpha, &x_t, &mut y_s);
             }
 
             // y_n = a*-sym_p_sqrt*x_n + 0*x_t + b*y_n
-            sym_p_sqrt.op(-alpha, x_n, beta, y_n);
-
-            i += 1;
+            sym_p_sqrt.op(-alpha, &x_n, beta, &mut y_n);
         }
 
-        let y_p = spl_y;
+        splitm_mut!(y, (_y_done; m1 * (2 + n)), (y_p; p));
 
         // y_p = a*mat_a*x_n + 0*x_t + b*y_p
-        self.mat_a.op(alpha, x_n, beta, y_p);
+        self.mat_a.op(alpha, &x_n, beta, &mut y_p);
     }
 
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
-        let (n, _m1, _p) = self.dim();
-        let (y_n, y_t) = y.split2(n, 1).unwrap();
+        let (n, m1, p) = self.dim();
 
-        let f1 = F::one();
+        splitm_mut!(y, (y_n; n), (y_t; 1));
+
+        let f1 = L::F::one();
 
         // y_n = b*y_n + ...
         // y_t = b*y_t + ...
-        L::scale(beta, y_n);
-        L::scale(beta, y_t);
+        L::scale(beta, &mut y_n);
+        L::scale(beta, &mut y_t);
 
-        let mut i = 0;
-        let mut spl_x = x;
-        for (sym_p_sqrt, vec_q) in self.syms_p_sqrt.iter().zip(self.vecs_q) {
-            let (_x_r, spl) = spl_x.split_at(1);
-            let (x_s, spl) = spl.split_at(1);
-            let (x_n, spl) = spl.split_at(n);
-            spl_x = spl;
+        for (i, (sym_p_sqrt, vec_q)) in self.syms_p_sqrt.iter().zip(&self.vecs_q).enumerate() {
+            splitm!(x, (_x_done; i * (2 + n)), (_x_r; 1), (x_s; 1), (x_n; n));
 
             // y_n = ... + 0*x_r * a*vec_q*x_s + a*-sym_p_sqrt*x_n + ...
-            vec_q.op(alpha, x_s, f1, y_n);
-            sym_p_sqrt.op(-alpha, x_n, f1, y_n);
+            vec_q.op(alpha, &x_s, f1, &mut y_n);
+            sym_p_sqrt.op(-alpha, &x_n, f1, &mut y_n);
 
             // y_t = ... + 0*x_r + a*-1*x_s + 0*x_n + ...  (i = 0)
             //     = ... + 0*x_r +    0*x_s + 0*x_n + ...  (i > 0)
             if i == 0 {
-                L::add(-alpha, x_s, y_t);
+                L::add(-alpha, &x_s, &mut y_t);
             }
-
-            i += 1;
         }
 
-        let x_p = spl_x;
+        splitm!(x, (_x_done; m1 * (2 + n)), (x_p; p));
 
         // y_n = .. + a*mat_a^T*x_p
-        self.mat_a.trans_op(alpha, x_p, f1, y_n);
+        self.mat_a.trans_op(alpha, &x_p, f1, &mut y_n);
 
         // y_t = .. + 0*x_p
     }
 
-    fn absadd_cols(&self, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut L::Sl)
     {
         let (n, _m1, _p) = self.dim();
-        let (tau_n, tau_t) = tau.split2(n, 1).unwrap();
 
-        for vec_q in self.vecs_q {
-            vec_q.absadd_rows(tau_n);
-        }
-        for sym_p_sqrt in self.syms_p_sqrt {
-            sym_p_sqrt.absadd_cols(tau_n);
-        }
-        self.mat_a.absadd_cols(tau_n);
+        splitm_mut!(tau, (tau_n; n), (tau_t; 1));
 
-        tau_t[0] = tau_t[0] + F::one();
+        for vec_q in &self.vecs_q {
+            vec_q.absadd_rows(&mut tau_n);
+        }
+        for sym_p_sqrt in &self.syms_p_sqrt {
+            sym_p_sqrt.absadd_cols(&mut tau_n);
+        }
+        self.mat_a.absadd_cols(&mut tau_n);
+
+        let val_tau_t = tau_t.get(0) + L::F::one();
+        tau_t.set(0, val_tau_t);
     }
 
-    fn absadd_rows(&self, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut L::Sl)
     {
-        let (n, _m1, _p) = self.dim();
+        let (n, m1, p) = self.dim();
 
-        let mut i = 0;
-        let mut spl_sigma = sigma;
-        for (sym_p_sqrt, vec_q) in self.syms_p_sqrt.iter().zip(self.vecs_q) {
-            let (_sigma_r, spl) = spl_sigma.split_at_mut(1);
-            let (sigma_s, spl) = spl.split_at_mut(1);
-            let (sigma_n, spl) = spl.split_at_mut(n);
-            spl_sigma = spl;
+        for (i, (sym_p_sqrt, vec_q)) in self.syms_p_sqrt.iter().zip(&self.vecs_q).enumerate() {
+            splitm_mut!(sigma, (_sigma_done; i * (2 + n)), (_sigma_r; 1), (sigma_s; 1), (sigma_n; n));
 
-            vec_q.absadd_cols(sigma_s);
+            vec_q.absadd_cols(&mut sigma_s);
             if i == 0 {
-                sigma_s[0] = sigma_s[0] + F::one();
+                let val_sigma_s = sigma_s.get(0) + L::F::one();
+                sigma_s.set(0, val_sigma_s);
             }
 
-            sym_p_sqrt.absadd_rows(sigma_n);
-
-            i += 1;
+            sym_p_sqrt.absadd_rows(&mut sigma_n);
         }
 
-        let sigma_p = spl_sigma;
+        splitm_mut!(sigma, (_sigma_done; m1 * (2 + n)), (sigma_p; p));
 
-        self.mat_a.absadd_rows(sigma_p);
+        self.mat_a.absadd_rows(&mut sigma_p);
     }
 }
 
 //
 
-pub struct ProbQCQPOpB<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbQCQPOpB<'a, L: LinAlgEx>
 {
     n: usize,
-    scls_r: &'a[F],
-    vec_b: &'a MatBuild<L, F>,
+    scls_r: &'a[L::F],
+    abssum_scls_r: L::F,
+    vec_b: MatOp<'a, L>,
 }
 
-impl<'a, L, F> ProbQCQPOpB<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> ProbQCQPOpB<'a, L>
 {
     fn dim(&self) -> (usize, usize, usize)
     {
@@ -236,8 +217,7 @@ where L: LinAlgEx<F>, F: Float
     }
 }
 
-impl<'a, L, F> Operator<F> for ProbQCQPOpB<'a, L, F>
-where L: LinAlgEx<F>, F: Float
+impl<'a, L: LinAlgEx> Operator<L> for ProbQCQPOpB<'a, L>
 {
     fn size(&self) -> (usize, usize)
     {
@@ -246,140 +226,128 @@ where L: LinAlgEx<F>, F: Float
         (m1 * (2 + n) + p, 1)
     }
 
-    fn op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
-        let (n, _m1, _p) = self.dim();
+        let (n, m1, p) = self.dim();
 
-        let mut spl_y = y;
-        for scl_r in self.scls_r {
-            let (y_r, spl) = spl_y.split_at_mut(1);
-            let (y_s, spl) = spl.split_at_mut(1);
-            let (y_n, spl) = spl.split_at_mut(n);
-            spl_y = spl;
+        for (i, scl_r) in self.scls_r.iter().enumerate() {
+            splitm_mut!(y, (_y_done; i * (2 + n)), (y_r; 1), (y_s; 1), (y_n; n));
 
             // y_r = a*1*x + b*y_r
-            L::scale(beta, y_r);
-            L::add(alpha, x, y_r);
+            L::scale(beta, &mut y_r);
+            L::add(alpha, x, &mut y_r);
 
             // y_s = a*-scl_r*x + b*y_s
-            L::scale(beta, y_s);
-            L::add(-alpha * *scl_r, x, y_s);
+            L::scale(beta, &mut y_s);
+            L::add(-alpha * *scl_r, x, &mut y_s);
 
             // y_n = 0*x + b*y_n
-            L::scale(beta, y_n);
+            L::scale(beta, &mut y_n);
         }
 
-        let y_p = spl_y;
+        splitm_mut!(y, (_y_done; m1 * (2 + n)), (y_p; p));
 
         // y_p = a*vec_b*x + b*y_p
-        self.vec_b.op(alpha, x, beta, y_p);
+        self.vec_b.op(alpha, x, beta, &mut y_p);
     }
 
-    fn trans_op(&self, alpha: F, x: &[F], beta: F, y: &mut[F])
+    fn trans_op(&self, alpha: L::F, x: &L::Sl, beta: L::F, y: &mut L::Sl)
     {
-        let (n, _m1, _p) = self.dim();
+        let (n, m1, p) = self.dim();
 
-        let f1 = F::one();
+        let f1 = L::F::one();
 
         // y = b*y + ...
         L::scale(beta, y);
 
-        let mut spl_x = x;
-        for scl_r in self.scls_r {
-            let (x_r, spl) = spl_x.split_at(1);
-            let (x_s, spl) = spl.split_at(1);
-            let (_x_n, spl) = spl.split_at(n);
-            spl_x = spl;
+        for (i, scl_r) in self.scls_r.iter().enumerate() {
+            splitm!(x, (_x_done; i * (2 + n)), (x_r; 1), (x_s; 1), (_x_n; n));
 
             // y = ... + a*1*x_r + a*-scl_r*x_s + 0*x_n + ...
-            L::add(alpha, x_r, y);
-            L::add(-alpha * *scl_r, x_s, y);
+            L::add(alpha, &x_r, y);
+            L::add(-alpha * *scl_r, &x_s, y);
         }
 
-        let x_p = spl_x;
+        splitm!(x, (_x_done; m1 * (2 + n)), (x_p; p));
 
         // y = ... + a*vec_b^T*x_p
-        self.vec_b.trans_op(alpha, x_p, f1, y);
+        self.vec_b.trans_op(alpha, &x_p, f1, y);
     }
 
-    fn absadd_cols(&self, tau: &mut[F])
+    fn absadd_cols(&self, tau: &mut L::Sl)
     {
         let (_n, m1, _p) = self.dim();
 
-        tau[0] = tau[0] + F::from(m1).unwrap() + L::abssum(self.scls_r, 1);
+        let val_tau = tau.get(0) + cast(m1).unwrap() + self.abssum_scls_r;
+        tau.set(0, val_tau);
         self.vec_b.absadd_cols(tau);
     }
 
-    fn absadd_rows(&self, sigma: &mut[F])
+    fn absadd_rows(&self, sigma: &mut L::Sl)
     {
-        let (n, _m1, _p) = self.dim();
+        let (n, m1, p) = self.dim();
 
-        let mut spl_sigma = sigma;
-        for scl_r in self.scls_r {
-            let (sigma_r, spl) = spl_sigma.split_at_mut(1);
-            let (sigma_s, spl) = spl.split_at_mut(1);
-            let (_sigma_n, spl) = spl.split_at_mut(n);
-            spl_sigma = spl;
+        for (i, scl_r) in self.scls_r.iter().enumerate() {
+            splitm_mut!(sigma, (_sigma_done; i * (2 + n)), (sigma_r; 1), (sigma_s; 1), (_sigma_n; n));
 
-            sigma_r[0] = sigma_r[0] + F::one();
-            sigma_s[0] = sigma_s[0] + scl_r.abs();
+            let val_sigma_r = sigma_r.get(0) + L::F::one();
+            sigma_r.set(0, val_sigma_r);
+            let val_sigma_s = sigma_s.get(0) + scl_r.abs();
+            sigma_s.set(0, val_sigma_s);
         }
 
-        let sigma_p = spl_sigma;
+        splitm_mut!(sigma, (_sigma_done; m1 * (2 + n)), (sigma_p; p));
 
-        self.vec_b.absadd_rows(sigma_p);
+        self.vec_b.absadd_rows(&mut sigma_p);
     }
 }
 
 //
 
-pub struct ProbQCQPCone<L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbQCQPCone<L: LinAlgEx>
 {
     n: usize,
     m1: usize,
-    cone_rotsoc: ConeRotSOC<L, F>,
-    cone_zero: ConeZero<F>,
+    p: usize,
+    cone_rotsoc: ConeRotSOC<L>,
+    cone_zero: ConeZero<L>,
 }
 
-impl<L, F> Cone<F> for ProbQCQPCone<L, F>
-where L: LinAlgEx<F>, F: Float
+impl<L: LinAlgEx> Cone<L> for ProbQCQPCone<L>
 {
-    fn proj(&mut self, dual_cone: bool, x: &mut[F]) -> Result<(), ()>
+    fn proj(&mut self, dual_cone: bool, x: &mut L::Sl) -> Result<(), ()>
     {
         let n = self.n;
         let m1 = self.m1;
+        let p = self.p;
 
-        let mut spl_x = x;
-        for _ in 0.. m1 {
-            let (x_rsn, spl) = spl_x.split_at_mut(2 + n);
-            spl_x = spl;
+        for i in 0.. m1 {
+            splitm_mut!(x, (_x_done; i * (2 + n)), (x_rsn; 2 + n));
 
-            self.cone_rotsoc.proj(dual_cone, x_rsn)?;
+            self.cone_rotsoc.proj(dual_cone, &mut x_rsn)?;
         }
 
-        let x_p = spl_x;
+        splitm_mut!(x, (_x_done; m1 * (2 + n)), (x_p; p));
 
-        self.cone_zero.proj(dual_cone, x_p)?;
+        self.cone_zero.proj(dual_cone, &mut x_p)?;
         Ok(())
     }
 
-    fn product_group<G: Fn(&mut[F]) + Copy>(&self, dp_tau: &mut[F], group: G)
+    fn product_group<G: Fn(&mut L::Sl) + Copy>(&self, dp_tau: &mut L::Sl, group: G)
     {
         let n = self.n;
         let m1 = self.m1;
+        let p = self.p;
 
-        let mut spl_t = dp_tau;
-        for _ in 0.. m1 {
-            let (t_rsn, spl) = spl_t.split_at_mut(2 + n);
-            spl_t = spl;
+        for i in 0.. m1 {
+            splitm_mut!(dp_tau, (_t_done; i * (2 + n)), (t_rsn; 2 + n));
 
-            self.cone_rotsoc.product_group(t_rsn, group);
+            self.cone_rotsoc.product_group(&mut t_rsn, group);
         }
 
-        let t_p = spl_t;
+        splitm_mut!(dp_tau, (_t_done; m1 * (2 + n)), (t_p; p));
 
-        self.cone_zero.product_group(t_p, group);
+        self.cone_zero.product_group(&mut t_p, group);
     }
 }
 
@@ -434,21 +402,19 @@ where L: LinAlgEx<F>, F: Float
 /// \\]
 /// 
 /// \\( \mathcal{Q}_r \\) is a rotated second-order (or quadratic) cone (see [`ConeRotSOC`]).
-pub struct ProbQCQP<L, F>
-where L: LinAlgEx<F>, F: Float
+pub struct ProbQCQP<L: LinAlgEx>
 {
-    vecs_q: Vec<MatBuild<L, F>>,
-    scls_r: Vec<F>,
-    mat_a: MatBuild<L, F>,
-    vec_b: MatBuild<L, F>,
+    vecs_q: Vec<MatBuild<L>>,
+    scls_r: Vec<L::F>,
+    mat_a: MatBuild<L>,
+    vec_b: MatBuild<L>,
 
-    syms_p_sqrt: Vec<MatBuild<L, F>>,
+    syms_p_sqrt: Vec<MatBuild<L>>,
 
-    w_solver: Vec<F>,
+    w_solver: Vec<L::F>,
 }
 
-impl<L, F> ProbQCQP<L, F>
-where L: LinAlgEx<F>, F: Float
+impl<L: LinAlgEx> ProbQCQP<L>
 {
     /// Creates a QCQP with given data.
     /// 
@@ -460,9 +426,9 @@ where L: LinAlgEx<F>, F: Float
     /// * `vec_b` is \\(b\\).
     /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
     pub fn new(
-        syms_p: Vec<MatBuild<L, F>>, vecs_q: Vec<MatBuild<L, F>>, scls_r: Vec<F>,
-        mat_a: MatBuild<L, F>, vec_b: MatBuild<L, F>,
-        eps_zero: F) -> Self
+        syms_p: Vec<MatBuild<L>>, vecs_q: Vec<MatBuild<L>>, scls_r: Vec<L::F>,
+        mat_a: MatBuild<L>, vec_b: MatBuild<L>,
+        eps_zero: L::F) -> Self
     {
         let (p, n) = mat_a.size();
         let m1 = syms_p.len();
@@ -498,37 +464,38 @@ where L: LinAlgEx<F>, F: Float
     /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
     /// 
     /// Returns a tuple of operators, a cone and a work slice.
-    pub fn problem(&mut self) -> (ProbQCQPOpC<L, F>, ProbQCQPOpA<L, F>, ProbQCQPOpB<L, F>, ProbQCQPCone<L, F>, &mut[F])
+    pub fn problem(&mut self) -> (ProbQCQPOpC<L>, ProbQCQPOpA<L>, ProbQCQPOpB<L>, ProbQCQPCone<L>, &mut[L::F])
     {
-        let n = self.mat_a.size().1;
+        let (p, n) = self.mat_a.size();
         let m1 = self.syms_p_sqrt.len();
     
-        let f0 = F::zero();
+        let f0 = L::F::zero();
 
         let op_c = ProbQCQPOpC {
             ph_l: PhantomData,
-            ph_f: PhantomData,
             n,
         };
         let op_a = ProbQCQPOpA {
-            syms_p_sqrt: &self.syms_p_sqrt,
-            vecs_q: &self.vecs_q,
-            mat_a: &self.mat_a,
+            syms_p_sqrt: self.syms_p_sqrt.iter().map(|m| m.as_op()).collect(),
+            vecs_q: self.vecs_q.iter().map(|m| m.as_op()).collect(),
+            mat_a: self.mat_a.as_op(),
         };
         let op_b = ProbQCQPOpB {
             n,
             scls_r: &self.scls_r,
-            vec_b: &self.vec_b,
+            abssum_scls_r: L::abssum(&L::Sl::new_ref(&self.scls_r), 1),
+            vec_b: self.vec_b.as_op(),
         };
 
         let cone = ProbQCQPCone {
             n,
             m1,
+            p,
             cone_rotsoc: ConeRotSOC::new(),
             cone_zero: ConeZero::new(),
         };
 
-        self.w_solver.resize(Solver::<L, _>::query_worklen(op_a.size()), f0);
+        self.w_solver.resize(Solver::<L>::query_worklen(op_a.size()), f0);
 
         (op_c, op_a, op_b, cone, self.w_solver.as_mut())
     }
