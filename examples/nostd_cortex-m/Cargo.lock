@@ -199,6 +199,8 @@ dependencies = [
 [[package]]
 name = "totsu"
 version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ad9ccdf89f8315f9421e4cd6a5f30c17b08fcd78d8f2df7adf2f6b987bd5dbd"
 dependencies = [
  "log",
  "num-traits",

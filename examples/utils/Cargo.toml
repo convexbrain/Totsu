@@ -6,7 +6,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-totsu = {path = "../../solver_rust_conic"}
+totsu = "0.9.1"
 num-traits = "0.2.15"
 plotters = "0.3.2"
 log = "0.4.17"

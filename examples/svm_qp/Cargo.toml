@@ -6,7 +6,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-totsu = {path = "../../solver_rust_conic", features = ["f64lapack"]}
+totsu = {version = "0.9.1", features = ["f64lapack"]}
 utils = {path = "../utils"}
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"
