@@ -214,7 +214,7 @@ impl SliceLike for F32CUDASlice
         let cs = new_slice_from_ref(s);
         
         //std::println!("{} new", cs.idx);
-        SliceRef::new(cs)
+        unsafe { SliceRef::new(cs) }
     }
 
     fn new_mut(s: &mut[f32]) -> SliceMut<'_, F32CUDASlice>
@@ -222,7 +222,7 @@ impl SliceLike for F32CUDASlice
         let cs = new_slice_from_mut(s);
 
         //std::println!("{} new_mut", cs.idx);
-        SliceMut::new(cs)
+        unsafe { SliceMut::new(cs) }
     }
     
     fn split_ref(&self, mid: usize) -> (SliceRef<'_, F32CUDASlice>, SliceRef<'_, F32CUDASlice>)
@@ -232,7 +232,7 @@ impl SliceLike for F32CUDASlice
 
         //std::println!("{} split from {}", cs0.idx, self.idx);
         //std::println!("{} split from {}", cs1.idx, self.idx);
-        (SliceRef::new(cs0), SliceRef::new(cs1))
+        unsafe { (SliceRef::new(cs0), SliceRef::new(cs1)) }
     }
 
     fn split_mut(&mut self, mid: usize) -> (SliceMut<'_, F32CUDASlice>, SliceMut<'_, F32CUDASlice>)
@@ -242,7 +242,7 @@ impl SliceLike for F32CUDASlice
 
         //std::println!("{} split_mut from {}", cs0.idx, self.idx);
         //std::println!("{} split_mut from {}", cs1.idx, self.idx);
-        (SliceMut::new(cs0), SliceMut::new(cs1))
+        unsafe { (SliceMut::new(cs0), SliceMut::new(cs1)) }
     }
 
     fn drop(&self)

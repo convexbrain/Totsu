@@ -42,6 +42,16 @@ pub struct SliceRef<'a, S: SliceLike + ?Sized>
     s: &'a S,
 }
 
+impl<'a, S: SliceLike + ?Sized> SliceRef<'a, S>
+{
+    // TODO: doc
+    // unsafe because this should be only used by SliceLike implementor!
+    pub unsafe fn new(s: &'a S) -> Self
+    {
+        SliceRef {s}
+    }
+}
+
 impl<'a, S: SliceLike + ?Sized> Deref for SliceRef<'a, S>
 {
     type Target = S;
@@ -62,6 +72,16 @@ pub struct SliceMut<'a, S: SliceLike + ?Sized>
     s: &'a mut S,
 }
 
+impl<'a, S: SliceLike + ?Sized> SliceMut<'a, S>
+{
+    // TODO: doc
+    // unsafe because this should be only used by SliceLike implementor!
+    pub unsafe fn new(s: &'a mut S) -> Self
+    {
+        SliceMut {s}
+    }
+}
+
 impl<'a, S: SliceLike + ?Sized> Deref for SliceMut<'a, S>
 {
     type Target = S;
@@ -77,22 +97,6 @@ impl<'a, S: SliceLike + ?Sized> Drop for SliceMut<'a, S>
 {
     fn drop(&mut self) {
         self.s.drop();
-    }
-}
-
-// TODO: https://stackoverflow.com/questions/53204327/how-to-have-a-private-part-of-a-trait
-impl<'a, S: SliceLike + ?Sized> SliceRef<'a, S>
-{
-    pub fn new(s: &'a S) -> Self
-    {
-        SliceRef {s}
-    }
-}
-impl<'a, S: SliceLike + ?Sized> SliceMut<'a, S>
-{
-    pub fn new(s: &'a mut S) -> Self
-    {
-        SliceMut {s}
     }
 }
 
