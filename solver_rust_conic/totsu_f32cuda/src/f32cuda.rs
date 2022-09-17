@@ -181,69 +181,30 @@ impl LinAlgEx for F32CUDA
         }
     }
 
-    fn proj_psd_worklen(sn: usize) -> usize
-    {
-        let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
-        assert_eq!(n * (n + 1) / 2, sn);
-
-        let len_a = n * n;
-
-        len_a + eig_func_worklen(n)
-    }
-
-    fn proj_psd(x: &mut F32CUDASlice, _eps_zero: f32, work: &mut F32CUDASlice)
-    {
-        let sn = x.len();
-
-        let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
-        assert_eq!(n * (n + 1) / 2, sn);
-        assert!(work.len() >= Self::proj_psd_worklen(sn));
-
-        let (mut a, mut w_z_work) = work.split_mut(n * n);
-
-        vec_to_mat(x, &mut a, true);
-    
-        eig_func(&mut a, n, &mut w_z_work, |e| {
-            if e > 0. {
-                Some(e)
-            }
-            else {
-                None
-            }
-        });
-
-        mat_to_vec(&mut a, x, true);
-    }
-
-    fn sqrt_spmat_worklen(n: usize) -> usize
+    fn map_eig_worklen(n: usize) -> usize
     {
         let len_a = n * n;
 
         len_a + eig_func_worklen(n)
     }
 
-    fn sqrt_spmat(mat: &mut F32CUDASlice, _eps_zero: f32, work: &mut F32CUDASlice)
+    fn map_eig<M>(mat: &mut F32CUDASlice, scale_diag: Option<f32>, _eps_zero: f32, work: &mut F32CUDASlice, map: M)
+    where M: Fn(f32)->Option<f32>
     {
         let sn = mat.len();
 
         let n = (((8 * sn + 1) as f64).sqrt() as usize - 1) / 2;
         assert_eq!(n * (n + 1) / 2, sn);
-        assert!(work.len() >= Self::proj_psd_worklen(sn));
+
+        assert!(work.len() >= Self::map_eig_worklen(n));
 
         let (mut a, mut w_z_work) = work.split_mut(n * n);
 
-        vec_to_mat(mat, &mut a, false);
+        vec_to_mat(mat, &mut a, scale_diag);
     
-        eig_func(&mut a, n, &mut w_z_work, |e| {
-            if e > 0. {
-                Some(e.sqrt())
-            }
-            else {
-                None
-            }
-        });
+        eig_func(&mut a, n, &mut w_z_work, map);
 
-        mat_to_vec(&mut a, mat, false);
+        mat_to_vec(&mut a, mat, scale_diag);
     }
 }
 
@@ -337,7 +298,7 @@ where E: Fn(f32)->Option<f32>
     }
 }
 
-fn vec_to_mat(v: &F32CUDASlice, m: &mut F32CUDASlice, scale: bool)
+fn vec_to_mat(v: &F32CUDASlice, m: &mut F32CUDASlice, scale: Option<f32>)
 {
     let l = v.len();
     let n = (m.len() as f64).sqrt() as usize;
@@ -357,20 +318,20 @@ fn vec_to_mat(v: &F32CUDASlice, m: &mut F32CUDASlice, scale: bool)
         F32CUDA::copy(&col_v, &mut col_m);
     }
 
-    if scale {
-        // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
+    if let Some(scl) = scale {
+        // scale diagonals
         unsafe {
             let st = cublasSscal_v2(
                 cuda_mgr::cublas_handle(),
                 n as i32,
-                &2_f32.sqrt(), m.get_dev_mut().as_mut_ptr(), (n + 1) as i32
+                &scl, m.get_dev_mut().as_mut_ptr(), (n + 1) as i32
             );
             assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
         }
     }
 }
 
-fn mat_to_vec(m: &mut F32CUDASlice, v: &mut F32CUDASlice, scale: bool)
+fn mat_to_vec(m: &mut F32CUDASlice, v: &mut F32CUDASlice, scale: Option<f32>)
 {
     let l = v.len();
     let n = (m.len() as f64).sqrt() as usize;
@@ -378,13 +339,13 @@ fn mat_to_vec(m: &mut F32CUDASlice, v: &mut F32CUDASlice, scale: bool)
     assert_eq!(m.len(), n * n);
     assert_eq!(n * (n + 1) / 2, l);
 
-    if scale {
-        // scale diagonals to match the resulted vector norm with the matrix norm multiplied by 0.5
+    if let Some(scl) = scale {
+        // revert scaled diagonals
         unsafe {
             let st = cublasSscal_v2(
                 cuda_mgr::cublas_handle(),
                 n as i32,
-                &0.5_f32.sqrt(), m.get_dev_mut().as_mut_ptr(), (n + 1) as i32
+                &scl.recip(), m.get_dev_mut().as_mut_ptr(), (n + 1) as i32
             );
             assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
         }

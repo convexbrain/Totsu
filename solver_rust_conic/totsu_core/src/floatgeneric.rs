@@ -323,48 +323,6 @@ fn jacobi_eig<F: Float>(spmat_x: &mut SpMatIdxMut<F>, mat_z: &mut MatIdxMut<F>, 
     }
 }
 
-fn eig_func<F: Float, E>(spmat_x: &mut SpMatIdxMut<F>, eps_zero: F, work: &mut[F], func: E)
-where E: Fn(F)->Option<F>
-{
-    let f1 = F::one();
-
-    let n = spmat_x.n;
-
-    let (w, rest) = work.split_at_mut(n);
-    let (z, _) = rest.split_at_mut(n * n);
-
-    let mut mat_z = MatIdxMut {
-        n_row: n, n_col: n, mat: z, transpose: false,
-    };
-
-    mat_z.clear();
-    for i in 0.. n {
-        mat_z[(i, i)] = f1;
-    }
-
-    jacobi_eig(spmat_x, &mut mat_z, eps_zero);
-
-    for i in 0.. n {
-        w[i] = spmat_x[(i, i)];
-    }
-
-    spmat_x.clear();
-    for i in 0.. n {
-        if let Some(e) = func(w[i]) {
-            let zcol = mat_z.col_vec(i);
-            spmat_x.rank1op(e, zcol);
-        }
-    }
-}
-
-fn eig_func_worklen(n: usize) -> usize
-{
-    let len_w = n;
-    let len_z = n * n;
-
-    len_w + len_z
-}
-
 //
 
 impl<F: Float> LinAlgEx for FloatGeneric<F>
@@ -415,75 +373,68 @@ impl<F: Float> LinAlgEx for FloatGeneric<F>
         }
     }
 
-    fn proj_psd_worklen(sn: usize) -> usize
+    fn map_eig_worklen(n: usize) -> usize
     {
+        let len_w = n;
+        let len_z = n * n;
+    
+        len_w + len_z
+    }
+
+    fn map_eig<M>(mat: &mut[F], scale_diag: Option<F>, eps_zero: F, work: &mut[F], map: M)
+    where M: Fn(F)->Option<F>
+    {
+        let sn = mat.len();
         let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
         assert_eq!(n * (n + 1) / 2, sn);
 
-        eig_func_worklen(n)
-    }
-
-    fn proj_psd(x: &mut[F], eps_zero: F, work: &mut[F])
-    {
-        let f0 = F::zero();
-        let f1 = F::one();
-        let f2 = f1 + f1;
-        let fsqrt2 = f2.sqrt();
-
-        let sn = x.len();
-        let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
-
-        assert!(work.len() >= Self::proj_psd_worklen(sn));
-
-        let mut spmat_x = SpMatIdxMut {
-            n, mat: x,
-        };
-
-        // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
-        for i in 0.. n {
-            spmat_x[(i, i)] = spmat_x[(i, i)] * fsqrt2;
-        }
-
-        eig_func(&mut spmat_x, eps_zero, work, |e| {
-            if e > f0 {
-                Some(e)
-            }
-            else {
-                None
-            }
-        });
-
-        // scale diagonals to match the resulted vector norm with the matrix norm multiplied by 0.5
-        for i in 0.. n {
-            spmat_x[(i, i)] = spmat_x[(i, i)] * fsqrt2.recip();
-        }
-    }
-
-    fn sqrt_spmat_worklen(n: usize) -> usize
-    {
-        eig_func_worklen(n)
-    }
-
-    fn sqrt_spmat(mat: &mut[F], eps_zero: F, work: &mut[F])
-    {
-        let f0 = F::zero();
-
-        let sn = mat.len();
-        let n = (F::from(8 * sn + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
-
-        assert!(work.len() >= Self::proj_psd_worklen(sn));
+        assert!(work.len() >= Self::map_eig_worklen(n));
+        let (w, rest) = work.split_at_mut(n);
+        let (z, _) = rest.split_at_mut(n * n);
 
         let mut spmat_x = SpMatIdxMut {
             n, mat,
         };
 
-        eig_func(&mut spmat_x, eps_zero, work, |e| {
-            if e > f0 {
-                Some(e.sqrt())
+        if let Some(scl) = scale_diag {
+            // scale diagonals
+            for i in 0.. n {
+                spmat_x[(i, i)] = spmat_x[(i, i)] * scl;
             }
-            else {
-                None
+        }
+
+        //
+
+        let mut mat_z = MatIdxMut {
+            n_row: n, n_col: n, mat: z, transpose: false,
+        };
+    
+        mat_z.clear();
+        for i in 0.. n {
+            mat_z[(i, i)] = F::one();
+        }
+    
+        jacobi_eig(&mut spmat_x, &mut mat_z, eps_zero);
+    
+        for i in 0.. n {
+            w[i] = spmat_x[(i, i)];
+        }
+    
+        spmat_x.clear();
+        for i in 0.. n {
+            if let Some(e) = map(w[i]) {
+                let zcol = mat_z.col_vec(i);
+                spmat_x.rank1op(e, zcol);
             }
-        });
+        }
+
+        //
+
+        if let Some(scl) = scale_diag {
+            // revert scaled diagonals
+            for i in 0.. n {
+                spmat_x[(i, i)] = spmat_x[(i, i)] * scl.recip();
+            }
+        }
     }
 }

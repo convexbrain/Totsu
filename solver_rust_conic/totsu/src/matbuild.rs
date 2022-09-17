@@ -220,9 +220,18 @@ impl<L: LinAlgEx> MatBuild<L>
                 unimplemented!()
             },
             MatType::SymPack(n) => {
-                let mut work_vec = vec![L::F::zero(); L::sqrt_spmat_worklen(n)];
+                let mut work_vec = vec![L::F::zero(); L::map_eig_worklen(n)];
                 let mut work = L::Sl::new_mut(&mut work_vec);
-                L::sqrt_spmat(&mut L::Sl::new_mut(&mut self.array), eps_zero, &mut work);
+
+                let f0 = L::F::zero();
+                L::map_eig(&mut L::Sl::new_mut(&mut self.array), None, eps_zero, &mut work, |e| {
+                    if e > f0 {
+                        Some(e.sqrt())
+                    }
+                    else {
+                        None
+                    }
+                });
             }
         }
     }

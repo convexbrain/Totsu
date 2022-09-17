@@ -1,6 +1,3 @@
-// TODO: rename linalg_plus
-// TODO: rearrange proj_psd and sqrt_spmat into one like eig_func
-
 use crate::solver::LinAlg;
 
 /// Linear algebra extended subtrait
@@ -39,26 +36,26 @@ pub trait LinAlgEx: LinAlg + Clone
     ///   The length of `y` shall be `n`.
     fn transform_sp(n: usize, alpha: Self::F, mat: &Self::Sl, x: &Self::Sl, beta: Self::F, y: &mut Self::Sl);
 
+    /// TODO: doc
     /// Query of a length of work slice that [`LinAlgEx::proj_psd`] requires.
     /// 
     /// Returns a length of work slice.
     /// * `sn` is a number of variables, that is a length of `x` of [`LinAlgEx::proj_psd`].
-    fn proj_psd_worklen(sn: usize) -> usize;
+    /// 
+    /// Query of a length of work slice that [`LinAlgEx::sqrt_spmat`] requires.
+    /// 
+    /// Returns a length of work slice.
+    /// * `n` is a number of rows and columns of \\(S\\) (see [`LinAlgEx::sqrt_spmat`]).
+    fn map_eig_worklen(n: usize) -> usize;
 
+    /// TODO: doc
     /// Euclidean projection \\(x\\) onto \\({\rm vec}(\mathcal{S}\_+^k)\\).
     /// 
     /// * `x` is \\(x\\), a vector to be projected before entry, and shall be replaced with the projected vector on exit.
     ///   The length of `x` shall be \\(\frac12k(k+1)\\)
     /// * `eps_zero` shall be the same value as [`crate::solver::SolverParam::eps_zero`].
     /// * `work` slice is used for temporal variables.
-    fn proj_psd(x: &mut Self::Sl, eps_zero: Self::F, work: &mut Self::Sl);
-
-    /// Query of a length of work slice that [`LinAlgEx::sqrt_spmat`] requires.
     /// 
-    /// Returns a length of work slice.
-    /// * `n` is a number of rows and columns of \\(S\\) (see [`LinAlgEx::sqrt_spmat`]).
-    fn sqrt_spmat_worklen(n: usize) -> usize;
-
     /// Calculate \\(S^{\frac12}\\),
     /// where \\(S \in \mathcal{S}\_+^n\\), supplied in packed form.
     /// 
@@ -67,5 +64,6 @@ pub trait LinAlgEx: LinAlg + Clone
     ///   The length of `mat` shall be \\(\frac12n(n+1)\\).
     /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
     /// * `work` slice is used for temporal variables.
-    fn sqrt_spmat(mat: &mut Self::Sl, eps_zero: Self::F, work: &mut Self::Sl);
+    fn map_eig<M>(mat: &mut Self::Sl, scale_diag: Option<Self::F>, eps_zero: Self::F, work: &mut Self::Sl, map: M)
+    where M: Fn(Self::F)->Option<Self::F>;
 }

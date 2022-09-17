@@ -1,5 +1,6 @@
 use crate::solver::{Cone, SliceMut, SliceLike};
 use crate::LinAlgEx;
+use num_traits::{Float, cast, ToPrimitive, Zero, One};
 
 //
 
@@ -30,7 +31,10 @@ impl<'a, L: LinAlgEx> ConePSD<'a, L>
     /// * `nvars` is a number of variables, that is a length of `x` of [`ConePSD::proj`].
     pub fn query_worklen(nvars: usize) -> usize
     {
-        L::proj_psd_worklen(nvars)
+        let n = (cast::<usize, L::F>(8 * nvars + 1).unwrap().sqrt().to_usize().unwrap() - 1) / 2;
+        assert_eq!(n * (n + 1) / 2, nvars);
+
+        L::map_eig_worklen(n)
     }
 
     /// Creates an instance.
@@ -51,12 +55,25 @@ impl<'a, L: LinAlgEx> Cone<L> for ConePSD<'a, L>
 {
     fn proj(&mut self, _dual_cone: bool, x: &mut L::Sl) -> Result<(), ()>
     {
-        if self.work.len() < L::proj_psd_worklen(x.len()) {
-            log::error!("work shortage: {} given < {} required", self.work.len(), L::proj_psd_worklen(x.len()));
+        if self.work.len() < Self::query_worklen(x.len()) {
+            log::error!("work shortage: {} given < {} required", self.work.len(), Self::query_worklen(x.len()));
             return Err(());
         }
 
-        L::proj_psd(x, self.eps_zero, &mut self.work);
+        let f0 = L::F::zero();
+        let f1 = L::F::one();
+
+        // scale diagonals to match the resulted matrix norm with the vector norm multiplied by 2
+        let fsqrt2 = (f1 + f1).sqrt();
+
+        L::map_eig(x, Some(fsqrt2), self.eps_zero, &mut self.work, |e| {
+            if e > f0 {
+                Some(e)
+            }
+            else {
+                None
+            }
+        });
 
         Ok(())
     }
