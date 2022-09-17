@@ -1,13 +1,14 @@
 [package]
 name = "totsu_f64lapack"
+# TODO: version in release branch
 version = "0.1.0"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2021"
 
-description = "A first-order conic solver for continuous scalar convex optimization problems."
+description = "BLAS/LAPACK Linear algebra for `totsu` and `totsu_core`."
 
 #documentation = "..."
-homepage = "https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic"
+homepage = "https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic/totsu_f64lapack"
 repository = "https://github.com/convexbrain/Totsu"
 
 readme = "README.md"
@@ -19,13 +20,12 @@ categories = ["science"]
 license = "Unlicense"
 
 [dependencies]
-log = "0.4.17"
 lapacke = "0.5.0"
 cblas = "0.4.0"
 num-traits = "0.2.15"
 
 [dependencies.totsu_core]
-# TODO: version
+# TODO: version in release branch
 path = "../totsu_core"
 
 [dev-dependencies]

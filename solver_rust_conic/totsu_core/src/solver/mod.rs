@@ -1,3 +1,4 @@
+//! First-order conic linear program solver
 
 mod slicelike;
 mod linalg;
