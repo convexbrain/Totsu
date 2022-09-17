@@ -1,0 +1,8 @@
+[workspace]
+
+members = [
+    "totsu_core",
+    "totsu",
+    "totsu_f64lapack",
+    "totsu_f32cuda",
+]
