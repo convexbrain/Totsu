@@ -35,7 +35,7 @@ pub trait SliceLike
     }
 }
 
-// TODO: doc
+/// Wrapping a reference of [`SliceLike`].
 #[derive(Debug)] // NOTE: Do not derive clone, or the functionality of SliceLike::drop may break.
 pub struct SliceRef<'a, S: SliceLike + ?Sized>
 {
@@ -44,8 +44,11 @@ pub struct SliceRef<'a, S: SliceLike + ?Sized>
 
 impl<'a, S: SliceLike + ?Sized> SliceRef<'a, S>
 {
-    // TODO: doc
-    // unsafe because this should be only used by SliceLike implementor!
+    /// Wraps a reference of [`SliceLike`] and creates a [`SliceRef`].
+    /// This is **unsafe** and intended to be used only by [`SliceLike::new_ref`] and [`SliceLike::split_ref`] implementor.
+    /// 
+    /// Returns the [`SliceRef`].
+    /// * `s` is a reference of [`SliceLike`].
     pub unsafe fn new(s: &'a S) -> Self
     {
         SliceRef {s}
@@ -65,7 +68,7 @@ impl<'a, S: SliceLike + ?Sized> Drop for SliceRef<'a, S>
     }
 }
 
-// TODO: doc
+/// Wrapping a mutable reference of [`SliceLike`].
 #[derive(Debug)]
 pub struct SliceMut<'a, S: SliceLike + ?Sized>
 {
@@ -74,8 +77,11 @@ pub struct SliceMut<'a, S: SliceLike + ?Sized>
 
 impl<'a, S: SliceLike + ?Sized> SliceMut<'a, S>
 {
-    // TODO: doc
-    // unsafe because this should be only used by SliceLike implementor!
+    /// Wraps a mutable reference of [`SliceLike`] and creates a [`SliceMut`].
+    /// This is **unsafe** and intended to be used only by [`SliceLike::new_mut`] and [`SliceLike::split_mut`] implementor.
+    /// 
+    /// Returns the [`SliceMut`].
+    /// * `s` is a mutable reference of [`SliceLike`].
     pub unsafe fn new(s: &'a mut S) -> Self
     {
         SliceMut {s}
@@ -100,7 +106,24 @@ impl<'a, S: SliceLike + ?Sized> Drop for SliceMut<'a, S>
     }
 }
 
-// TODO: public?
+/// Splits a [`SliceRef`] into multiple ones.
+/// 
+/// ```
+/// use totsu_core::solver::{SliceLike, SliceRef, LinAlg};
+/// use totsu_core::{splitm, FloatGeneric};
+/// 
+/// fn func<L: LinAlg>(x: SliceRef<L::Sl>) {
+///     splitm!(x, (x1; 4), (x2; 5), (x3; 6));
+///     assert_eq!(x1.len(), 4);
+///     assert_eq!(x2.len(), 5);
+///     assert_eq!(x3.len(), 6);
+/// }
+/// 
+/// type L = FloatGeneric<f64>;
+/// let a = &[0.; 20];
+/// let x = <L as LinAlg>::Sl::new_ref(a);
+/// func::<L>(x);
+/// ```
 #[macro_export]
 macro_rules! splitm {
     ($slice:expr, $( ($var:ident; $len:expr) ),+ ) => {
@@ -112,7 +135,24 @@ macro_rules! splitm {
     };
 }
 
-// TODO: public?
+/// Splits a [`SliceMut`] into multiple ones.
+/// 
+/// ```
+/// use totsu_core::solver::{SliceLike, SliceMut, LinAlg};
+/// use totsu_core::{splitm_mut, FloatGeneric};
+/// 
+/// fn func<L: LinAlg>(mut x: SliceMut<L::Sl>) {
+///     splitm_mut!(x, (x1; 4), (x2; 5), (x3; 6));
+///     assert_eq!(x1.len(), 4);
+///     assert_eq!(x2.len(), 5);
+///     assert_eq!(x3.len(), 6);
+/// }
+/// 
+/// type L = FloatGeneric<f64>;
+/// let a = &mut[0.; 20];
+/// let x = <L as LinAlg>::Sl::new_mut(a);
+/// func::<L>(x);
+/// ```
 #[macro_export]
 macro_rules! splitm_mut {
     ($slice:expr, $( ($var:ident; $len:expr) ),+ ) => {

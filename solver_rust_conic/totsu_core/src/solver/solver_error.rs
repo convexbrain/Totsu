@@ -9,11 +9,11 @@ pub enum SolverError
     /// Exceed max iterations.
     ExcessIter,
 
-    /// Invalid [`Operator`].
+    /// Invalid [`crate::solver::Operator`].
     InvalidOp,
     /// Shortage of work slice length.
     WorkShortage,
-    /// Failure caused by [`Cone`].
+    /// Failure caused by [`crate::solver::Cone`].
     ConeFailure,
 }
 
