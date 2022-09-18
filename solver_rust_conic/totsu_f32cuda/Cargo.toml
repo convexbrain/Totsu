@@ -5,7 +5,7 @@ version = "0.1.0"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2021"
 
-description = "CUDA Linear algebra for `totsu` and `totsu_core`."
+description = "CUDA linear algebra operations for `totsu`/`totsu_core`."
 
 #documentation = "..."
 homepage = "https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic/totsu_f32cuda"

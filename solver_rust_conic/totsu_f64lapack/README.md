@@ -1,4 +1,4 @@
-# totsu_core
+# totsu_f64lapack
 
 [![Github](https://img.shields.io/github/last-commit/convexbrain/totsu?logo=github)](https://github.com/convexbrain/Totsu)
 [![Book](https://img.shields.io/badge/book-日本語-yellow)](https://convexbrain.github.io/Totsu/book/)
@@ -6,9 +6,9 @@
 
 Totsu ([凸](http://www.decodeunicode.org/en/u+51F8) in Japanese) means convex.
 
-This crate for Rust provides **a first-order conic linear program solver** for convex optimization.
+This crate for Rust provides **BLAS/LAPACK linear algebra** operations for `totsu`/`totsu_core`.
 
-See [documentation](https://docs.rs/totsu_core/) for more details.
+See [documentation](https://docs.rs/totsu_f64lapack/) for more details.
 
 ## Crate family
 

@@ -1,112 +1,41 @@
 # totsu
 
 [![Github](https://img.shields.io/github/last-commit/convexbrain/totsu?logo=github)](https://github.com/convexbrain/Totsu)
-[![Crate](https://img.shields.io/crates/v/totsu.svg)](https://crates.io/crates/totsu)
-[![API](https://docs.rs/totsu/badge.svg)](https://docs.rs/totsu)
 [![Book](https://img.shields.io/badge/book-日本語-yellow)](https://convexbrain.github.io/Totsu/book/)
 [![License](https://img.shields.io/crates/l/totsu.svg)](https://unlicense.org/)
 
 Totsu ([凸](http://www.decodeunicode.org/en/u+51F8) in Japanese) means convex.
 
-This crate for Rust provides **a first-order conic linear program solver**.
-
-## Target problem
-
-A common target problem is continuous scalar **convex optimization** such as LP, QP, QCQP, SOCP and SDP.
-Each of those problems can be represented as a conic linear program.
-
-## Algorithm and design concepts
-
-The author combines the two papers
-[\[1\]](https://ieeexplore.ieee.org/abstract/document/6126441)
-[\[2\]](https://arxiv.org/abs/1312.3039)
-so that the homogeneous self-dual embedding matrix in [\[2\]](https://arxiv.org/abs/1312.3039)
-is formed as a linear operator in [\[1\]](https://ieeexplore.ieee.org/abstract/document/6126441).
+This crate for Rust provides **convex optimization problems LP/QP/QCQP/SOCP/SDP** that can be solved by `totsu_core`.
 
 See [documentation](https://docs.rs/totsu/) for more details.
 
-### Features
+## Crate family
 
-#### Using `linalg::F64LAPACK`
+### totsu_core
 
-```toml
-[dependencies.totsu]
-version = "0.9.1"
-features = ["f64lapack"]
-```
+[![Crate](https://img.shields.io/crates/v/totsu_core.svg)](https://crates.io/crates/totsu_core)
+[![API](https://docs.rs/totsu_core/badge.svg)](https://docs.rs/totsu_core)
 
-In addition you need a
-[BLAS/LAPACK source](https://github.com/blas-lapack-rs/blas-lapack-rs.github.io/wiki#sources) to link.
+A first-order conic linear program solver for convex optimization.
 
-#### Without `std`
+### totsu
 
-This crate can be used without the standard library (`#![no_std]`).
-Use this in `Cargo.toml`:
+[![Crate](https://img.shields.io/crates/v/totsu.svg)](https://crates.io/crates/totsu)
+[![API](https://docs.rs/totsu/badge.svg)](https://docs.rs/totsu)
 
-```toml
-[dependencies.totsu]
-version = "0.9.1"
-default-features = false
-features = ["libm"]
-```
+Convex optimization problems LP/QP/QCQP/SOCP/SDP that can be solved by `totsu_core`.
 
-Some module and structs are not availale in this case.
+### totsu_f64lapack
 
-### Changelog
+[![Crate](https://img.shields.io/crates/v/totsu_f64lapack.svg)](https://crates.io/crates/totsu_f64lapack)
+[![API](https://docs.rs/totsu_f64lapack/badge.svg)](https://docs.rs/totsu_f64lapack)
 
-Changelog is available in [CHANGELOG.md](https://github.com/convexbrain/Totsu/blob/master/solver_rust_conic/CHANGELOG.md).
+BLAS/LAPACK linear algebra operations for `totsu`/`totsu_core`.
 
-## Examples
-### QP
+### totsu_f32cuda
 
-```rust
-use float_eq::assert_float_eq;
-use totsu::prelude::*;
-use totsu::operator::MatBuild;
-use totsu::problem::ProbQP;
+[![Crate](https://img.shields.io/crates/v/totsu_f32cuda.svg)](https://crates.io/crates/totsu_f32cuda)
+[![API](https://docs.rs/totsu_f32cuda/badge.svg)](https://docs.rs/totsu_f32cuda)
 
-//env_logger::init(); // Use any logger crate as `totsu` uses `log` crate.
-
-type LA = FloatGeneric<f64>;
-type AMatBuild = MatBuild<LA, f64>;
-type AProbQP = ProbQP<LA, f64>;
-type ASolver = Solver<LA, f64>;
-
-let n = 2; // x0, x1
-let m = 1;
-let p = 0;
-
-// (1/2)(x - a)^2 + const
-let mut sym_p = AMatBuild::new(MatType::SymPack(n));
-sym_p[(0, 0)] = 1.;
-sym_p[(1, 1)] = 1.;
-
-let mut vec_q = AMatBuild::new(MatType::General(n, 1));
-vec_q[(0, 0)] = -(-1.); // -a0
-vec_q[(1, 0)] = -(-2.); // -a1
-
-// 1 - x0/b0 - x1/b1 <= 0
-let mut mat_g = AMatBuild::new(MatType::General(m, n));
-mat_g[(0, 0)] = -1. / 2.; // -1/b0
-mat_g[(0, 1)] = -1. / 3.; // -1/b1
-
-let mut vec_h = AMatBuild::new(MatType::General(m, 1));
-vec_h[(0, 0)] = -1.;
-
-let mat_a = AMatBuild::new(MatType::General(p, n));
-
-let vec_b = AMatBuild::new(MatType::General(p, 1));
-
-let s = ASolver::new().par(|p| {
-   p.max_iter = Some(100_000);
-});
-let mut qp = AProbQP::new(sym_p, vec_q, mat_g, vec_h, mat_a, vec_b, s.par.eps_zero);
-let rslt = s.solve(qp.problem()).unwrap();
-
-assert_float_eq!(rslt.0[0..2], [2., 0.].as_ref(), abs_all <= 1e-3);
-```
-
-### Other examples
-
-You can find other [tests](https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic/tests) of pre-defined problems.
-More practical [examples](https://github.com/convexbrain/Totsu/tree/master/examples) are also available.
+CUDA linear algebra operations for `totsu`/`totsu_core`.

@@ -5,7 +5,7 @@ version = "0.9.1"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2021"
 
-description = "Continuous scalar convex optimization problems solved by `totsu_core`."
+description = "Convex optimization problems LP/QP/QCQP/SOCP/SDP that can be solved by `totsu_core`."
 
 #documentation = "..."
 homepage = "https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic/totsu"
