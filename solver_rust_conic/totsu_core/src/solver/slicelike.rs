@@ -3,14 +3,29 @@ use core::ops::{Deref, DerefMut, Drop};
 
 //
 
-// TODO: doc
+/// Slice-like trait for a vector of linear algebra.
+/// 
+/// [`crate::solver::LinAlg::Sl`] shall have this trait boundary.
 pub trait SliceLike
 {
+    /// Floating point data type of slice elements.
     type F: Float;
 
+    /// Borrows a slice from which [`Self`] is created, and a reference of the [`Self`] is wrapped by a [`SliceRef`].
+    /// [`Self::drop`] shall be called when the [`SliceRef`] is dropped,
+    /// which means the borrowal ends and the [`Self`] shall be dropped safely.
+    /// 
+    /// Returns the [`SliceRef`] wrapping the reference of [`Self`].
+    /// * `s` is a reference of the original slice.
     fn new_ref(s: &[Self::F]) -> SliceRef<'_, Self>;
+
+    /// Mutable version of [`Self::new_ref`].
+    /// 
+    /// Returns the [`SliceMut`] wrapping the reference of [`Self`].
+    /// * `s` is a mutable reference of the original slice.
     fn new_mut(s: &mut[Self::F]) -> SliceMut<'_, Self>;
 
+    // TODO: doc
     fn split_ref(&self, mid: usize) -> (SliceRef<'_, Self>, SliceRef<'_, Self>);
     fn split_mut(&mut self, mid: usize) -> (SliceMut<'_, Self>, SliceMut<'_, Self>);
 
