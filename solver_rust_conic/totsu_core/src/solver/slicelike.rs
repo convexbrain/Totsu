@@ -9,26 +9,35 @@ use core::ops::{Deref, DerefMut, Drop};
 pub trait SliceLike
 {
     /// Floating point data type of slice elements.
+    /// 
+    /// This will be the same as [`crate::solver::LinAlg::F`].
     type F: Float;
 
-    /// Borrows a slice from which [`Self`] is created, and a reference of the [`Self`] is wrapped by a [`SliceRef`].
-    /// [`Self::drop`] shall be called when the [`SliceRef`] is dropped,
-    /// which means the borrowal ends and the [`Self`] shall be dropped safely.
+    /// Borrows a slice from which [`SliceLike`] is created, and a reference of the [`SliceLike`] is wrapped by a [`SliceRef`].
     /// 
-    /// Returns the [`SliceRef`] wrapping the reference of [`Self`].
+    /// [`SliceLike::drop`] shall be called when the [`SliceRef`] drops,
+    /// which means the borrowal ends and the [`SliceLike`] can be dropped safely.
+    /// 
+    /// Returns the [`SliceRef`] wrapping the reference of [`SliceLike`].
     /// * `s` is a reference of the original slice.
     fn new_ref(s: &[Self::F]) -> SliceRef<'_, Self>;
 
-    /// Mutable version of [`Self::new_ref`].
-    /// 
-    /// Returns the [`SliceMut`] wrapping the reference of [`Self`].
-    /// * `s` is a mutable reference of the original slice.
+    /// Mutable version of [`SliceLike::new_ref`].
     fn new_mut(s: &mut[Self::F]) -> SliceMut<'_, Self>;
 
-    // TODO: doc
+    /// Divides one reference of a [`SliceLike`] into two at an index `mid`.
+    /// 
+    /// Returns all indices from [`0`, `mid`) as the first and all indices from [`mid`, [`SliceLike::len()`]) as the second.
+    /// * `mid` is an index for splitting.
     fn split_ref(&self, mid: usize) -> (SliceRef<'_, Self>, SliceRef<'_, Self>);
+
+    /// Mutable version of [`SliceLike::split_ref`].
     fn split_mut(&mut self, mid: usize) -> (SliceMut<'_, Self>, SliceMut<'_, Self>);
 
+    /// Drops a [`SliceLike`].
+    /// 
+    /// This shall be called when [`SliceRef`] or [`SliceMut`] drops.
+    /// At this point the referenced [`SliceLike`] can be dropped safely.
     fn drop(&self);
 
     fn len(&self) -> usize;
