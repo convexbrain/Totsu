@@ -3,13 +3,16 @@
 use num_traits::Float;
 use crate::solver::SliceLike;
 
-/// Linear algebra trait
+/// Linear algebra trait.
 /// 
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 pub trait LinAlg
 {
+    /// Floating point data type used as scalars.
     type F: Float;
+
+    /// Data type of slice of `F` used as vectors.
     type Sl: SliceLike<F=Self::F> + ?Sized;
 
     /// Calculate 2-norm (or euclidean norm) \\(\\|x\\|_2=\sqrt{\sum_i x_i^2}\\).
