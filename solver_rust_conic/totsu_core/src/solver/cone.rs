@@ -9,6 +9,7 @@ use crate::solver::LinAlg;
 pub trait Cone<L: LinAlg>
 {
     /// Calculates \\(\Pi_\mathcal{K}(x)\\), that is euclidean projection of \\(x\\) onto the cone \\(\mathcal{K}\\).
+    /// 
     /// This is called by [`crate::solver::Solver::solve`] with passing dual variables as `x`.
     /// 
     /// Returns `Ok`, or `Err` if something fails.

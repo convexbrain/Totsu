@@ -24,7 +24,7 @@ impl<L: LinAlg> ConeRotSOC<L>
 {
     /// Creates an instance.
     /// 
-    /// Returns [`ConeRotSOC`] instance.
+    /// Returns the [`ConeRotSOC`] instance.
     pub fn new() -> Self
     {
         ConeRotSOC {

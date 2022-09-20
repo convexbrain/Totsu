@@ -21,16 +21,16 @@ pub trait SliceLike
     /// Returns the [`SliceRef`] wrapping the reference of [`SliceLike`].
     /// * `s` is a reference of the original slice.
     fn new_ref(s: &[Self::F]) -> SliceRef<'_, Self>;
-
     /// Mutable version of [`SliceLike::new_ref`].
     fn new_mut(s: &mut[Self::F]) -> SliceMut<'_, Self>;
 
-    /// Divides one reference of a [`SliceLike`] into two at an index `mid`.
+    /// Divides one reference of a [`SliceLike`] into two [`SliceRef`]s at an index `mid`.
+    /// 
+    /// As with [`SliceLike::new_ref`], [`SliceLike::drop`] shall be called when each of the [`SliceRef`]s drop.
     /// 
     /// Returns all indices from [`0`, `mid`) as the first and all indices from [`mid`, [`SliceLike::len()`]) as the second.
     /// * `mid` is an index for splitting.
     fn split_ref(&self, mid: usize) -> (SliceRef<'_, Self>, SliceRef<'_, Self>);
-
     /// Mutable version of [`SliceLike::split_ref`].
     fn split_mut(&mut self, mid: usize) -> (SliceMut<'_, Self>, SliceMut<'_, Self>);
 
@@ -40,17 +40,27 @@ pub trait SliceLike
     /// At this point the referenced [`SliceLike`] can be dropped safely.
     fn drop(&self);
 
+    /// Returns the length of the [`SliceLike`]'s content slice.
     fn len(&self) -> usize;
 
+    /// Returns a reference of the [`SliceLike`]'s content slice.
     fn get_ref(&self) -> &[Self::F];
+    /// Mutable version of [`SliceLike::get_ref`].
     fn get_mut(&mut self) -> &mut[Self::F];
 
+    /// Returns a single element of the [`SliceLike`] at an index `idx`.
+    /// 
+    /// Using [`SliceLike::get_ref`] is more efficient if you traverse the [`SliceLike`]'s content.
     fn get(&self, idx: usize) -> Self::F
     {
         let (_, spl) = self.split_ref(idx);
         let (ind, _) = spl.split_ref(1);
         ind.get_ref()[0]
     }
+
+    /// Sets a single element of the [`SliceLike`] at an index `idx` with a given value `val`.
+    /// 
+    /// Using [`SliceLike::get_mut`] is more efficient if you traverse the [`SliceLike`]'s content.
     fn set(&mut self, idx: usize, val: Self::F)
     {
         let (_, mut spl) = self.split_mut(idx);

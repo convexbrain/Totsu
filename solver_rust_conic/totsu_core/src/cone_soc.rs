@@ -24,7 +24,7 @@ impl<L: LinAlg> ConeSOC<L>
 {
     /// Creates an instance.
     /// 
-    /// Returns [`ConeSOC`] instance.
+    /// Returns the [`ConeSOC`] instance.
     pub fn new() -> Self
     {
         ConeSOC {

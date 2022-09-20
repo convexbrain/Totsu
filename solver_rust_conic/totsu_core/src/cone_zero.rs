@@ -24,7 +24,7 @@ impl<L: LinAlg> ConeZero<L>
 {
     /// Creates an instance.
     /// 
-    /// Returns [`ConeZero`] instance.
+    /// Returns the [`ConeZero`] instance.
     pub fn new() -> Self
     {
         ConeZero {

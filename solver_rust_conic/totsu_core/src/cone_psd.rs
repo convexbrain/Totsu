@@ -27,7 +27,7 @@ impl<'a, L: LinAlgEx> ConePSD<'a, L>
 {
     /// Query of a length of work slice.
     /// 
-    /// Returns a length of work slice that [`ConePSD::new`] requires.
+    /// Returns the length of work slice that [`ConePSD::new`] requires.
     /// * `nvars` is a number of variables, that is a length of `x` of [`ConePSD::proj`].
     pub fn query_worklen(nvars: usize) -> usize
     {
@@ -39,9 +39,9 @@ impl<'a, L: LinAlgEx> ConePSD<'a, L>
 
     /// Creates an instance.
     /// 
-    /// Returns [`ConePSD`] instance.
+    /// Returns the [`ConePSD`] instance.
     /// * `work` slice is used for temporal variables in [`ConePSD::proj`].
-    /// * `eps_zero` shall be the same value as [`crate::solver::SolverParam::eps_zero`].
+    /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
     pub fn new(work: &'a mut[L::F], eps_zero: L::F) -> Self
     {
         ConePSD {

@@ -24,7 +24,7 @@ impl<L: LinAlg> ConeRPos<L>
 {
     /// Creates an instance.
     /// 
-    /// Returns [`ConeRPos`] instance.
+    /// Returns the [`ConeRPos`] instance.
     pub fn new() -> Self
     {
         ConeRPos {
