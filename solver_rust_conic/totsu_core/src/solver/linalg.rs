@@ -15,26 +15,26 @@ pub trait LinAlg
     /// Data type of slice of `F` used as vectors.
     type Sl: SliceLike<F=Self::F> + ?Sized;
 
-    /// Calculate 2-norm (or euclidean norm) \\(\\|x\\|_2=\sqrt{\sum_i x_i^2}\\).
+    /// Calculates 2-norm (or euclidean norm) \\(\\|x\\|_2=\sqrt{\sum_i x_i^2}\\).
     /// 
     /// Returns the calculated norm.
     /// * `x` is a vector \\(x\\).
     fn norm(x: &Self::Sl) -> Self::F;
 
-    /// Copy from a vector to another vector.
+    /// Copies from a vector to another vector.
     /// 
     /// * `x` is a slice to copy.
     /// * `y` is a slice being copied to.
     ///   `x` and `y` shall have the same length.
     fn copy(x: &Self::Sl, y: &mut Self::Sl);
 
-    /// Calculate \\(\alpha x\\).
+    /// Calculates \\(\alpha x\\).
     /// 
     /// * `alpha` is a scalar \\(\alpha\\).
     /// * `x` is a vector \\(x\\) before entry, \\(\alpha x\\) on exit.
     fn scale(alpha: Self::F, x: &mut Self::Sl);
 
-    /// Calculate \\(\alpha x + y\\).
+    /// Calculates \\(\alpha x + y\\).
     /// 
     /// * `alpha` is a scalar \\(\alpha\\).
     /// * `x` is a vector \\(x\\).
@@ -42,20 +42,20 @@ pub trait LinAlg
     ///   `x` and `y` shall have the same length.
     fn add(alpha: Self::F, x: &Self::Sl, y: &mut Self::Sl);
 
-    /// Calculate \\(s\mathbb{1} + y\\).
+    /// Calculates \\(s\mathbb{1} + y\\).
     /// 
     /// * `s` is a scalar \\(s\\).
     /// * `y` is a vector \\(y\\) before entry, \\(s\mathbb{1} + y\\) on exit.
     fn adds(s: Self::F, y: &mut Self::Sl);
 
-    /// Calculate 1-norm (or sum of absolute values) \\(\\|x\\|_1=\sum_i |x_i|\\).
+    /// Calculates 1-norm (or sum of absolute values) \\(\\|x\\|_1=\sum_i |x_i|\\).
     /// 
     /// Returns the calculated norm.
     /// * `x` is a vector \\(x\\).
     /// * `incx` is spacing between elements of `x`
     fn abssum(x: &Self::Sl, incx: usize) -> Self::F;
 
-    /// Calculate \\(\alpha D x + \beta y\\),
+    /// Calculates \\(\alpha D x + \beta y\\),
     /// where \\(D={\bf diag}(d)\\) is a diagonal matrix.
     /// 
     /// * `alpha` is a scalar \\(\alpha\\).

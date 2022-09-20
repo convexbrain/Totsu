@@ -6,7 +6,7 @@ use crate::solver::LinAlg;
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 pub trait LinAlgEx: LinAlg + Clone
 {
-    /// Calculate \\(\alpha G x + \beta y\\).
+    /// Calculates \\(\alpha G x + \beta y\\).
     /// 
     /// * If `transpose` is `true`, Calculate \\(\alpha G^T x + \beta y\\) instead.
     /// * `alpha` is a scalar \\(\alpha\\).
@@ -22,7 +22,7 @@ pub trait LinAlgEx: LinAlg + Clone
     ///   The length of `y` shall be `n_row` (or `n_col` if `transpose` is `true`).
     fn transform_ge(transpose: bool, n_row: usize, n_col: usize, alpha: Self::F, mat: &Self::Sl, x: &Self::Sl, beta: Self::F, y: &mut Self::Sl);
 
-    /// Calculate \\(\alpha S x + \beta y\\),
+    /// Calculates \\(\alpha S x + \beta y\\),
     /// where \\(S\\) is a symmetric matrix, supplied in packed form.
     /// 
     /// * `n` is a number of rows and columns of \\(S\\).
@@ -36,34 +36,31 @@ pub trait LinAlgEx: LinAlg + Clone
     ///   The length of `y` shall be `n`.
     fn transform_sp(n: usize, alpha: Self::F, mat: &Self::Sl, x: &Self::Sl, beta: Self::F, y: &mut Self::Sl);
 
-    /// TODO: doc
-    /// Query of a length of work slice that [`LinAlgEx::proj_psd`] requires.
+    /// Query of a length of work slice that [`LinAlgEx::map_eig`] requires.
     /// 
     /// Returns a length of work slice.
-    /// * `sn` is a number of variables, that is a length of `x` of [`LinAlgEx::proj_psd`].
-    /// 
-    /// Query of a length of work slice that [`LinAlgEx::sqrt_spmat`] requires.
-    /// 
-    /// Returns a length of work slice.
-    /// * `n` is a number of rows and columns of \\(S\\) (see [`LinAlgEx::sqrt_spmat`]).
+    /// * `n` is a number of rows and columns of \\(S\\) (see [`LinAlgEx::map_eig`]).
     fn map_eig_worklen(n: usize) -> usize;
 
-    /// TODO: doc
-    /// Euclidean projection \\(x\\) onto \\({\rm vec}(\mathcal{S}\_+^k)\\).
+    /// Applies a map to eigenvalues of a symmetric matrix \\(S\\) supplied in packed form.
     /// 
-    /// * `x` is \\(x\\), a vector to be projected before entry, and shall be replaced with the projected vector on exit.
-    ///   The length of `x` shall be \\(\frac12k(k+1)\\)
-    /// * `eps_zero` shall be the same value as [`crate::solver::SolverParam::eps_zero`].
-    /// * `work` slice is used for temporal variables.
+    /// 1. (optional) Scales diagonals of a given matrix \\(S\\).
+    /// 1. Eigenvalue decomposition: \\(S \rightarrow V \mathbf{diag}(\lambda) V^T\\)
+    /// 1. Applies a map to the eigenvalues: \\(\lambda \rightarrow \lambda'\\)
+    /// 1. Reconstruct the matrix: \\(V \mathbf{diag'}(\lambda) V^T \rightarrow S'\\)
+    /// 1. (optional) Inverted scaling to diagonals of \\(S'\\).
     /// 
-    /// Calculate \\(S^{\frac12}\\),
-    /// where \\(S \in \mathcal{S}\_+^n\\), supplied in packed form.
+    /// This routine is used for euclidean projection onto semidifinite matrix
+    /// and taking a square root of the matrix.
     /// 
-    /// * `mat` is a matrix \\(S\\) before entry, \\(S^{\frac12}\\) on exit.
+    /// * `mat` is the matrix \\(S\\) before entry, \\(S'\\) on exit.
     ///   It shall be stored in packed form (the upper-triangular part in column-wise).
-    ///   The length of `mat` shall be \\(\frac12n(n+1)\\).
+    /// * `scale_diag` is the optional scaling factor to the diagonals.
+    ///   `None` has the same effect as `Some(1.0)` but reduces computation.
     /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
     /// * `work` slice is used for temporal variables.
+    /// * `map` takes an eigenvalue and returns a modified eigenvalue.
+    ///   Returning `None` has the same effect as no-modification but reduces computation.
     fn map_eig<M>(mat: &mut Self::Sl, scale_diag: Option<Self::F>, eps_zero: Self::F, work: &mut Self::Sl, map: M)
     where M: Fn(Self::F)->Option<Self::F>;
 }
