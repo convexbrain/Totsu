@@ -4,92 +4,39 @@ Totsu ([凸](http://www.decodeunicode.org/en/u+51F8) in Japanese) means convex.
 <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-This crate for Rust provides **a first-order conic linear program solver**.
+This crate for Rust provides **convex optimization problems LP/QP/QCQP/SOCP/SDP** that can be solved by [`totsu_core`].
 
-# Target problem
+# General usage
 
-A common target problem is continuous scalar **convex optimization** such as LP, QP, QCQP, SOCP and SDP.
-Each of those problems can be represented as a conic linear program:
-\\[
-\begin{array}{ll}
-{\rm minimize} & c^T x \\\\
-{\rm subject \ to} & A x + s = b \\\\
-& s \in \mathcal{K},
-\end{array}
-\\]
-where
-* variables \\( x \in \mathbb{R}^n,\ s \in \mathbb{R}^m \\)
-* \\( c \in \mathbb{R}^n \\) as an objective linear operator 
-* \\( A \in \mathbb{R}^{m \times n} \\) and \\( b \in \mathbb{R}^m \\) as constraint linear operators 
-* a nonempty, closed, convex cone \\( \mathcal{K} \\).
-
-# Algorithm and design concepts
-
-The author combines the two papers
-[\[1\]](https://ieeexplore.ieee.org/abstract/document/6126441)
-[\[2\]](https://arxiv.org/abs/1312.3039)
-so that the homogeneous self-dual embedding matrix in [\[2\]](https://arxiv.org/abs/1312.3039)
-is formed as a linear operator in [\[1\]](https://ieeexplore.ieee.org/abstract/document/6126441).
-
-A core method [`solver::Solver::solve`] takes the following arguments:
-* objective and constraint linear operators that implement [`operator::Operator`] trait and
-* a projection onto a cone that implements [`cone::Cone`] trait.
-
-Therefore solving a specific problem requires an implementation of those traits.
-You can use pre-defined implementations (see [`problem`]),
-as well as construct a user-defined tailored version for the reason of functionality and efficiency.
-Modules [`operator`] and [`cone`] include several basic structs
-that implement [`operator::Operator`] and [`cone::Cone`] trait.
-
-Core linear algebra operations that [`solver::Solver`] requires
-are abstracted by [`linalg::LinAlg`] trait,
-while subtrait [`linalg::LinAlgEx`] is used for [`operator`],
-[`cone`] and [`problem`] modules.
-This crate includes two [`linalg::LinAlgEx`] implementors:
-* [`linalg::FloatGeneric`] -
-  `num::Float`-generic implementation (pure Rust but slow)
-* [`linalg::F64LAPACK`] -
-  `f64`-specific implementation using `cblas-sys` and `lapacke-sys`.
-
-## Features
-
-### Using [`linalg::F64LAPACK`]
-
-```toml
-[dependencies.totsu]
-version = "0.9.1"
-features = ["f64lapack"]
-```
-
-In addition you need a
-[BLAS/LAPACK source](https://github.com/blas-lapack-rs/blas-lapack-rs.github.io/wiki#sources) to link.
-
-### Without `std`
-
-This crate can be used without the standard library (`#![no_std]`).
-Use this in `Cargo.toml`:
-
-```toml
-[dependencies.totsu]
-version = "0.9.1"
-default-features = false
-features = ["libm"]
-```
-
-Some module and structs are not availale in this case:
-* [`problem`]
-* [`operator::MatBuild`]
-
-## Changelog
-
-Changelog is available in [CHANGELOG.md](https://github.com/convexbrain/Totsu/blob/master/solver_rust_conic/CHANGELOG.md).
+1. An optimization problem you want to solve is assumed to be expressed
+   in the standard form of LP, QP, QCQP, SOCP or SDP.
+   Refer to [`ProbLP`], [`ProbQP`], [`ProbQCQP`], [`ProbSOCP`] and [`ProbSDP`] about their mathematical formulations.
+1. Choose a [`totsu_core::LinAlgEx`] implementation to use:
+   * [`prelude::FloatGeneric`] -
+     `num::Float`-generic, pure Rust but slow, fewer environment-dependent problems.
+   * [`totsu_f64lapack` crate](https://crates.io/crates/totsu_f64lapack) -
+     `f64`-specific, using BLAS/LAPACK which requires an installed environment.
+   * [`totsu_f32cuda` crate](https://crates.io/crates/totsu_f32cuda) -
+     `f32`-specific, using CUDA/cuBLAS/cuSOLVER which requires an installed environment.
+1. Construct your problem with matrices using [`MatBuild`].
+1. Create a [`prelude::Solver`] instance and optionally set its parameters.
+1. Feed the problem to the solver and invoke [`prelude::Solver::solve`] to get a resulted solution.
 
 # Examples
-## QP
+
+A simple QP problem:
+\\[
+\begin{array}{ll}
+{\rm minimize} & {(x_0 - (-1))^2 + (x_1 - (-2))^2 \over 2} \\\\
+{\rm subject \ to} & 1 - {x_0 \over 2} - {x_1 \over 3} <= 0
+\end{array}
+\\]
+
+You will notice that a perpendicular drawn from \\((-1, -2)\\)
+to the line \\(1 - {x_0 \over 2} - {x_1 \over 3} = 0\\) intersects
+at point \\((2, 0)\\) which is the optimal solution of the problem.
 
 ```
-# #[cfg(feature = "f64lapack")]
-# use intel_mkl_src as _;
 use float_eq::assert_float_eq;
 use totsu::prelude::*;
 use totsu::*;
@@ -137,26 +84,8 @@ assert_float_eq!(rslt.0[0..2], [2., 0.].as_ref(), abs_all <= 1e-3);
 
 ## Other examples
 
-You can find other [tests](https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic/tests) of pre-defined problems.
+You can find other [tests](https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic/totsu/tests) of the problems.
 More practical [examples](https://github.com/convexbrain/Totsu/tree/master/examples) are also available.
-
-## References
-
-1. T. Pock and A. Chambolle.
-   "Diagonal preconditioning for first order primal-dual algorithms in convex optimization."
-   2011 International Conference on Computer Vision. IEEE, 2011.
-1. B. O’donoghue, et al.
-   "Conic optimization via operator splitting and homogeneous self-dual embedding."
-   Journal of Optimization Theory and Applications 169.3 (2016): 1042-1068.
-1. N. Parikh and S. Boyd.
-   "Proximal algorithms."
-   Foundations and Trends in optimization 1.3 (2014): 127-239.
-1. Mosek ApS.
-   "MOSEK modeling cookbook."
-   (2020).
-1. S. Boyd and L. Vandenberghe.
-   "Convex Optimization."
-   (2004).
 */
 
 mod matbuild;
@@ -172,10 +101,8 @@ pub use problem::*;
 //
 
 /// Prelude
-pub mod prelude // core, Float
+pub mod prelude
 {
    pub use totsu_core::solver::{Solver, SolverError, SolverParam};
    pub use totsu_core::{FloatGeneric, MatType};
 }
-
-// TODO: repair docs
