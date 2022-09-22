@@ -10,7 +10,7 @@ use totsu_core::{LinAlgEx, MatType, MatOp};
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 /// 
-/// Matrix struct which owns a `Vec` of data array and implements [`Operator`].
+/// Matrix struct which owns a `Vec` of data array and is able to be cheaply converted as [`totsu_core::MatOp`].
 /// This struct relies on dynamic heap allocation.
 #[derive(Debug, Clone)]
 pub struct MatBuild<L: LinAlgEx>
@@ -23,7 +23,7 @@ impl<L: LinAlgEx> MatBuild<L>
 {
     /// Creates an instance.
     /// 
-    /// Returns [`MatBuild`] instance with zero data.
+    /// Returns the [`MatBuild`] instance with zero data.
     /// * `typ` is Matrix type and size.
     pub fn new(typ: MatType) -> Self
     {
@@ -33,13 +33,17 @@ impl<L: LinAlgEx> MatBuild<L>
         }
     }
 
-    /// TODO: doc
+    /// Size of the matrix.
+    /// 
+    /// Returns a tuple of a number of rows and columns.
     pub fn size(&self) -> (usize, usize)
     {
         self.typ.size()
     }
 
-    /// TODO: doc
+    /// Converted as [`totsu_core::MatOp`].
+    /// 
+    /// Returns the [`totsu_core::MatOp`] borrowing the internal data array.
     pub fn as_op(&self) -> MatOp<'_, L>
     {
         MatOp::new(self.typ, &self.array)
@@ -212,7 +216,7 @@ impl<L: LinAlgEx> MatBuild<L>
     /// Calculates and converts the matrix \\(A\\) to \\(A^{\frac12}\\).
     /// 
     /// The matrix shall belong to [`MatType::SymPack`].
-    /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
+    /// * `eps_zero` should be the same value as [`totsu_core::solver::SolverParam::eps_zero`].
     pub fn set_sqrt(&mut self, eps_zero: L::F)
     {
         match self.typ {
