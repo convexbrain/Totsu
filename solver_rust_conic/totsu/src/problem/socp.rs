@@ -392,7 +392,7 @@ impl<L: LinAlgEx> ProbSOCP<L>
 {
     /// Creates a SOCP with given data.
     /// 
-    /// Returns a [`ProbSOCP`] instance.
+    /// Returns the [`ProbSOCP`] instance.
     /// * `vec_f` is \\(f\\).
     /// * `mats_g` is \\(G_0, \\ldots, G_{m-1}\\).
     /// * `vecs_h` is \\(h_0, \\ldots, h_{m-1}\\).
@@ -436,7 +436,7 @@ impl<L: LinAlgEx> ProbSOCP<L>
         }
     }
     
-    /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
+    /// Generates the problem data structures to be fed to [`Solver::solve`].
     /// 
     /// Returns a tuple of operators, a cone and a work slice.
     pub fn problem(&mut self) -> (ProbSOCPOpC<L>, ProbSOCPOpA<L>, ProbSOCPOpB<L>, ProbSOCPCone<L>, &mut[L::F])

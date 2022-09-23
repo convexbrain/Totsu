@@ -248,8 +248,7 @@ impl<'a, L: LinAlgEx> Cone<L> for ProbSDPCone<'a, L>
 ///   {\rm vec}(F_0) & \cdots & {\rm vec}(F_{n - 1}) \\\\
 ///   & A &
 ///   \end{array} \right]
-///   x
-///   + s =
+///   x + s =
 ///   \left[ \begin{array}{c}
 ///   -{\rm vec}(F_n) \\\\ b
 ///   \end{array} \right] \\\\
@@ -280,10 +279,10 @@ impl<L: LinAlgEx> ProbSDP<L>
     /// 
     /// Returns a [`ProbSDP`] instance.
     /// * `vec_c` is \\(c\\).
-    /// * `syms_f` is \\(F_0, \\ldots, F_n\\) each of which shall belong to [`crate::operator::MatType::SymPack`].
+    /// * `syms_f` is \\(F_0, \\ldots, F_n\\) each of which shall belong to [`MatType::SymPack`].
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
+    /// * `eps_zero` should be the same value as [`totsu_core::solver::SolverParam::eps_zero`].
     pub fn new(
         vec_c: MatBuild<L>,
         mut syms_f: Vec<MatBuild<L>>,
@@ -330,7 +329,7 @@ impl<L: LinAlgEx> ProbSDP<L>
         }
     }
 
-    /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
+    /// Generates the problem data structures to be fed to [`Solver::solve`].
     /// 
     /// Returns a tuple of operators, a cone and a work slice.
     pub fn problem(&mut self) -> (ProbSDPOpC<L>, ProbSDPOpA<L>, ProbSDPOpB<L>, ProbSDPCone<'_, L>, &mut[L::F])

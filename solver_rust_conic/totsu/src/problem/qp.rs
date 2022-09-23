@@ -331,8 +331,7 @@ impl<'a, L: LinAlgEx> Cone<L> for ProbQPCone<L>
 ///   \end{array} \right]
 ///   \left[ \begin{array}{c}
 ///   x \\\\ t
-///   \end{array} \right]
-///   + s =
+///   \end{array} \right] + s =
 ///   \left[ \begin{array}{c}
 ///   1 \\\\ 0 \\\\ 0 \\\\ h \\\\ b
 ///   \end{array} \right] \\\\
@@ -358,14 +357,14 @@ impl<L: LinAlgEx> ProbQP<L>
 {
     /// Creates a QP with given data.
     /// 
-    /// Returns a [`ProbQP`] instance.
-    /// * `sym_p` is \\(P\\) which shall belong to [`crate::operator::MatType::SymPack`].
+    /// Returns the [`ProbQP`] instance.
+    /// * `sym_p` is \\(P\\) which shall belong to [`totsu_core::MatType::SymPack`].
     /// * `vec_q` is \\(q\\).
     /// * `mat_g` is \\(G\\).
     /// * `vec_h` is \\(h\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
+    /// * `eps_zero` should be the same value as [`totsu_core::solver::SolverParam::eps_zero`].
     pub fn new(
         sym_p: MatBuild<L>, vec_q: MatBuild<L>,
         mat_g: MatBuild<L>, vec_h: MatBuild<L>,
@@ -397,7 +396,7 @@ impl<L: LinAlgEx> ProbQP<L>
         }
     }
 
-    /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
+    /// Generates the problem data structures to be fed to [`Solver::solve`].
     /// 
     /// Returns a tuple of operators, a cone and a work slice.
     pub fn problem(&mut self) -> (ProbQPOpC<L>, ProbQPOpA<L>, ProbQPOpB<L>, ProbQPCone<L>, &mut[L::F])

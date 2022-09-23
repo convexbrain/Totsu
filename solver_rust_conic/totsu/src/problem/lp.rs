@@ -303,7 +303,7 @@ impl<L: LinAlgEx> ProbLP<L>
         }
     }
 
-    /// Generates the problem data structures to be fed to [`totsu_core::solver::Solver::solve`].
+    /// Generates the problem data structures to be fed to [`Solver::solve`].
     /// 
     /// Returns a tuple of operators, a cone and a work slice.
     pub fn problem(&mut self) -> (ProbLPOpC<L>, ProbLPOpA<L>, ProbLPOpB<L>, ProbLPCone<L>, &mut[L::F])
