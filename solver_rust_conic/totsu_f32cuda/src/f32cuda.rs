@@ -8,7 +8,12 @@ use crate::cusolver_sys_partial::*;
 
 //
 
-/// TODO: doc
+/// `f32`-specific [`LinAlgEx`] implementation using `rustacuda`, `cublas-sys` and [`crate::cusolver_sys_partial`].
+/// 
+/// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+/// 
+/// You need a [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) to link.
 #[derive(Clone)]
 pub struct F32CUDA;
 
