@@ -81,6 +81,30 @@ impl CudaManager
     }
 }
 
+impl Drop for CudaManager
+{
+    fn drop(&mut self)
+    {
+        unsafe {
+            let st = cublasDestroy_v2(self.cublas_handle);
+            if st != cublasStatus_t::CUBLAS_STATUS_SUCCESS {
+                log::error!("cuBLAS handle failed to destroy");
+            }
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+        }
+
+        unsafe {
+            let st = cusolverDnDestroy(self.cusolver_handle);
+            if st != cusolverStatus_t::CUSOLVER_STATUS_SUCCESS {
+                log::error!("cuSOLVER handle failed to destroy");
+            }
+            assert_eq!(st, cusolverStatus_t::CUSOLVER_STATUS_SUCCESS);
+        }
+
+        log::debug!("CUDA_MANAGER dropped");
+    }
+}
+
 //
 
 thread_local!(static CUDA_MANAGER: CudaManager = CudaManager::new());
@@ -112,7 +136,7 @@ pub fn context() -> Rc<Context>
 }
 
 /// TODO: doc
-pub fn cublas_handle() -> cublasHandle_t
+pub unsafe fn cublas_handle() -> cublasHandle_t
 {
     CUDA_MANAGER.with(|mgr| {
         mgr.cublas_handle
@@ -120,7 +144,7 @@ pub fn cublas_handle() -> cublasHandle_t
 }
 
 /// TODO: doc
-pub fn cusolver_handle() -> cusolverDnHandle_t
+pub unsafe fn cusolver_handle() -> cusolverDnHandle_t
 {
     CUDA_MANAGER.with(|mgr| {
         mgr.cusolver_handle

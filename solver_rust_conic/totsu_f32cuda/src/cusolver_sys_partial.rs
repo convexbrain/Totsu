@@ -57,6 +57,10 @@ extern "C" {
         handle: *mut cusolverDnHandle_t
     ) -> cusolverStatus_t;
 
+    pub fn cusolverDnDestroy(
+        handle: cusolverDnHandle_t
+    ) -> cusolverStatus_t;
+
     pub fn cusolverDnSsyevdx_bufferSize(
         handle: cusolverDnHandle_t,
         jobz: cusolverEigMode_t,
