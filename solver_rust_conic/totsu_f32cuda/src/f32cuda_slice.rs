@@ -73,7 +73,9 @@ impl SliceManager
 impl Drop for SliceManager
 {
     fn drop(&mut self) {
-        assert_eq!(self.map.len(), 0);
+        if self.map.len() > 0 {
+            log::warn!("Memory leak: {} slices", self.map.len())
+        }
     }
 }
 
