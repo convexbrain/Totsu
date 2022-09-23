@@ -4,11 +4,12 @@ Totsu (凸 in Japanese) means convex.
 
 ## solver_rust_conic/
 
-This crate for Rust provides **a first-order conic linear program solver**.
+The crates for Rust of
 
-Crate: https://crates.io/crates/totsu/
-
-Documentation: https://docs.rs/totsu/
+* `totsu_core`: A first-order conic linear program solver for convex optimization.
+* `totsu`: Convex optimization problems LP/QP/QCQP/SOCP/SDP that can be solved by `totsu_core`.
+* `totsu_f64lapack`: BLAS/LAPACK linear algebra operations for `totsu`/`totsu_core`.
+* `totsu_f32cuda`: CUDA linear algebra operations for `totsu`/`totsu_core`.
 
 Book(ja): https://convexbrain.github.io/Totsu/book/
 
