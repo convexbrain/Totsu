@@ -1,0 +1,37 @@
+[package]
+name = "totsu_core"
+# TODO: version in release branch
+version = "0.1.0"
+authors = ["convexbrain <convexbrain@gmail.com>"]
+edition = "2021"
+
+description = "A first-order conic linear program solver for convex optimization."
+
+#documentation = "..."
+homepage = "https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic/totsu_core/"
+repository = "https://github.com/convexbrain/Totsu"
+
+readme = "README.md"
+
+keywords = ["convex", "optimization", "conic", "solver"]
+
+categories = ["science"]
+
+license = "Unlicense"
+
+[features]
+default = ["std"]
+
+std = ["num-traits/std"]
+libm = ["num-traits/libm"]
+
+[dependencies]
+log = "0.4.17"
+
+[dependencies.num-traits]
+version = "0.2.15"
+default-features = false
+
+[dev-dependencies]
+float_eq = "1.0.0"
+env_logger = "0.9.1"

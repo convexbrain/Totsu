@@ -14,7 +14,7 @@ panic-semihosting = {version = "0.6.0", features = ["exit"]}
 log = "0.4.17"
 
 [dependencies.totsu]
-path = "../../solver_rust_conic"
+version = "0.9.1"
 default-features = false
 features = ["libm"]
 

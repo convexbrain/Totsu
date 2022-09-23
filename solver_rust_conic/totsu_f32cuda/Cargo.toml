@@ -1,0 +1,39 @@
+[package]
+name = "totsu_f32cuda"
+# TODO: version in release branch
+version = "0.1.0"
+authors = ["convexbrain <convexbrain@gmail.com>"]
+edition = "2021"
+
+description = "CUDA linear algebra operations for `totsu`/`totsu_core`."
+
+#documentation = "..."
+homepage = "https://github.com/convexbrain/Totsu/tree/master/solver_rust_conic/totsu_f32cuda"
+repository = "https://github.com/convexbrain/Totsu"
+
+readme = "README.md"
+
+keywords = ["convex", "optimization", "conic", "solver"]
+
+categories = ["science"]
+
+license = "Unlicense"
+
+[dependencies]
+log = "0.4.17"
+cublas-sys = "0.1.0"
+rustacuda = "0.1.3"
+libc = "0.2.133"
+num-traits = "0.2.15"
+
+[dependencies.totsu_core]
+# TODO: version in release branch
+path = "../totsu_core"
+
+[dev-dependencies.totsu]
+# TODO: version in release branch
+path = "../totsu"
+
+[dev-dependencies]
+float_eq = "1.0.0"
+env_logger = "0.9.1"
