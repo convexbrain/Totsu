@@ -1,3 +1,7 @@
+//! Partial cuSOLVER-sys module.
+//! 
+//! See [CUDA Toolkit Documentation](https://docs.nvidia.com/cuda/cusolver/index.html#cuSolverDN-function-reference) for details.
+
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
