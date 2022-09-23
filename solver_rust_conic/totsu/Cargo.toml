@@ -1,7 +1,6 @@
 [package]
 name = "totsu"
-# TODO: version in release branch
-version = "0.9.1"
+version = "0.10.0"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2021"
 
@@ -24,8 +23,8 @@ log = "0.4.17"
 num-traits = "0.2.15"
 
 [dependencies.totsu_core]
-# TODO: version in release branch
-path = "../totsu_core"
+version = "0.1.0"
+#path = "../totsu_core"
 
 [dev-dependencies]
 float_eq = "1.0.0"
