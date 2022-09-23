@@ -8,8 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
-- Divided into 4 crates.
 ### Deprecated
 ### Removed
 ### Fixed
 ### Security
+
+## [0.1.0] - 2022-09-23
+### Changed
+- Divided into 4 crates.
+
+
+[unreleased]: https://github.com/convexbrain/Totsu/compare/totsu_f32cuda_v0.1.0...HEAD
+[0.1.0]: https://github.com/convexbrain/Totsu/releases/tag/totsu_f32cuda_v0.1.0
