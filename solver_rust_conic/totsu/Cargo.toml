@@ -29,4 +29,4 @@ path = "../totsu_core"
 
 [dev-dependencies]
 float_eq = "1.0.0"
-env_logger = "0.9.0"
+env_logger = "0.9.1"
