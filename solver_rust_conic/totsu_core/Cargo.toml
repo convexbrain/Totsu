@@ -1,6 +1,5 @@
 [package]
 name = "totsu_core"
-# TODO: version in release branch
 version = "0.1.0"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2021"
