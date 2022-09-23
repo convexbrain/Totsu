@@ -42,7 +42,6 @@ fn test_solver()
     ]);
 
     let s = ASolver::new().par(|p| {p.max_iter = Some(100_000)});
-    println!("{:?}", s.par);
     
     let mut cone_w = vec![0.; AConePSD::query_worklen(op_a.size().0)];
     let cone = AConePSD::new(&mut cone_w, s.par.eps_zero);
