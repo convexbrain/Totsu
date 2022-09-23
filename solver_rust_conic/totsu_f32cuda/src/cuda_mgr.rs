@@ -1,8 +1,11 @@
+//! CUDA manager module.
+
 use std::prelude::v1::*;
 use std::thread_local;
 use std::rc::Rc;
+use num_traits::Zero;
 use rustacuda::prelude::*;
-use rustacuda::memory::DeviceBuffer;
+use rustacuda::memory::{DeviceBuffer, DeviceCopy};
 use cublas_sys::*;
 use super::cusolver_sys_partial::*;
 
@@ -109,16 +112,23 @@ impl Drop for CudaManager
 
 thread_local!(static CUDA_MANAGER: CudaManager = CudaManager::new());
 
-/// TODO: doc
-pub fn buf_from_slice(s: &[f32]) -> DeviceBuffer<f32>
+/// Allocates a new device buffer of the same contents as a given slice.
+/// 
+/// Returns the device buffer.
+/// * `s` is the original slice.
+pub fn buf_from_slice<T>(s: &[T]) -> DeviceBuffer<T>
+where T: DeviceCopy
 {
     CUDA_MANAGER.with(|_| { // ensure that rustacuda::init is done
-        DeviceBuffer::from_slice(s).unwrap()
+        DeviceBuffer::<T>::from_slice(s).unwrap()
     })
 }
 
-/// TODO: doc
+/// Allocates a new device buffer with zeroes.
+/// 
+/// Returns the device buffer with a `length` of the slice.
 pub fn buf_zeroes<T>(length: usize) -> DeviceBuffer<T>
+where T: Zero
 {
     CUDA_MANAGER.with(|_| { // ensure that rustacuda::init is done
         unsafe {
@@ -127,7 +137,7 @@ pub fn buf_zeroes<T>(length: usize) -> DeviceBuffer<T>
     })
 }
 
-/// TODO: doc
+/// Gets the CUDA context.
 pub fn context() -> Rc<Context>
 {
     CUDA_MANAGER.with(|mgr| {
@@ -135,16 +145,16 @@ pub fn context() -> Rc<Context>
     })
 }
 
-/// TODO: doc
-pub unsafe fn cublas_handle() -> cublasHandle_t
+/// Gets the cuBLAS handle.
+pub fn cublas_handle() -> cublasHandle_t
 {
     CUDA_MANAGER.with(|mgr| {
         mgr.cublas_handle
     })
 }
 
-/// TODO: doc
-pub unsafe fn cusolver_handle() -> cusolverDnHandle_t
+/// Gets the cuSOLVER handle.
+pub fn cusolver_handle() -> cusolverDnHandle_t
 {
     CUDA_MANAGER.with(|mgr| {
         mgr.cusolver_handle
