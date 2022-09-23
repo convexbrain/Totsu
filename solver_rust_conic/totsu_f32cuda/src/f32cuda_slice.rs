@@ -1,3 +1,5 @@
+//! [`F32CUDASlice`] module.
+
 use std::prelude::v1::*;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -24,7 +26,10 @@ enum HostBuf
     Mut(*mut f32),
 }
 
-/// TODO: doc
+/// `f32`-specific slice with CUDA device buffer, [`SliceLike`] implementation for [`crate::F32CUDA`]`::Sl`.
+/// 
+/// The CUDA buffer and the host buffer are internally held.
+/// Their contents are synchronized whenever necessary.
 pub struct F32CUDASlice
 {
     idx: usize,
@@ -349,7 +354,7 @@ impl F32CUDASlice
         db.copy_from(hb_ref).unwrap();
     }
 
-    /// TODO: doc
+    /// Returns a reference of the content CUDA device slice.
     pub fn get_dev(&self) -> &DeviceSlice<f32>
     {
         let mut mutator = self.mutator.borrow_mut();
@@ -368,7 +373,7 @@ impl F32CUDASlice
         }
     }
 
-    /// TODO: doc
+    /// Mutable version of [`F32CUDASlice::get_dev`].
     pub fn get_dev_mut(&mut self) -> &mut DeviceSlice<f32>
     {
         let mut mutator = self.mutator.borrow_mut();
