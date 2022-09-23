@@ -222,7 +222,7 @@ impl<L: LinAlgEx> Cone<L> for ProbLPCone<L>
 /// Linear program
 /// 
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 /// 
 /// The problem is
 /// \\[
@@ -272,7 +272,7 @@ impl<L: LinAlgEx> ProbLP<L>
 {
     /// Creates a LP with given data.
     /// 
-    /// Returns a [`ProbLP`] instance.
+    /// Returns the [`ProbLP`] instance.
     /// * `vec_c` is \\(c\\).
     /// * `mat_g` is \\(G\\).
     /// * `vec_h` is \\(h\\).
@@ -303,7 +303,7 @@ impl<L: LinAlgEx> ProbLP<L>
         }
     }
 
-    /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
+    /// Generates the problem data structures to be fed to [`totsu_core::solver::Solver::solve`].
     /// 
     /// Returns a tuple of operators, a cone and a work slice.
     pub fn problem(&mut self) -> (ProbLPOpC<L>, ProbLPOpA<L>, ProbLPOpB<L>, ProbLPCone<L>, &mut[L::F])

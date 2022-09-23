@@ -5,7 +5,7 @@ use crate::solver::LinAlg;
 /// Convex cone trait.
 /// 
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 pub trait Cone<L: LinAlg>
 {
     /// Calculates \\(\Pi_\mathcal{K}(x)\\), that is euclidean projection of \\(x\\) onto the cone \\(\mathcal{K}\\).

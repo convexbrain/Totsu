@@ -8,7 +8,7 @@ use totsu_core::{LinAlgEx, MatType, MatOp};
 /// Matrix builder
 /// 
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 /// 
 /// Matrix struct which owns a `Vec` of data array and is able to be cheaply converted as [`totsu_core::MatOp`].
 /// This struct relies on dynamic heap allocation.

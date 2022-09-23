@@ -2,7 +2,7 @@
 Totsu ([凸](http://www.decodeunicode.org/en/u+51F8) in Japanese) means convex.
 
 <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
 This crate for Rust provides **convex optimization problems LP/QP/QCQP/SOCP/SDP** that can be solved by [`totsu_core`].
 

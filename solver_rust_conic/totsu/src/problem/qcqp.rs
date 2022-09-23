@@ -353,7 +353,7 @@ impl<L: LinAlgEx> Cone<L> for ProbQCQPCone<L>
 /// Quadratically constrained quadratic program
 /// 
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 /// 
 /// The problem is
 /// \\[
@@ -373,19 +373,18 @@ impl<L: LinAlgEx> Cone<L> for ProbQCQPCone<L>
 /// \begin{array}{ll}
 /// {\rm minimize} & t \\\\
 /// {\rm subject \ to} &
-///   \left[ \begin{array}{ccc}
+///   \left[ \begin{array}{c}
 ///   0 & 0 \\\\
 ///   q_0^T & -1 \\\\
 ///   -P_0^{1 \over 2} & 0
 ///   \end{array} \right]
 ///   \left[ \begin{array}{c}
 ///   x \\\\ t
-///   \end{array} \right]
-///   + s_0 =
+///   \end{array} \right] + s_0 =
 ///   \left[ \begin{array}{c}
 ///   1 \\\\ -r_0 \\\\ 0
 ///   \end{array} \right] \\\\
-/// & \left[ \begin{array}{ccc}
+/// & \left[ \begin{array}{c}
 ///   0 \\\\ q_i^T \\\\ -P_i^{1 \over 2}
 ///   \end{array} \right]
 ///   x + s_i =
@@ -415,13 +414,13 @@ impl<L: LinAlgEx> ProbQCQP<L>
 {
     /// Creates a QCQP with given data.
     /// 
-    /// Returns a [`ProbQCQP`] instance.
-    /// * `syms_p` is \\(P_0, \\ldots, P_m\\) each of which shall belong to [`crate::operator::MatType::SymPack`].
+    /// Returns the [`ProbQCQP`] instance.
+    /// * `syms_p` is \\(P_0, \\ldots, P_m\\) each of which shall belong to [`totsu_core::MatType::SymPack`].
     /// * `vecs_q` is \\(q_0, \\ldots, q_m\\).
     /// * `scls_r` is \\(r_0, \\ldots, r_m\\).
     /// * `mat_a` is \\(A\\).
     /// * `vec_b` is \\(b\\).
-    /// * `eps_zero` should be the same value as [`crate::solver::SolverParam::eps_zero`].
+    /// * `eps_zero` should be the same value as [`totsu_core::solver::SolverParam::eps_zero`].
     pub fn new(
         syms_p: Vec<MatBuild<L>>, vecs_q: Vec<MatBuild<L>>, scls_r: Vec<L::F>,
         mat_a: MatBuild<L>, vec_b: MatBuild<L>,
@@ -458,7 +457,7 @@ impl<L: LinAlgEx> ProbQCQP<L>
         }
     }
     
-    /// Generates the problem data structures to be fed to [`crate::solver::Solver::solve`].
+    /// Generates the problem data structures to be fed to [`totsu_core::solver::Solver::solve`].
     /// 
     /// Returns a tuple of operators, a cone and a work slice.
     pub fn problem(&mut self) -> (ProbQCQPOpC<L>, ProbQCQPOpA<L>, ProbQCQPOpB<L>, ProbQCQPCone<L>, &mut[L::F])

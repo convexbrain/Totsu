@@ -188,7 +188,7 @@ where L: LinAlg, OC: Operator<L>, OA: Operator<L>, OB: Operator<L>
 /// First-order conic linear program solver struct.
 /// 
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+/// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 /// 
 /// This struct abstracts a solver of a conic linear program:
 /// \\[
