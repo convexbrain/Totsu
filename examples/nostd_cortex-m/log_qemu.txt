@@ -1,6 +1,7 @@
 QEMU 2.8.0-8 monitor - type 'help' for more information
 (qemu) run
 query_worklen -> 48
+[DEBUG] SolverParam { max_iter: Some(100000), eps_acc: 1.0000000000000006e-6, eps_inf: 1.0000000000000006e-6, eps_zero: 1.0000000000000014e-12, log_period: 10 }
 [INFO] ----- Initializing
 [INFO] ----- Started
 [DEBUG] 0: pri_dual_gap 8.95e-1 5.00e-1 0.00e0

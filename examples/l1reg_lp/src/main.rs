@@ -1,6 +1,5 @@
 use totsu::prelude::*;
-use totsu::operator::MatBuild;
-use totsu::problem::ProbLP;
+use totsu::*;
 
 use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;
@@ -8,9 +7,10 @@ use rand_xoshiro::Xoshiro256StarStar;
 use anyhow::Result;
 use plotters::prelude::*;
 
-type AMatBuild = MatBuild<FloatGeneric<f64>, f64>;
-type AProbLP = ProbLP<FloatGeneric<f64>, f64>;
-type ASolver = Solver<FloatGeneric<f64>, f64>;
+type La = FloatGeneric<f64>;
+type AMatBuild = MatBuild<La>;
+type AProbLP = ProbLP<La>;
+type ASolver = Solver<La>;
 
 /// gaussian kernel
 fn kernel(xi: &AMatBuild, ci: usize, xj: &AMatBuild, cj: usize) -> f64

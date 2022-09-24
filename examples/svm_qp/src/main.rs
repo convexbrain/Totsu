@@ -1,7 +1,6 @@
 use totsu::prelude::*;
-use totsu::operator::MatBuild;
-use totsu::linalg::F64LAPACK;
-use totsu::problem::ProbQP;
+use totsu::*;
+use totsu_f64lapack::F64LAPACK;
 
 use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;
@@ -10,9 +9,10 @@ use plotters::prelude::*;
 use intel_mkl_src as _;
 use anyhow::Result;
 
-type AMatBuild = MatBuild<F64LAPACK, f64>;
-type AProbQP = ProbQP<F64LAPACK, f64>;
-type ASolver = Solver<F64LAPACK, f64>;
+type La = F64LAPACK;
+type AMatBuild = MatBuild<La>;
+type AProbQP = ProbQP<La>;
+type ASolver = Solver<La>;
 
 /// gaussian kernel
 fn kernel(xi: &AMatBuild, ci: usize, xj: &AMatBuild, cj: usize) -> f64

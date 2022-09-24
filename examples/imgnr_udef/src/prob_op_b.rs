@@ -1,7 +1,9 @@
 use totsu::prelude::*;
-use totsu::operator::MatBuild;
+use totsu::MatBuild;
+use totsu_core::MatOp;
+use totsu_core::solver::{Operator, LinAlg};
 
-use super::LA;
+use super::La;
 
 //
 
@@ -10,8 +12,8 @@ pub struct ProbOpB<'a>
     x_sz: usize,
     t_sz: usize,
     target_lx_norm1: f64,
-    one: MatBuild<LA, f64>,
-    xh: MatOp<'a, LA, f64>,
+    one: MatBuild<La>,
+    xh: MatOp<'a, La>,
 }
 
 impl<'a> ProbOpB<'a>
@@ -32,7 +34,7 @@ impl<'a> ProbOpB<'a>
     }
 }
 
-impl<'a> Operator<f64> for ProbOpB<'a>
+impl<'a> Operator<La> for ProbOpB<'a>
 {
     fn size(&self) -> (usize, usize)
     {
@@ -47,15 +49,15 @@ impl<'a> Operator<f64> for ProbOpB<'a>
         let (y_xn, y_rest) = y_rest.split_at_mut(self.x_sz);
         let (y_sz, y_sx) = y_rest.split_at_mut(1);
 
-        LA::scale(beta, y_lp_ln);
+        La::scale(beta, y_lp_ln);
 
         y_l1[0] = alpha * self.target_lx_norm1 * x[0] + beta * y_l1[0];
 
-        LA::scale(beta, y_xp);
+        La::scale(beta, y_xp);
 
-        self.one.op(alpha, x, beta, y_xn);
+        self.one.as_op().op(alpha, x, beta, y_xn);
 
-        LA::scale(beta, y_sz);
+        La::scale(beta, y_sz);
 
         self.xh.op(-alpha, x, beta, y_sx);
     }
@@ -68,7 +70,7 @@ impl<'a> Operator<f64> for ProbOpB<'a>
         let (x_xn, x_rest) = x_rest.split_at(self.x_sz);
         let (_x_sz, x_sx) = x_rest.split_at(1);
 
-        self.one.trans_op(alpha, x_xn, beta, y);
+        self.one.as_op().trans_op(alpha, x_xn, beta, y);
         self.xh.trans_op(-alpha, x_sx, 1.0, y);
         y[0] += alpha * self.target_lx_norm1 * x_l1[0];
     }
@@ -88,7 +90,7 @@ impl<'a> Operator<f64> for ProbOpB<'a>
         let (_sigma_sz, sigma_sx) = sigma_rest.split_at_mut(1);
 
         sigma_l1[0] += self.target_lx_norm1.abs();
-        LA::adds(1., sigma_xn);
+        La::adds(1., sigma_xn);
         self.xh.absadd_rows(sigma_sx);
     }
 }
@@ -109,7 +111,7 @@ fn test_trans_op()
     op.trans_op(1., &xi, 0., &mut yo);
 
     let mut yo_ref = vec![0.; sz.1];
-    utils::operator_ref::trans_op::<LA, _, _>(
+    utils::operator_ref::trans_op::<La, _>(
         op.size(),
         |x, y| op.op(1., x, 0., y),
         1., &xi,
@@ -132,7 +134,7 @@ fn test_abssum_cols()
     op.absadd_cols(&mut tau);
 
     let mut tau_ref = vec![0.; sz.1];
-    utils::operator_ref::absadd_cols::<LA, _, _>(
+    utils::operator_ref::absadd_cols::<La, _>(
         op.size(),
         |x, y| op.op(1., x, 0., y),
         &mut tau_ref
@@ -155,7 +157,7 @@ fn test_abssum_rows()
     op.absadd_rows(&mut sigma);
 
     let mut sigma_ref = vec![0.; sz.0];
-    utils::operator_ref::absadd_rows::<LA, _, _>(
+    utils::operator_ref::absadd_rows::<La, _>(
         op.size(),
         |x, y| op.trans_op(1., x, 0., y),
         &mut sigma_ref

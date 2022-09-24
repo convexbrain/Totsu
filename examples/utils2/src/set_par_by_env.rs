@@ -1,4 +1,4 @@
-use totsu::solver::SolverParam;
+use totsu_core::solver::SolverParam;
 use num_traits::Float;
 use num_traits::Num;
 

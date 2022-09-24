@@ -7,13 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- `AsRef` and `AsMut` for `MatBuild`.
 ### Changed
-- Totally revised in order to support CUDA linear algebra.
-- Divided into 4 crates.
 ### Deprecated
 ### Removed
 ### Fixed
 ### Security
+
+## [0.10.0] - 2022-09-23
+### Changed
+- Totally revised in order to support CUDA linear algebra.
+- Divided into 4 crates.
 
 ## [0.9.1] - 2022-08-14
 ### Changed
@@ -58,7 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Completely revised from [0.5.0] to conic solver.
 
 
-[unreleased]: https://github.com/convexbrain/Totsu/compare/rust_conic_v0.9.1...HEAD
+[unreleased]: https://github.com/convexbrain/Totsu/compare/totsu_v0.10.0...HEAD
+[0.10.0]: https://github.com/convexbrain/Totsu/releases/tag/totsu_v0.10.0
 [0.9.1]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.9.1
 [0.9.0]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.9.0
 [0.8.1]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.8.1

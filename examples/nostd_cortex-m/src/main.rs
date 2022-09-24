@@ -50,15 +50,16 @@ fn main() -> !
 
 //
 
-use totsu::prelude::*;
+use totsu_core::solver::{Solver, Operator};
+use totsu_core::{ConeRPos, MatType, MatOp, FloatGeneric};
 use num_traits::Float;
 
 fn test_lp()
 {
-    type LA = FloatGeneric<f64>;
-    type AMatOp<'a> = MatOp<'a, LA, f64>;
-    type AConeRPos = ConeRPos<f64>;
-    type ASolver = Solver<LA, f64>;
+    type La = FloatGeneric<f64>;
+    type AMatOp<'a> = MatOp<'a, La>;
+    type AConeRPos = ConeRPos<La>;
+    type ASolver = Solver<La>;
 
     let n = 2; // x, y
     let m = 3;

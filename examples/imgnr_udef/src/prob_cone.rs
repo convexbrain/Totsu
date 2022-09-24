@@ -1,6 +1,7 @@
-use totsu::prelude::*;
+use totsu_core::{ConeRPos, ConeSOC};
+use totsu_core::solver::Cone;
 
-use super::LA;
+use super::La;
 
 //
 
@@ -8,8 +9,8 @@ pub struct ProbCone
 {
     x_sz: usize,
     t_sz: usize,
-    rpos: ConeRPos<f64>,
-    soc: ConeSOC<LA, f64>,
+    rpos: ConeRPos<La>,
+    soc: ConeSOC<La>,
 }
 
 impl ProbCone
@@ -25,7 +26,7 @@ impl ProbCone
     }
 }
 
-impl Cone<f64> for ProbCone
+impl Cone<La> for ProbCone
 {
     fn proj(&mut self, dual_cone: bool, x: &mut[f64]) -> Result<(), ()>
     {
