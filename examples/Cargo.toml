@@ -8,7 +8,6 @@ members = [
     #TODO "partitioning_sdp",
     "imgnr_udef",
     
-    "utils",
     "utils2",
 ]
 

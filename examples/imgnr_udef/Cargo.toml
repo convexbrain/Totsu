@@ -9,7 +9,6 @@ publish = false
 totsu = "0.10.0"
 totsu_core = "0.1.0"
 totsu_f64lapack = "0.1.0"
-# TODO: remove utils/ dir
 utils = {path = "../utils2", package="utils2"}
 env_logger = "0.9.1"
 anyhow = "1.0.65"
