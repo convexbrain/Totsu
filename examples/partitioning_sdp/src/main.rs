@@ -1,7 +1,7 @@
 use totsu::prelude::*;
-use totsu::operator::MatBuild;
-use totsu::linalg::F64LAPACK;
-use totsu::problem::ProbSDP;
+use totsu::*;
+use totsu_f64lapack::F64LAPACK;
+use totsu_core::solver::Operator;
 
 use rand::prelude::*;
 use rand_distr::StandardNormal;
@@ -10,9 +10,10 @@ use plotters::prelude::*;
 use intel_mkl_src as _;
 use anyhow::Result;
 
-type AMatBuild = MatBuild<F64LAPACK, f64>;
-type AProbSDP = ProbSDP<F64LAPACK, f64>;
-type ASolver = Solver<F64LAPACK, f64>;
+type La = F64LAPACK;
+type AMatBuild = MatBuild<La>;
+type AProbSDP = ProbSDP<La>;
+type ASolver = Solver<La>;
 
 const EPS_ACC: f64 = 1e-3;
 const EPS_ZERO: f64 = 1e-12;
@@ -105,14 +106,14 @@ fn sample_feasible(rslt_x: &[f64], sym_w: &AMatBuild, seed: u64) -> (f64, AMatBu
         tmpx.set_by_fn(|_, _| rng.sample(StandardNormal));
         //println!("{:?}", tmpx);
     
-        sym_x.op(1., tmpx.as_ref(), 0., x.as_mut());
+        sym_x.as_op().op(1., tmpx.as_ref(), 0., x.as_mut());
         for e in x.as_mut() {
             *e = if *e > 0. {1.} else {-1.};
         }
         //println!("{:?}", x);
 
-        sym_w.op(1., x.as_ref(), 0., tmpx.as_mut());
-        tmpx.trans_op(1., x.as_ref(), 0., &mut o);
+        sym_w.as_op().op(1., x.as_ref(), 0., tmpx.as_mut());
+        tmpx.as_op().trans_op(1., x.as_ref(), 0., &mut o);
         //println!("{}", o[0]);
 
         if let Some(o_feas_some) = o_feas {
