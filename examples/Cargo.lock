@@ -1119,8 +1119,9 @@ dependencies = [
  "plotters",
  "rand",
  "rand_xoshiro",
- "totsu 0.9.1",
- "utils",
+ "totsu 0.10.0",
+ "totsu_f64lapack",
+ "utils2",
 ]
 
 [[package]]

@@ -6,14 +6,15 @@ edition = "2021"
 publish = false
 
 [dependencies]
-totsu = {version = "0.9.1", features = ["f64lapack"]}
-utils = {path = "../utils"}
+totsu = "0.10.0"
+totsu_f64lapack = "0.1.0"
+utils = {path = "../utils2", package = "utils2"}
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"
-env_logger = "0.9.0"
-plotters = "0.3.2"
+env_logger = "0.9.1"
+plotters = "0.3.4"
 num-traits = "0.2.15"
-anyhow = "1.0.61"
+anyhow = "1.0.65"
 
 [dependencies.intel-mkl-src]
 default-features = false
