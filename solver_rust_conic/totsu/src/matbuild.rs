@@ -297,6 +297,7 @@ impl<L: LinAlgEx> IndexMut<(usize, usize)> for MatBuild<L>
 
 //
 
+// used by examples
 impl <L: LinAlgEx> AsRef<[L::F]> for MatBuild<L>
 {
     fn as_ref(&self) -> &[L::F]
@@ -305,6 +306,7 @@ impl <L: LinAlgEx> AsRef<[L::F]> for MatBuild<L>
     }
 }
 
+// used by examples
 impl <L: LinAlgEx> AsMut<[L::F]> for MatBuild<L>
 {
     fn as_mut(&mut self) -> &mut[L::F]
