@@ -9,6 +9,7 @@ members = [
     "imgnr_udef",
     
     "utils",
+    "utils2",
 ]
 
 exclude = [

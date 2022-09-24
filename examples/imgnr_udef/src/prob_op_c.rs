@@ -1,6 +1,6 @@
-use totsu::prelude::*;
+use totsu_core::solver::{Operator, LinAlg};
 
-use super::LA;
+use super::La;
 
 //
 
@@ -21,7 +21,7 @@ impl ProbOpC
     }
 }
 
-impl Operator<f64> for ProbOpC
+impl Operator<La> for ProbOpC
 {
     fn size(&self) -> (usize, usize)
     {
@@ -30,7 +30,7 @@ impl Operator<f64> for ProbOpC
 
     fn op(&self, alpha: f64, x: &[f64], beta: f64, y: &mut[f64])
     {
-        LA::scale(beta, y);
+        La::scale(beta, y);
         y[self.x_sz] += alpha * x[0];
     }
 
@@ -65,7 +65,7 @@ fn test_trans_op()
     op.trans_op(1., &xi, 0., &mut yo);
 
     let mut yo_ref = vec![0.; sz.1];
-    utils::operator_ref::trans_op::<LA, _, _>(
+    utils::operator_ref::trans_op::<La, _>(
         op.size(),
         |x, y| op.op(1., x, 0., y),
         1., &xi,
@@ -87,7 +87,7 @@ fn test_abssum_cols()
     op.absadd_cols(&mut tau);
 
     let mut tau_ref = vec![0.; sz.1];
-    utils::operator_ref::absadd_cols::<LA, _, _>(
+    utils::operator_ref::absadd_cols::<La, _>(
         op.size(),
         |x, y| op.op(1., x, 0., y),
         &mut tau_ref
@@ -109,7 +109,7 @@ fn test_abssum_rows()
     op.absadd_rows(&mut sigma);
 
     let mut sigma_ref = vec![0.; sz.0];
-    utils::operator_ref::absadd_rows::<LA, _, _>(
+    utils::operator_ref::absadd_rows::<La, _>(
         op.size(),
         |x, y| op.trans_op(1., x, 0., y),
         &mut sigma_ref

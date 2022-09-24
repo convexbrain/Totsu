@@ -1,5 +1,6 @@
 use totsu::prelude::*;
-use totsu::linalg::F64LAPACK;
+use totsu_core::solver::Operator;
+use totsu_f64lapack::F64LAPACK;
 
 use utils;
 
@@ -8,8 +9,8 @@ use image::{Pixel, ImageBuffer, Luma};
 use intel_mkl_src as _;
 use anyhow::Result;
 
-type LA = F64LAPACK;
-type ASolver = Solver<LA, f64>;
+type La = F64LAPACK;
+type ASolver = Solver<La>;
 
 mod laplacian;
 
