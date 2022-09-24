@@ -10,7 +10,7 @@ use totsu_core::{LinAlgEx, MatType, MatOp};
 /// <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 /// <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 /// 
-/// Matrix struct which owns a `Vec` of data array and is able to be cheaply converted as [`totsu_core::MatOp`].
+/// Matrix struct which owns a `Vec` of data array and is able to be converted as [`totsu_core::MatOp`].
 /// This struct relies on dynamic heap allocation.
 #[derive(Debug, Clone)]
 pub struct MatBuild<L: LinAlgEx>
@@ -298,7 +298,7 @@ impl<L: LinAlgEx> IndexMut<(usize, usize)> for MatBuild<L>
 //
 
 // used by examples
-impl <L: LinAlgEx> AsRef<[L::F]> for MatBuild<L>
+impl<L: LinAlgEx> AsRef<[L::F]> for MatBuild<L>
 {
     fn as_ref(&self) -> &[L::F]
     {
@@ -307,7 +307,7 @@ impl <L: LinAlgEx> AsRef<[L::F]> for MatBuild<L>
 }
 
 // used by examples
-impl <L: LinAlgEx> AsMut<[L::F]> for MatBuild<L>
+impl<L: LinAlgEx> AsMut<[L::F]> for MatBuild<L>
 {
     fn as_mut(&mut self) -> &mut[L::F]
     {
