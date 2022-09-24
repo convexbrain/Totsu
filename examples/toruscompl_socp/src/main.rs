@@ -1,7 +1,6 @@
 use totsu::prelude::*;
-use totsu::operator::MatBuild;
-use totsu::linalg::F64LAPACK;
-use totsu::problem::ProbSOCP;
+use totsu::*;
+use totsu_f64lapack::F64LAPACK;
 
 use std::collections::HashMap;
 
@@ -10,9 +9,10 @@ use plotters::prelude::*;
 use intel_mkl_src as _;
 use anyhow::Result;
 
-type AMatBuild = MatBuild<F64LAPACK, f64>;
-type AProbSOCP = ProbSOCP<F64LAPACK, f64>;
-type ASolver = Solver<F64LAPACK, f64>;
+type La = F64LAPACK;
+type AMatBuild = MatBuild<La>;
+type AProbSOCP = ProbSOCP<La>;
+type ASolver = Solver<La>;
 
 struct Member
 {
