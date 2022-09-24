@@ -1,0 +1,12 @@
+[package]
+name = "utils2"
+version = "0.1.0"
+authors = ["convexbrain <convexbrain@gmail.com>"]
+edition = "2021"
+publish = false
+
+[dependencies]
+totsu_core = "0.1.0"
+num-traits = "0.2.15"
+plotters = "0.3.4"
+log = "0.4.17"
