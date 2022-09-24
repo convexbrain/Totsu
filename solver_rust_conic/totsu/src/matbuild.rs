@@ -297,6 +297,24 @@ impl<L: LinAlgEx> IndexMut<(usize, usize)> for MatBuild<L>
 
 //
 
+impl <L: LinAlgEx> AsRef<[L::F]> for MatBuild<L>
+{
+    fn as_ref(&self) -> &[L::F]
+    {
+        &self.array
+    }
+}
+
+impl <L: LinAlgEx> AsMut<[L::F]> for MatBuild<L>
+{
+    fn as_mut(&mut self) -> &mut[L::F]
+    {
+        &mut self.array
+    }
+}
+
+//
+
 impl<L: LinAlgEx> core::fmt::Display for MatBuild<L>
 where L::F: Float + core::fmt::LowerExp
 {
