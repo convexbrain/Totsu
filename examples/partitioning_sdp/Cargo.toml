@@ -6,7 +6,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-totsu = {path = "../../solver_rust_conic/totsu"} # TODO
+totsu = "0.10.1"
 totsu_core = "0.1.0"
 totsu_f64lapack = "0.1.0"
 utils = {path = "../utils2", package = "utils2"}
