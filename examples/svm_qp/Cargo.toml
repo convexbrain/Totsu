@@ -15,9 +15,4 @@ env_logger = "0.9.1"
 plotters = "0.3.4"
 num-traits = "0.2.15"
 anyhow = "1.0.65"
-
-[dependencies.intel-mkl-src]
-default-features = false
-git = 'https://github.com/convexbrain/intel-mkl-src' #patch
-branch = 'branch_from_intel-mkl-src-v0.7.0' #patch
-features = ["mkl-static-lp64-seq"]
+intel-mkl-src = {version = "0.8.1", features = ["mkl-static-lp64-seq"]}

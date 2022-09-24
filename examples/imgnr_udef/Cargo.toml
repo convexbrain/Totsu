@@ -15,13 +15,7 @@ anyhow = "1.0.65"
 image = "0.24.3"
 log = "0.4.17"
 cblas = "0.4.0"
-
-# TODO: intel-mkl-src
-[dependencies.intel-mkl-src]
-default-features = false
-git = 'https://github.com/convexbrain/intel-mkl-src' #patch
-branch = 'branch_from_intel-mkl-src-v0.7.0' #patch
-features = ["mkl-static-lp64-iomp"]
+intel-mkl-src = {version = "0.8.1", features = ["mkl-static-lp64-iomp"]}
 
 [dev-dependencies]
 float_eq = "1.0.0"
