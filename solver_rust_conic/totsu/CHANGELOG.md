@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- `AsRef` and `AsMut` for `MatBuild`.
 ### Changed
 ### Deprecated
 ### Removed
 ### Fixed
 ### Security
+
+## [0.10.1] - 2022-09-24
+### Added
+- `AsRef` and `AsMut` for `MatBuild`.
 
 ## [0.10.0] - 2022-09-23
 ### Changed
@@ -62,7 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Completely revised from [0.5.0] to conic solver.
 
 
-[unreleased]: https://github.com/convexbrain/Totsu/compare/totsu_v0.10.0...HEAD
+[unreleased]: https://github.com/convexbrain/Totsu/compare/totsu_v0.10.1...HEAD
+[0.10.1]: https://github.com/convexbrain/Totsu/releases/tag/totsu_v0.10.1
 [0.10.0]: https://github.com/convexbrain/Totsu/releases/tag/totsu_v0.10.0
 [0.9.1]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.9.1
 [0.9.0]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.9.0
