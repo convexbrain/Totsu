@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- `Debug` of `MatBuild` prints like `Display`.
 ### Deprecated
 ### Removed
 ### Fixed

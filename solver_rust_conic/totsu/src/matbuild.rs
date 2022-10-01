@@ -12,7 +12,7 @@ use totsu_core::{LinAlgEx, MatType, MatOp};
 /// 
 /// Matrix struct which owns a `Vec` of data array and is able to be converted as [`totsu_core::MatOp`].
 /// This struct relies on dynamic heap allocation.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct MatBuild<L: LinAlgEx>
 {
     typ: MatType,
@@ -316,6 +316,46 @@ impl<L: LinAlgEx> AsMut<[L::F]> for MatBuild<L>
 }
 
 //
+
+impl<L: LinAlgEx> core::fmt::Debug for MatBuild<L>
+where L::F: Float + core::fmt::LowerExp
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error>
+    {
+        let (nr, nc) = self.size();
+
+        if nr == 0 || nc == 0 {
+            write!(f, "[ ]")?;
+        }
+        else {
+            for r in 0..nr {
+                if r == 0 {
+                    write!(f, "[")?;
+                }
+                else {
+                    write!(f, " ")?;
+                }
+
+                for c in 0..nc {
+                    write!(f, " {:.3e}", self[(r, c)])?;
+                }
+
+                if r < nr - 1 {
+                    writeln!(f)?;
+                }
+                else {
+                    write!(f, " ] ({} x {}) ", nr, nc)?;
+                    match self.typ {
+                        MatType::General(_, _) => write!(f, "General")?,
+                        MatType::SymPack(_) => write!(f, "Symmetric Packed")?,
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
 
 impl<L: LinAlgEx> core::fmt::Display for MatBuild<L>
 where L::F: Float + core::fmt::LowerExp
