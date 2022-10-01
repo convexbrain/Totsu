@@ -62,7 +62,6 @@ fn bench<L: LinAlgEx<F=f32>>(sz: usize) {
     let s = Solver::<L>::new()
             .par(|p| {
                 p.eps_acc = 1e-3;
-                p.log_period = 1000;
             });
     let mut lp = ProbLP::new(vec_c, mat_g, vec_h, mat_a, vec_b);
     let prob = lp.problem();
