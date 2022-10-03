@@ -12,7 +12,7 @@ use std::str::FromStr;
 
 fn bench<L: LinAlgEx<F=f32>>(sz: usize) {
     let n = sz;
-    let m = n + sz;
+    let m = sz;
     let p = 0;
 
     let mut rng = Xoshiro256StarStar::seed_from_u64(0);
@@ -20,41 +20,31 @@ fn bench<L: LinAlgEx<F=f32>>(sz: usize) {
     //----- construct QP
 
     let sym_p = MatBuild::new(MatType::SymPack(n))
-                .by_fn(|_, _| {
-                    rng.gen::<f32>() * 2. - 1.
+                .by_fn(|r, c| {
+                    if r == c {
+                        rng.gen()
+                    }
+                    else {
+                        0.
+                    }
                 });
     //println!("sym_p:\n{}", sym_p);
 
     let vec_q = MatBuild::new(MatType::General(n, 1))
                 .by_fn(|_, _| {
-                    rng.gen::<f32>() * 2. - 1.
+                    rng.gen()
                 });
     //println!("vec_q:\n{}", vec_q);
 
     let mat_g = MatBuild::new(MatType::General(m, n))
-                .by_fn(|r, c| {
-                    if r < n {
-                        if r == c {
-                            -1.
-                        }
-                        else {
-                            0.
-                        }
-                    }
-                    else {
-                        rng.gen()
-                    }
+                .by_fn(|_, _| {
+                    -rng.gen::<f32>()
                 });
     //println!("mat_g:\n{}", mat_g);
 
     let vec_h = MatBuild::new(MatType::General(m, 1))
-                .by_fn(|r, _| {
-                    if r < n {
-                        0.
-                    }
-                    else {
-                        rng.gen()
-                    }
+                .by_fn(|_, _| {
+                    -rng.gen::<f32>()
                 });
     //println!("vec_h:\n{}", vec_h);
         
