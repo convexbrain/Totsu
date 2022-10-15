@@ -1,6 +1,6 @@
 use num_traits::{Float, Zero, One};
-use crate::solver::{Cone, LinAlg, SliceLike};
-use crate::ConeSOC;
+use crate::solver::{Cone, SliceLike};
+use crate::{LinAlgEx, ConeSOC, splitm_mut};
 
 //
 
@@ -15,12 +15,12 @@ use crate::ConeSOC;
 /// \ \middle|\ x_3^2+\cdots+x_n^2 \le 2x_1x_2, x_1\ge0, x_2\ge0
 /// \right\rbrace
 /// \\]
-pub struct ConeRotSOC<L: LinAlg>
+pub struct ConeRotSOC<L: LinAlgEx>
 {
     soc: ConeSOC<L>,
 }
 
-impl<L: LinAlg> ConeRotSOC<L>
+impl<L: LinAlgEx> ConeRotSOC<L>
 {
     /// Creates an instance.
     /// 
@@ -33,14 +33,14 @@ impl<L: LinAlg> ConeRotSOC<L>
     }
 }
 
-impl<L: LinAlg> Cone<L> for ConeRotSOC<L>
+impl<L: LinAlgEx> Cone<L> for ConeRotSOC<L>
 {
     fn proj(&mut self, dual_cone: bool, x: &mut L::Sl) -> Result<(), ()>
     {
         let f0 = L::F::zero();
         let f1 = L::F::one();
         let f2 = f1 + f1;
-        let fsqrt2 = f2.sqrt();
+        let fsqrt2r = f2.sqrt() / f2;
 
         if x.len() > 0 {
             if x.len() == 1 {
@@ -48,17 +48,17 @@ impl<L: LinAlg> Cone<L> for ConeRotSOC<L>
                 x.set(0, r.max(f0));
             }
             else {
-                let r = x.get(0);
-                let s = x.get(1);
-                x.set(0, (r + s) / fsqrt2);
-                x.set(1, (r - s) / fsqrt2);
+                {
+                    splitm_mut!(x, (rs; 2));
+                    L::add_sub(fsqrt2r, &mut rs);
+                }
 
                 self.soc.proj(dual_cone, x)?;
 
-                let r = x.get(0);
-                let s = x.get(1);
-                x.set(0, (r + s) / fsqrt2);
-                x.set(1, (r - s) / fsqrt2);
+                {
+                    splitm_mut!(x, (rs; 2));
+                    L::add_sub(fsqrt2r, &mut rs);
+                }
             }
         }
         Ok(())

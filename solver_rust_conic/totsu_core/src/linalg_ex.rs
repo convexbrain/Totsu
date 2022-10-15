@@ -1,4 +1,4 @@
-use crate::solver::LinAlg;
+use crate::solver::{LinAlg, SliceLike};
 
 /// Linear algebra extended subtrait
 /// 
@@ -63,4 +63,16 @@ pub trait LinAlgEx: LinAlg + Clone
     ///   Returning `None` has the same effect as no-modification but reduces computation.
     fn map_eig<M>(mat: &mut Self::Sl, scale_diag: Option<Self::F>, eps_zero: Self::F, work: &mut Self::Sl, map: M)
     where M: Fn(Self::F)->Option<Self::F>;
+
+    // TODO: doc
+    fn add_sub(alpha: Self::F, x: &mut Self::Sl)
+    {
+        assert_eq!(x.len(), 2);
+
+        let x_mut = x.get_mut();
+        let a = x_mut[0];
+        let b = x_mut[1];
+        x_mut[0] = (a + b) * alpha;
+        x_mut[1] = (a - b) * alpha;
+    }
 }

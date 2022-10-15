@@ -211,6 +211,24 @@ impl LinAlgEx for F32CUDA
 
         mat_to_vec(&mut a, mat, scale_diag);
     }
+
+    fn add_sub(alpha: f32, x: &mut F32CUDASlice)
+    {
+        assert_eq!(x.len(), 2);
+        
+        let px = x.get_dev_mut().as_mut_ptr();
+
+        unsafe {
+            let st = cublasSrotm_v2(
+                cuda_mgr::cublas_handle(),
+                1,
+                px, 1,
+                px.offset(1), 1,
+                [-1., alpha, alpha, alpha, -alpha].as_ptr()
+            );
+            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+        }
+    }
 }
 
 //

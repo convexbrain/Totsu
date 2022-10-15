@@ -53,9 +53,15 @@ pub trait SliceLike
     /// Using [`SliceLike::get_ref`] is more efficient if you traverse the [`SliceLike`]'s content.
     fn get(&self, idx: usize) -> Self::F
     {
-        let (_, spl) = self.split_ref(idx);
-        let (ind, _) = spl.split_ref(1);
-        ind.get_ref()[0]
+        if self.len() == 1 {
+            assert_eq!(idx, 0);
+            self.get_ref()[0]
+        }
+        else {
+            let (_, spl) = self.split_ref(idx);
+            let (ind, _) = spl.split_ref(1);
+            ind.get_ref()[0]
+        }
     }
 
     /// Sets a single element of the [`SliceLike`] at an index `idx` with a given value `val`.
@@ -63,9 +69,15 @@ pub trait SliceLike
     /// Using [`SliceLike::get_mut`] is more efficient if you traverse the [`SliceLike`]'s content.
     fn set(&mut self, idx: usize, val: Self::F)
     {
-        let (_, mut spl) = self.split_mut(idx);
-        let (mut ind, _) = spl.split_mut(1);
-        ind.get_mut()[0] = val;
+        if self.len() == 1 {
+            assert_eq!(idx, 0);
+            self.get_mut()[0] = val;
+        }
+        else {
+            let (_, mut spl) = self.split_mut(idx);
+            let (mut ind, _) = spl.split_mut(1);
+            ind.get_mut()[0] = val;
+        }
     }
 }
 

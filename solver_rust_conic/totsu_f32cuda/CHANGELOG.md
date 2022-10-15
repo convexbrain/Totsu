@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- `F32CUDA::add_sub` for performance improvement.
 ### Changed
 ### Deprecated
 ### Removed

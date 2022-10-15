@@ -26,12 +26,12 @@ libc = "0.2.133"
 num-traits = "0.2.15"
 
 [dependencies.totsu_core]
-version = "0.1.0"
-#path = "../totsu_core"
+#version = "0.1.0"
+path = "../totsu_core"
 
 [dev-dependencies.totsu]
-version = "0.10.0"
-#path = "../totsu"
+#version = "0.10.0"
+path = "../totsu"
 
 [dev-dependencies]
 float_eq = "1.0.0"
