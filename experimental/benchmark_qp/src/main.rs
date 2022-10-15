@@ -72,7 +72,7 @@ fn bench<L: LinAlgEx<F=f32>>(sz: usize) {
 fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    let mut sz = 3;
+    let mut sz = 100;
     
     let args: Vec<String> = std::env::args().collect();
     if args.len() >= 2 {
