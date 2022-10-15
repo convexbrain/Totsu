@@ -39,7 +39,7 @@ impl<L: LinAlg> Cone<L> for ConeRPos<L>
     {
         let x_mut = x.get_mut();
         for e in x_mut {
-            *e = e.max(L::F::zero());
+            *e = e.max(L::F::zero()); // TODO: perf
         }
         Ok(())
     }

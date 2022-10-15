@@ -356,7 +356,9 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         self.init_vecs(&mut x, &mut y);
 
         // Calculate diagonal preconditioning
+        //nvtx::range_push!("calc_precond");
         self.calc_precond(&mut dp_tau, &mut dp_sigma);
+        //nvtx::range_pop!();
 
         // Iteration
         log::info!("----- Started");
@@ -379,7 +381,9 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
             };
 
             // Update vectors
+            //nvtx::range_push!("update_vecs {}", i);
             let val_tau = self.update_vecs(&mut x, &mut y, &dp_tau, &dp_sigma, &mut tmpw)?;
+            //nvtx::range_pop!();
 
             if val_tau > self.par.eps_zero {
                 // Termination criteria of convergence
@@ -461,7 +465,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
     -> (L::F, L::F)
     {
         let mut work1 = [L::F::zero()];
-        let mut work_one = L::Sl::new_mut(&mut work1);
+        let mut work_one = L::Sl::new_mut(&mut work1); // TODO: perf
         
         let norm_b = {
             let (m, _) = self.op_k.b().size();
@@ -495,14 +499,17 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
 
     fn calc_precond(&self, dp_tau: &mut L::Sl, dp_sigma: &mut L::Sl)
     {
+        // TODO: better grouping and avoiding division by zero
         let (m, n) = self.op_k.a().size();
 
+        //nvtx::range_push!("op_k.abssum");
         self.op_k.abssum(dp_tau, dp_sigma);
+        //nvtx::range_pop!();
         for tau in dp_tau.get_mut() {
-            *tau = (*tau).max(self.par.eps_zero).recip();
+            *tau = (*tau).max(self.par.eps_zero).recip(); // TODO: perf
         }
         for sigma in dp_sigma.get_mut() {
-            *sigma = (*sigma).max(self.par.eps_zero).recip();
+            *sigma = (*sigma).max(self.par.eps_zero).recip(); // TODO: perf
         }
 
         // grouping dependent on cone
@@ -511,7 +518,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
                 let tau_group_mut = tau_group.get_mut();
                 let mut min_t = tau_group_mut[0];
                 for t in tau_group_mut.iter() {
-                    min_t = min_t.min(*t);
+                    min_t = min_t.min(*t); // TODO: perf
                 }
                 for t in tau_group_mut.iter_mut() {
                     *t = min_t;
@@ -545,10 +552,12 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         { // Projection prox_G(x)
             splitm_mut!(x, (_x_x; n), (x_y; m), (x_s; m), (x_tau; 1));
 
+            //nvtx::range_push!("cone.proj");
             self.cone.proj(true, &mut x_y).or(Err(SolverError::ConeFailure))?;
             self.cone.proj(false, &mut x_s).or(Err(SolverError::ConeFailure))?;
+            //nvtx::range_pop!();
 
-            val_tau = x_tau.get(0).max(f0);
+            val_tau = x_tau.get(0).max(f0); // TODO: perf
             x_tau.set(0, val_tau);
         }
 
@@ -563,7 +572,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         { // Projection prox_F*(y)
             splitm_mut!(y, (_y_nm; n + m), (y_1; 1));
 
-            let kappa = y_1.get(0).min(f0);
+            let kappa = y_1.get(0).min(f0); // TODO: perf
             y_1.set(0, kappa);
         }
 
@@ -585,7 +594,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         assert!(val_tau > f0);
     
         let mut work1 = [f1];
-        let mut work_one = L::Sl::new_mut(&mut work1);
+        let mut work_one = L::Sl::new_mut(&mut work1); // TODO: perf
     
         // Calc convergence criteria
         
@@ -624,7 +633,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         let finf = L::F::infinity();
     
         let mut work1 = [f0];
-        let mut work_one = L::Sl::new_mut(&mut work1);
+        let mut work_one = L::Sl::new_mut(&mut work1); // TODO: perf
 
         // Calc undoundness and infeasibility criteria
         

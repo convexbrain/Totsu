@@ -85,7 +85,7 @@ impl LinAlg for F32CUDA
 
     fn adds(s: f32, y: &mut F32CUDASlice)
     {
-        let one = cuda_mgr::buf_from_slice(&[1.]);
+        let one = cuda_mgr::buf_from_slice(&[1.]); // TODO: perf
 
         unsafe {
             let st = cublasSaxpy_v2(
@@ -265,7 +265,7 @@ where E: Fn(f32)->Option<f32>
     let lwork = eig_func_worklen(n) - n - n * n;
 
     let mut meig: i32 = 0;
-    let mut dev_info = cuda_mgr::buf_zeroes(1);
+    let mut dev_info = cuda_mgr::buf_zeroes(1); // TODO: perf
 
     unsafe {
         let st = cusolverDnSsyevdx(
