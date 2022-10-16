@@ -26,6 +26,7 @@ libm = ["num-traits/libm"]
 
 [dependencies]
 log = "0.4.17"
+#nvtx = "1.1.1"
 
 [dependencies.num-traits]
 version = "0.2.15"
