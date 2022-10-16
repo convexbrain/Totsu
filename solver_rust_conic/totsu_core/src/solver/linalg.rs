@@ -65,4 +65,13 @@ pub trait LinAlg
     /// * `y` is a vector \\(y\\) before entry, \\(\alpha D x + \beta y\\) on exit.
     ///   `mat`, `x` and `y` shall have the same length.
     fn transform_di(alpha: Self::F, mat: &Self::Sl, x: &Self::Sl, beta: Self::F, y: &mut Self::Sl);
+
+    // TODO: doc
+    fn max(x: &mut Self::Sl, v: Self::F)
+    {
+        let x_mut = x.get_mut();
+        for e in x_mut {
+            *e = e.max(v);
+        }
+    }
 }

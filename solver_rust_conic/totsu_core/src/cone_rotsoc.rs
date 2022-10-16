@@ -44,8 +44,7 @@ impl<L: LinAlgEx> Cone<L> for ConeRotSOC<L>
 
         if x.len() > 0 {
             if x.len() == 1 {
-                let r = x.get(0);
-                x.set(0, r.max(f0)); // TODO: perf
+                L::max(x, f0);
             }
             else {
                 {

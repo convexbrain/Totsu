@@ -1,6 +1,7 @@
 use totsu_core::solver::{SliceLike, LinAlg};
 use totsu_core::LinAlgEx;
 use rustacuda::prelude::*;
+use rustacuda::launch;
 use cublas_sys::*;
 use crate::cuda_mgr;
 use crate::f32cuda_slice::F32CUDASlice;
@@ -133,6 +134,25 @@ impl LinAlg for F32CUDA
             );
             assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
         }
+    }
+
+    fn max(x: &mut F32CUDASlice, v: f32)
+    {
+        let stream = &cuda_mgr::cuda_handle().stream;
+        let module = &cuda_mgr::cuda_handle().module;
+
+        let n_thread = 128;
+        let n_block = (x.len() as u32 + (n_thread - 1)) / n_thread;
+        let n_block = n_block.min(128);
+
+        unsafe {
+            launch!(module.maximum<<<n_block, n_thread, 0, stream>>>(
+                x.get_dev_mut().as_device_ptr(),
+                v,
+                x.len()
+            )).unwrap();
+        }
+        //stream.synchronize().unwrap();
     }
 }
 

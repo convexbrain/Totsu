@@ -1,6 +1,6 @@
-use num_traits::{Float, Zero};
+use num_traits::Zero;
 use core::marker::PhantomData;
-use crate::solver::{Cone, LinAlg, SliceLike};
+use crate::solver::{Cone, LinAlg};
 
 //
 
@@ -37,10 +37,7 @@ impl<L: LinAlg> Cone<L> for ConeRPos<L>
 {
     fn proj(&mut self, _dual_cone: bool, x: &mut L::Sl) -> Result<(), ()>
     {
-        let x_mut = x.get_mut();
-        for e in x_mut {
-            *e = e.max(L::F::zero()); // TODO: perf
-        }
+        L::max(x, L::F::zero());
         Ok(())
     }
 

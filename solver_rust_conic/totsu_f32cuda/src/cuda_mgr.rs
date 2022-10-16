@@ -3,15 +3,23 @@
 use std::prelude::v1::*;
 use std::thread_local;
 use std::rc::Rc;
+use std::ffi::CString;
 use num_traits::Zero;
 use rustacuda::prelude::*;
 use rustacuda::memory::{DeviceBuffer, DeviceCopy};
 use cublas_sys::*;
 use super::cusolver_sys_partial::*;
 
+pub struct CudaHandle
+{
+    pub context: Context,
+    pub module: Module,
+    pub stream: Stream,
+}
+
 struct CudaManager
 {
-    cuda_ctx: Rc<Context>,
+    cuda_handle: Rc<CudaHandle>,
     cublas_handle: cublasHandle_t,
     cusolver_handle: cusolverDnHandle_t,
 }
@@ -46,14 +54,35 @@ impl CudaManager
         log::info!("CUDA device name: {}", device.name().unwrap());
 
         // Create a context associated to this device
-        let cuda_ctx = Context::create_and_push(
+        let context = Context::create_and_push(
             ContextFlags::MAP_HOST | ContextFlags::SCHED_AUTO,
             device
         );
-        if cuda_ctx.is_err() {
+        if context.is_err() {
             log::error!("CUDA context failed to create");
         }
-        let cuda_ctx = Rc::new(cuda_ctx.unwrap());
+        let context = context.unwrap();
+
+        // Load the kernel module
+        let module_data = CString::new(include_str!("../kernel/kernel.ptx")).unwrap();
+        let module = Module::load_from_string(&module_data);
+        if module.is_err() {
+            log::error!("CUDA module failed to create");
+        }
+        let module = module.unwrap();
+
+        // Create a stream
+        let stream = Stream::new(StreamFlags::DEFAULT, None);
+        if stream.is_err() {
+            log::error!("CUDA stream failed to create");
+        }
+        let stream = stream.unwrap();
+
+        let cuda_handle = Rc::new(CudaHandle {
+            context,
+            module,
+            stream,
+        });
 
         // cuBLAS handle
         let mut cublas_handle: cublasHandle_t = std::ptr::null_mut();
@@ -77,7 +106,7 @@ impl CudaManager
 
         log::debug!("CUDA_MANAGER created");
         CudaManager {
-            cuda_ctx,
+            cuda_handle,
             cublas_handle,
             cusolver_handle,
         }
@@ -93,7 +122,7 @@ impl Drop for CudaManager
             if st != cublasStatus_t::CUBLAS_STATUS_SUCCESS {
                 log::error!("cuBLAS handle failed to destroy");
             }
-            assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+            //assert_eq!(st, cublasStatus_t::CUBLAS_STATUS_SUCCESS);
         }
 
         unsafe {
@@ -101,7 +130,7 @@ impl Drop for CudaManager
             if st != cusolverStatus_t::CUSOLVER_STATUS_SUCCESS {
                 log::error!("cuSOLVER handle failed to destroy");
             }
-            assert_eq!(st, cusolverStatus_t::CUSOLVER_STATUS_SUCCESS);
+            //assert_eq!(st, cusolverStatus_t::CUSOLVER_STATUS_SUCCESS);
         }
 
         log::debug!("CUDA_MANAGER dropped");
@@ -137,11 +166,11 @@ where T: Zero
     })
 }
 
-/// Gets the CUDA context.
-pub fn context() -> Rc<Context>
+/// Gets the CUDA handle.
+pub fn cuda_handle() -> Rc<CudaHandle>
 {
     CUDA_MANAGER.with(|mgr| {
-        mgr.cuda_ctx.clone()
+        mgr.cuda_handle.clone()
     })
 }
 
