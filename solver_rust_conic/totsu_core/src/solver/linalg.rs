@@ -74,4 +74,13 @@ pub trait LinAlg
             *e = e.max(v);
         }
     }
+
+    // TODO: doc
+    fn min(x: &mut Self::Sl, v: Self::F)
+    {
+        let x_mut = x.get_mut();
+        for e in x_mut {
+            *e = e.min(v);
+        }
+    }
 }

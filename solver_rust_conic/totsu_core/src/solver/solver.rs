@@ -557,8 +557,8 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
             self.cone.proj(false, &mut x_s).or(Err(SolverError::ConeFailure))?;
             //nvtx::range_pop!();
 
-            val_tau = x_tau.get(0).max(f0); // TODO: perf
-            x_tau.set(0, val_tau);
+            L::max(&mut x_tau, f0);
+            val_tau = x_tau.get(0);
         }
 
         L::add(-f1-f1, x, &mut rx); // rx := x_k - 2 * x_{k+1}
@@ -572,8 +572,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         { // Projection prox_F*(y)
             splitm_mut!(y, (_y_nm; n + m), (y_1; 1));
 
-            let kappa = y_1.get(0).min(f0); // TODO: perf
-            y_1.set(0, kappa);
+            L::min(&mut y_1, f0);
         }
 
         Ok(val_tau)
@@ -585,7 +584,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         let (m, n) = self.op_k.a().size();
 
         splitm!(x, (x_x; n), (x_y; m), (x_s; m), (x_tau; 1));
-        splitm_mut!(tmpw, (p; m), (d; n));
+        splitm_mut!(tmpw, (p; m), (d; n), (work_one; 1));
     
         let f0 = L::F::zero();
         let f1 = L::F::one();
@@ -593,8 +592,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         let val_tau = x_tau.get(0);
         assert!(val_tau > f0);
     
-        let mut work1 = [f1];
-        let mut work_one = L::Sl::new_mut(&mut work1); // TODO: perf
+        work_one.set(0, f1);
     
         // Calc convergence criteria
         
@@ -626,15 +624,12 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         let (m, n) = self.op_k.a().size();
 
         splitm!(x, (x_x; n), (x_y; m), (x_s; m), (_x_tau; 1));
-        splitm_mut!(tmpw, (p; m), (d; n));
+        splitm_mut!(tmpw, (p; m), (d; n), (work_one; 1));
 
         let f0 = L::F::zero();
         let f1 = L::F::one();
         let finf = L::F::infinity();
     
-        let mut work1 = [f0];
-        let mut work_one = L::Sl::new_mut(&mut work1); // TODO: perf
-
         // Calc undoundness and infeasibility criteria
         
         L::copy(&x_s, &mut p);

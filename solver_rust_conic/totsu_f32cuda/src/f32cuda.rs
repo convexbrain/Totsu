@@ -154,6 +154,25 @@ impl LinAlg for F32CUDA
         }
         //stream.synchronize().unwrap();
     }
+
+    fn min(x: &mut F32CUDASlice, v: f32)
+    {
+        let stream = &cuda_mgr::cuda_handle().stream;
+        let module = &cuda_mgr::cuda_handle().module;
+
+        let n_thread = 128;
+        let n_block = (x.len() as u32 + (n_thread - 1)) / n_thread;
+        let n_block = n_block.min(128);
+
+        unsafe {
+            launch!(module.minimum<<<n_block, n_thread, 0, stream>>>(
+                x.get_dev_mut().as_device_ptr(),
+                v,
+                x.len()
+            )).unwrap();
+        }
+        //stream.synchronize().unwrap();
+    }
 }
 
 //

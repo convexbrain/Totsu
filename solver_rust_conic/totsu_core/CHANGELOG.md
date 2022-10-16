@@ -7,12 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- `LinAlgEx::add_sub` for performance improvement.
-- `LinAlg::max` for performance improvement.
+- `LinAlgEx::add_sub`, `LinAlg::max`, `LinAlg::min` for performance improvement.
 ### Changed
-- Performance improvement of `ConeRotSOC::proj`.
-- Performance improvement of `ConeRPos::proj`.
+- Performance improvement of `ConeRotSOC::proj`, `ConeRPos::proj`.
 - Performance improvement of `SliceLike::get` and `SliceLike::set`.
+- Performance improvement of `Solver::solve`.
 ### Deprecated
 ### Removed
 ### Fixed

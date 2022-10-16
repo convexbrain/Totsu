@@ -7,11 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- `F32CUDA::add_sub` for performance improvement.
-- `F32CUDA::max` for performance improvement.
+- `F32CUDA::add_sub`, `F32CUDA::max`, `F32CUDA::min` for performance improvement.
 - `kernel.ptx` and `kernel.cu`.
 ### Changed
-- `CudaHandle` including context, stream and modlue.
+- `CudaHandle` including context, stream, modlue.
 ### Deprecated
 ### Removed
 ### Fixed
