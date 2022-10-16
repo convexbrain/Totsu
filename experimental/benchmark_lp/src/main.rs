@@ -85,8 +85,8 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    bench::<FloatGeneric<f32>>(sz);
     bench::<F32CUDA>(sz);
+    bench::<FloatGeneric<f32>>(sz);
 
     Ok(())
 }
