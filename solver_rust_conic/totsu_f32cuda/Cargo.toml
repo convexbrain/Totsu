@@ -22,7 +22,7 @@ license = "Unlicense"
 log = "0.4.17"
 cublas-sys = "0.1.0"
 rustacuda = "0.1.3"
-libc = "0.2.133"
+libc = "0.2.139"
 num-traits = "0.2.15"
 
 [dependencies.totsu_core]
@@ -30,9 +30,9 @@ version = "0.1.0"
 #path = "../totsu_core"
 
 [dev-dependencies.totsu]
-version = "0.10.0"
+version = "0.10.1"
 #path = "../totsu"
 
 [dev-dependencies]
-float_eq = "1.0.0"
-env_logger = "0.9.1"
+float_eq = "1.0.1"
+env_logger = "0.10.0"
