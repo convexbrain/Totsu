@@ -8,13 +8,13 @@ edition = "2021"
 
 [dependencies]
 cortex-m = "0.7.6"
-cortex-m-rt = "0.7.1"
+cortex-m-rt = "0.7.2"
 cortex-m-semihosting = "0.5.0"
 panic-semihosting = {version = "0.6.0", features = ["exit"]}
 log = "0.4.17"
 
 [dependencies.totsu_core]
-version = "0.1.0"
+version = "0.1.1"
 default-features = false
 features = ["libm"]
 

@@ -1,7 +1,6 @@
 use totsu::prelude::*;
 use totsu::MatBuild;
-use totsu_core::MatOp;
-use totsu_core::solver::{Operator, LinAlg};
+use totsu::totsu_core::{MatOp, solver::{Operator, LinAlg}};
 
 use super::La;
 

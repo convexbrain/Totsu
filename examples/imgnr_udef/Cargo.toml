@@ -6,16 +6,15 @@ edition = "2021"
 publish = false
 
 [dependencies]
-totsu = "0.10.1"
-totsu_core = "0.1.0"
-totsu_f64lapack = "0.1.0"
+totsu = "0.10.2"
+totsu_f64lapack = "0.1.1"
 utils = {path = "../utils2", package="utils2"}
-env_logger = "0.9.1"
-anyhow = "1.0.65"
-image = "0.24.3"
+env_logger = "0.10.0"
+anyhow = "1.0.68"
+image = "0.24.5"
 log = "0.4.17"
 cblas = "0.4.0"
 intel-mkl-src = {version = "0.8.1", features = ["mkl-static-lp64-iomp"]}
 
 [dev-dependencies]
-float_eq = "1.0.0"
+float_eq = "1.0.1"
