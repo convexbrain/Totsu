@@ -1,6 +1,6 @@
 [package]
 name = "totsu"
-version = "0.10.1"
+version = "0.10.2"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2021"
 
@@ -23,7 +23,7 @@ log = "0.4.17"
 num-traits = "0.2.15"
 
 [dependencies.totsu_core]
-version = "0.1.0"
+version = "0.1.1"
 #path = "../totsu_core"
 
 [dev-dependencies]

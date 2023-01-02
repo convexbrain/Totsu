@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Re-export `totsu_core` module.
 ### Changed
 - `Debug` of `MatBuild` prints like `Display`.
+- Update version of `totsu`.
 - Update versions of `float_eq` and `env_logger`.
 ### Deprecated
 ### Removed
