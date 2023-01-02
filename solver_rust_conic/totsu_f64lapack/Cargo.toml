@@ -28,12 +28,12 @@ version = "0.1.0"
 #path = "../totsu_core"
 
 [dev-dependencies.totsu]
-version = "0.10.0"
+version = "0.10.1"
 #path = "../totsu"
 
 [dev-dependencies]
-float_eq = "1.0.0"
-env_logger = "0.9.1"
+float_eq = "1.0.1"
+env_logger = "0.10.0"
 
 [dev-dependencies.intel-mkl-src]
 version = "0.8.1"

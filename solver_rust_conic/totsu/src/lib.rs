@@ -100,6 +100,8 @@ pub use problem::*;
 
 //
 
+pub use totsu_core;
+
 /// Prelude
 pub mod prelude
 {

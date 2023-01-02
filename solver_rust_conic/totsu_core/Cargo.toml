@@ -32,5 +32,5 @@ version = "0.2.15"
 default-features = false
 
 [dev-dependencies]
-float_eq = "1.0.0"
-env_logger = "0.9.1"
+float_eq = "1.0.1"
+env_logger = "0.10.0"

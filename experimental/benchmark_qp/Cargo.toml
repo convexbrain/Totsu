@@ -1,16 +1,14 @@
 [package]
-name = "l1reg_lp"
+name = "benchmark_qp"
 version = "0.1.0"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2021"
 publish = false
 
 [dependencies]
-totsu = "0.10.1"
-utils = {path = "../utils2", package = "utils2"}
+totsu = {path = "../../solver_rust_conic/totsu"}
+totsu_f32cuda = {path = "../../solver_rust_conic/totsu_f32cuda"}
 rand = "0.8.5"
-itertools = "0.10.5"
 rand_xoshiro = "0.6.0"
 env_logger = "0.9.1"
-plotters = "0.3.4"
 anyhow = "1.0.65"

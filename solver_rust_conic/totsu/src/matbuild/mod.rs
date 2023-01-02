@@ -12,7 +12,7 @@ use totsu_core::{LinAlgEx, MatType, MatOp};
 /// 
 /// Matrix struct which owns a `Vec` of data array and is able to be converted as [`totsu_core::MatOp`].
 /// This struct relies on dynamic heap allocation.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct MatBuild<L: LinAlgEx>
 {
     typ: MatType,
@@ -297,71 +297,7 @@ impl<L: LinAlgEx> IndexMut<(usize, usize)> for MatBuild<L>
 
 //
 
-// used by examples
-impl<L: LinAlgEx> AsRef<[L::F]> for MatBuild<L>
-{
-    fn as_ref(&self) -> &[L::F]
-    {
-        &self.array
-    }
-}
-
-// used by examples
-impl<L: LinAlgEx> AsMut<[L::F]> for MatBuild<L>
-{
-    fn as_mut(&mut self) -> &mut[L::F]
-    {
-        &mut self.array
-    }
-}
-
-//
-
-impl<L: LinAlgEx> core::fmt::Display for MatBuild<L>
-where L::F: Float + core::fmt::LowerExp
-{
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error>
-    {
-        let (nr, nc) = self.size();
-        if nr == 0 || nc == 0 {
-            write!(f, "[ ]")?;
-        }
-        else {
-            write!(f, "[ {:.3e}", self[(0, 0)])?;
-            if nc > 2 {
-                write!(f, " ...")?;
-            }
-            if nc > 1 {
-                write!(f, " {:.3e}", self[(0, nc - 1)])?;
-            }
-
-            if nr > 2 {
-                writeln!(f)?;
-                write!(f, "  ...")?;
-            }
-
-            if nr > 1 {
-                writeln!(f)?;
-                write!(f, "  {:.3e}", self[(nr - 1, 0)])?;
-                if nc > 2 {
-                    write!(f, " ...")?;
-                }
-                if nc > 1 {
-                    write!(f, " {:.3e}", self[(nr - 1, nc - 1)])?;
-                }
-            }
-            write!(f, " ]")?;
-        }
-
-        write!(f, " ({} x {}) ", nr, nc)?;
-        match self.typ {
-            MatType::General(_, _) => write!(f, "General")?,
-            MatType::SymPack(_) => write!(f, "Symmetric Packed")?,
-        }
-
-        Ok(())
-    }
-}
+mod ex;
 
 //
 
