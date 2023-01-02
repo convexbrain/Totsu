@@ -1,6 +1,6 @@
 [package]
 name = "totsu_f32cuda"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2021"
 
@@ -26,11 +26,11 @@ libc = "0.2.139"
 num-traits = "0.2.15"
 
 [dependencies.totsu_core]
-version = "0.1.0"
+version = "0.1.1"
 #path = "../totsu_core"
 
 [dev-dependencies.totsu]
-version = "0.10.1"
+version = "0.10.2"
 #path = "../totsu"
 
 [dev-dependencies]
