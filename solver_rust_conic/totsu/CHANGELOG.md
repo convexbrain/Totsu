@@ -7,15 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+## [0.10.2] - 2023-01-03
+### Added
 - Re-export `totsu_core` module.
 ### Changed
 - `Debug` of `MatBuild` prints like `Display`.
 - Update version of `totsu_core`.
 - Update versions of `float_eq` and `env_logger`.
-### Deprecated
-### Removed
-### Fixed
-### Security
 
 ## [0.10.1] - 2022-09-24
 ### Added
@@ -69,7 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Completely revised from [0.5.0] to conic solver.
 
 
-[unreleased]: https://github.com/convexbrain/Totsu/compare/totsu_v0.10.1...HEAD
+[unreleased]: https://github.com/convexbrain/Totsu/compare/totsu_v0.10.2...HEAD
+[0.10.2]: https://github.com/convexbrain/Totsu/releases/tag/totsu_v0.10.2
 [0.10.1]: https://github.com/convexbrain/Totsu/releases/tag/totsu_v0.10.1
 [0.10.0]: https://github.com/convexbrain/Totsu/releases/tag/totsu_v0.10.0
 [0.9.1]: https://github.com/convexbrain/Totsu/releases/tag/rust_conic_v0.9.1
