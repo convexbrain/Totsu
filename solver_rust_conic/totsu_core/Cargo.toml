@@ -1,6 +1,6 @@
 [package]
 name = "totsu_core"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["convexbrain <convexbrain@gmail.com>"]
 edition = "2021"
 
@@ -33,5 +33,5 @@ version = "0.2.15"
 default-features = false
 
 [dev-dependencies]
-float_eq = "1.0.0"
-env_logger = "0.9.1"
+float_eq = "1.0.1"
+env_logger = "0.10.0"

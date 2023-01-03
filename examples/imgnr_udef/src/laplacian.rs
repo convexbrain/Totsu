@@ -1,4 +1,4 @@
-use totsu_core::solver::{Operator, LinAlg};
+use totsu::totsu_core::solver::{Operator, LinAlg};
 
 use super::La;
 

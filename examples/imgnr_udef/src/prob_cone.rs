@@ -1,5 +1,5 @@
-use totsu_core::{ConeRPos, ConeSOC};
-use totsu_core::solver::Cone;
+use totsu::totsu_core::{ConeRPos, ConeSOC};
+use totsu::totsu_core::solver::Cone;
 
 use super::La;
 

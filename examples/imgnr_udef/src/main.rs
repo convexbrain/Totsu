@@ -1,5 +1,5 @@
 use totsu::prelude::*;
-use totsu_core::solver::Operator;
+use totsu::totsu_core::solver::Operator;
 use totsu_f64lapack::F64LAPACK;
 
 use utils;
