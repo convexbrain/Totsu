@@ -10,5 +10,5 @@ totsu = {path = "../../solver_rust_conic/totsu"}
 totsu_f32cuda = {path = "../../solver_rust_conic/totsu_f32cuda"}
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"
-env_logger = "0.9.1"
-anyhow = "1.0.65"
+env_logger = "0.10.0"
+anyhow = "1.0.68"
