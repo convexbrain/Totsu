@@ -12,13 +12,6 @@ See [documentation](https://docs.rs/totsu/) for more details.
 
 ## Crate family
 
-### totsu_core
-
-[![Crate](https://img.shields.io/crates/v/totsu_core.svg)](https://crates.io/crates/totsu_core)
-[![API](https://docs.rs/totsu_core/badge.svg)](https://docs.rs/totsu_core)
-
-A first-order conic linear program solver for convex optimization.
-
 ### totsu
 
 [![Crate](https://img.shields.io/crates/v/totsu.svg)](https://crates.io/crates/totsu)
@@ -39,3 +32,10 @@ BLAS/LAPACK linear algebra operations for `totsu`/`totsu_core`.
 [![API](https://docs.rs/totsu_f32cuda/badge.svg)](https://docs.rs/totsu_f32cuda)
 
 CUDA linear algebra operations for `totsu`/`totsu_core`.
+
+### totsu_core
+
+[![Crate](https://img.shields.io/crates/v/totsu_core.svg)](https://crates.io/crates/totsu_core)
+[![API](https://docs.rs/totsu_core/badge.svg)](https://docs.rs/totsu_core)
+
+A first-order conic linear program solver for convex optimization.
