@@ -24,13 +24,12 @@ default = ["std"]
 std = ["num-traits/std"]
 libm = ["num-traits/libm"]
 
+dbg_nvtx = ["nvtx"]
+
 [dependencies]
 log = "0.4.17"
-#nvtx = "1.1.1"
-
-[dependencies.num-traits]
-version = "0.2.15"
-default-features = false
+num-traits = {version = "0.2.15", default-features = false}
+nvtx = {version = "1.1.1", optional = true}
 
 [dev-dependencies]
 float_eq = "1.0.1"

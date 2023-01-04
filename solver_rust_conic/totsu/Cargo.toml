@@ -18,6 +18,9 @@ categories = ["science"]
 
 license = "Unlicense"
 
+[features]
+dbg_nvtx = ["totsu_core/dbg_nvtx"]
+
 [dependencies]
 log = "0.4.17"
 num-traits = "0.2.15"

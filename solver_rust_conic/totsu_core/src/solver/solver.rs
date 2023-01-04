@@ -8,6 +8,34 @@ use crate::{splitm, splitm_mut};
 
 //
 
+#[cfg(feature = "dbg_nvtx")]
+macro_rules! nvtx_range_push {
+    ( $( $args:tt ),* ) => {
+        nvtx::range_push!( $( $args ),* );
+    }
+}
+
+#[cfg(feature = "dbg_nvtx")]
+macro_rules! nvtx_range_pop {
+    () => {
+        nvtx::range_pop!();
+    }
+}
+
+#[cfg(not(feature = "dbg_nvtx"))]
+macro_rules! nvtx_range_push {
+    ( $( $args:tt ),* ) => {
+    }
+}
+
+#[cfg(not(feature = "dbg_nvtx"))]
+macro_rules! nvtx_range_pop {
+    () => {
+    }
+}
+
+//
+
 /// Solver parameters.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SolverParam<F: Float>
@@ -356,9 +384,9 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         self.init_vecs(&mut x, &mut y);
 
         // Calculate diagonal preconditioning
-        //nvtx::range_push!("calc_precond");
+        nvtx_range_push!("calc_precond");
         self.calc_precond(&mut dp_tau, &mut dp_sigma);
-        //nvtx::range_pop!();
+        nvtx_range_pop!();
 
         // Iteration
         log::info!("----- Started");
@@ -381,13 +409,15 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
             };
 
             // Update vectors
-            //nvtx::range_push!("update_vecs {}", i);
+            nvtx_range_push!("update_vecs {}", i);
             let val_tau = self.update_vecs(&mut x, &mut y, &dp_tau, &dp_sigma, &mut tmpw)?;
-            //nvtx::range_pop!();
+            nvtx_range_pop!();
 
             if val_tau > self.par.eps_zero {
                 // Termination criteria of convergence
+                nvtx_range_push!("criteria_conv");
                 let (cri_pri, cri_dual, cri_gap) = self.criteria_conv(&x, norm_c, norm_b, &mut tmpw);
+                nvtx_range_pop!();
 
                 let term_conv = (cri_pri <= self.par.eps_acc) && (cri_dual <= self.par.eps_acc) && (cri_gap <= self.par.eps_acc);
 
@@ -420,7 +450,9 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
             }
             else {
                 // Termination criteria of infeasibility
+                nvtx_range_push!("criteria_inf");
                 let (cri_unbdd, cri_infeas) = self.criteria_inf(&x, norm_c, norm_b, &mut tmpw);
+                nvtx_range_pop!();
 
                 let term_unbdd = cri_unbdd <= self.par.eps_inf;
                 let term_infeas = cri_infeas <= self.par.eps_inf;
@@ -502,9 +534,9 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         // TODO: better grouping and avoiding division by zero
         let (m, n) = self.op_k.a().size();
 
-        //nvtx::range_push!("op_k.abssum");
+        nvtx_range_push!("op_k.abssum");
         self.op_k.abssum(dp_tau, dp_sigma);
-        //nvtx::range_pop!();
+        nvtx_range_pop!();
         for tau in dp_tau.get_mut() {
             *tau = (*tau).max(self.par.eps_zero).recip(); // TODO: perf
         }
@@ -552,10 +584,10 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         { // Projection prox_G(x)
             splitm_mut!(x, (_x_x; n), (x_y; m), (x_s; m), (x_tau; 1));
 
-            //nvtx::range_push!("cone.proj");
+            nvtx_range_push!("cone.proj");
             self.cone.proj(true, &mut x_y).or(Err(SolverError::ConeFailure))?;
             self.cone.proj(false, &mut x_s).or(Err(SolverError::ConeFailure))?;
-            //nvtx::range_pop!();
+            nvtx_range_pop!();
 
             L::max(&mut x_tau, f0);
             val_tau = x_tau.get(0);

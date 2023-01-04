@@ -6,7 +6,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-totsu = {path = "../../solver_rust_conic/totsu"}
+totsu = {path = "../../solver_rust_conic/totsu", features = ["dbg_nvtx"]}
 totsu_f32cuda = {path = "../../solver_rust_conic/totsu_f32cuda"}
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"
