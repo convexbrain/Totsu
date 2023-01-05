@@ -172,12 +172,15 @@ impl<'a, S: SliceLike + ?Sized> Drop for SliceMut<'a, S>
 /// ```
 #[macro_export]
 macro_rules! splitm {
-    ($slice:expr, $( ($var:ident; $len:expr) ),+ ) => {
-        let (_, _splitm_rest) = $slice.split_ref(0);
+    ($slice:expr, ($var0:ident; $len0:expr) ) => {
+        let $var0 = $slice.split_ref($len0).0;
+    };
+    ($slice:expr, ($var0:ident; $len0:expr), $( ($var:ident; $len:expr) ),* ) => {
+        let ($var0, __splitm_rest) = $slice.split_ref($len0);
         $(
-            let ($var, _splitm_rest) = _splitm_rest.split_ref($len);
+            let ($var, __splitm_rest) = __splitm_rest.split_ref($len);
         )*
-        drop(_splitm_rest);
+        drop(__splitm_rest);
     };
 }
 
@@ -201,12 +204,15 @@ macro_rules! splitm {
 /// ```
 #[macro_export]
 macro_rules! splitm_mut {
-    ($slice:expr, $( ($var:ident; $len:expr) ),+ ) => {
-        let (_, mut _splitm_rest) = $slice.split_mut(0);
+    ($slice:expr, ($var0:ident; $len0:expr) ) => {
+        let mut $var0 = $slice.split_mut($len0).0;
+    };
+    ($slice:expr, ($var0:ident; $len0:expr), $( ($var:ident; $len:expr) ),* ) => {
+        let (mut $var0, mut __splitm_rest) = $slice.split_mut($len0);
         $(
-            let (mut $var, mut _splitm_rest) = _splitm_rest.split_mut($len);
+            let (mut $var, mut __splitm_rest) = __splitm_rest.split_mut($len);
         )*
-        drop(_splitm_rest);
+        drop(__splitm_rest);
     };
 }
 
