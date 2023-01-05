@@ -410,7 +410,20 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
             };
 
             let check_cri = if i >= check_i {
-                check_i = i + 10 + (i / 100); // exponential checking counter
+                let log_i = i.max(1).ilog10();
+                let pow_i = 10_usize.pow(log_i);
+                let ms_i = i / pow_i;
+                let ms_i = match ms_i {
+                    1 => 1,
+                    2..=4 => 2,
+                    5..=9 => 5,
+                    _ => 1,
+                };
+                let delta_i = ms_i * pow_i / 10;
+                let delta_i = delta_i.max(10);
+                
+                check_i = i + delta_i; // quasi-exponential checking counter
+
                 true
             }
             else {
