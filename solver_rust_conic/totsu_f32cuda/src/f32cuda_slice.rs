@@ -4,8 +4,8 @@ use std::prelude::v1::*;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::thread_local;
-use std::collections::HashMap;
 use std::pin::Pin;
+use fxhash::FxHashMap;
 use rustacuda::prelude::*;
 use rustacuda::memory::{DeviceBuffer, DeviceSlice};
 use totsu_core::solver::{SliceRef, SliceMut, SliceLike};
@@ -44,7 +44,7 @@ pub struct F32CUDASlice
 struct SliceManager
 {
     cnt: usize,
-    map: HashMap<usize, Pin<Box<F32CUDASlice>>>,
+    map: FxHashMap<usize, Pin<Box<F32CUDASlice>>>,
 }
 
 impl SliceManager
@@ -53,15 +53,18 @@ impl SliceManager
     {
         SliceManager {
             cnt: 0,
-            map: HashMap::new()
+            map: FxHashMap::default()
         }
     }
 
     fn new_slice<'a, F>(&mut self, func: F) -> &'a mut F32CUDASlice
     where F: FnOnce(usize) -> F32CUDASlice
     {
-        let idx = self.cnt;
-        self.cnt = idx + 1;
+        let mut idx = self.cnt;
+        while self.map.contains_key(&idx) { // in case of key coflict
+            idx = idx.wrapping_add(1);
+        }
+        self.cnt = idx.wrapping_add(1);
 
         let cs = func(idx);
 
