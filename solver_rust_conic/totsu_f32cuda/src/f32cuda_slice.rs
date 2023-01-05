@@ -309,6 +309,32 @@ impl SliceLike for F32CUDASlice
             std::mem::transmute::<&mut[f32], &mut[f32]>(hb_mut)
         }
     }
+
+    fn get(&self, idx: usize) -> Self::F
+    {
+        if self.len() == 1 {
+            assert_eq!(idx, 0);
+            self.get_ref()[0]
+        }
+        else {
+            let cs = split_slice(self, idx, idx + 1);
+            let s = unsafe { SliceRef::new(cs) };
+            s.get_ref()[0]
+        }
+    }
+
+    fn set(&mut self, idx: usize, val: Self::F)
+    {
+        if self.len() == 1 {
+            assert_eq!(idx, 0);
+            self.get_mut()[0] = val;
+        }
+        else {
+            let cs = split_slice(self, idx, idx + 1);
+            let mut s = unsafe { SliceMut::new(cs) };
+            s.get_mut()[0] = val;
+        }
+    }
 }
 
 //
