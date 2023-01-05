@@ -391,6 +391,7 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
         // Iteration
         log::info!("----- Started");
         let mut i = 0;
+        let mut check_i = 0;
         loop {
             let excess_iter = if let Some(max_iter) = self.par.max_iter {
                 i + 1 >= max_iter
@@ -408,12 +409,23 @@ where L: LinAlg, L::F: Float + Debug + LowerExp,
                 false
             };
 
+            let check_cri = if i >= check_i {
+                check_i = i + 10 + (i / 100); // exponential checking counter
+                true
+            }
+            else {
+                false
+            };
+
             // Update vectors
             nvtx_range_push!("update_vecs {}", i);
             let val_tau = self.update_vecs(&mut x, &mut y, &dp_tau, &dp_sigma, &mut tmpw)?;
             nvtx_range_pop!();
 
-            if val_tau > self.par.eps_zero {
+            if !(check_cri || log_trig || excess_iter) {
+                // Skip checking termination criteria
+            }
+            else if val_tau > self.par.eps_zero {
                 // Termination criteria of convergence
                 nvtx_range_push!("criteria_conv");
                 let (cri_pri, cri_dual, cri_gap) = self.criteria_conv(&x, norm_c, norm_b, &mut tmpw);
