@@ -8,28 +8,28 @@ $$
     \end{array}
 $$
 を考える。ここで、
-* 変数 $$x\in\mathbb{R}^n$$
-* $$K\in\mathbb{R}^{m\times n}$$
-* $$G: \mathbb{R}^n\to\mathbb{R}\cup\lbrace+\infty\rbrace,\ F: \mathbb{R}^m\to\mathbb{R}\cup\lbrace+\infty\rbrace$$
+* 変数 $x\in\mathbb{R}^n$
+* $K\in\mathbb{R}^{m\times n}$
+* $G: \mathbb{R}^n\to\mathbb{R}\cup\lbrace+\infty\rbrace,\ F: \mathbb{R}^m\to\mathbb{R}\cup\lbrace+\infty\rbrace$
   は下半連続な凸関数
-  * このとき $$G^{\ast\ast}=G,\ F^{\ast\ast}=F$$ となる
-    * ただし $$h^\ast(y)=\sup_x(y^Tx-h(x))$$ は $$h$$ の共役関数
+  * このとき $G^{\ast\ast}=G,\ F^{\ast\ast}=F$ となる
+    * ただし $h^\ast(y)=\sup_x(y^Tx-h(x))$ は $h$ の共役関数
 
 である。
 
-$$F(Kx)$$ という形で線形合成項を含み、$$G,F$$ は下半連続であれば滑らかである必要はなく、
+$F(Kx)$ という形で線形合成項を含み、$G,F$ は下半連続であれば滑らかである必要はなく、
 目的関数が2項の和に分離可能な凸最適化問題である。
 
 ## 双対問題
 
-新たな変数 $$z\in\mathbb{R}^m$$ を介して主問題を
+新たな変数 $z\in\mathbb{R}^m$ を介して主問題を
 $$
     \begin{array}{ll}
     \mathrm{minimize} & G(x) + F(z) \\
     \mathrm{subject\ to} & Kx = z
     \end{array}
 $$
-と書き直し、双対変数あるいはラグランジュ乗数を $$y\in\mathbb{R}^m$$ としてラグランジアン
+と書き直し、双対変数あるいはラグランジュ乗数を $y\in\mathbb{R}^m$ としてラグランジアン
 $$
     L = G(x) + F(z) + y^T(Kx - z)
 $$
@@ -53,11 +53,11 @@ $$
 
 ## 鞍点問題
 
-なお、$$L_z=\inf_z L$$ とおくと
+なお、$L_z=\inf_z L$ とおくと
 $$
     L_z = (Kx)^Ty + G(x) - F^\ast(y)
 $$
-となり、双対問題は $$\max_y\inf_xL_z$$ とも書ける。
+となり、双対問題は $\max_y\inf_xL_z$ とも書ける。
 一方
 $$
     \begin{array}{ll}
@@ -66,7 +66,7 @@ $$
     = & G(x) + F^{\ast\ast}(Kx)
     \end{array}
 $$
-より、主問題は $$\min_x\sup_yL_z$$ と表すことができる。
+より、主問題は $\min_x\sup_yL_z$ と表すことができる。
 
 したがって
 $$

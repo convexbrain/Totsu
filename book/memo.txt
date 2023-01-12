@@ -1,0 +1,12 @@
+npm install --save-dev honkit
+
+npx honkit init
+
+npm install --save-dev honkit-plugin-katex
+npm install --save-dev @honkit/honkit-plugin-ga
+npm install --save-dev honkit-plugin-sitemap
+npm install --save-dev honkit-plugin-search-plus
+
+npx honkit build
+
+npx honkit serve

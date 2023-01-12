@@ -15,12 +15,12 @@ $$
 $$
 とする。
 
-[Pock/Chambolleの一次法](./pock_chambolle.md)の反復において、$$x_k$$ は $$\mathbf{prox}^\tau_{G}$$ による射影の後のため必ず
-$$x_k \in \mathbb{R}^n \times \mathcal{K}^\ast \times \mathcal{K} \times \mathbb{R}_+$$ となっており、
+[Pock/Chambolleの一次法](./pock_chambolle.md)の反復において、$x_k$ は $\mathbf{prox}^\tau_{G}$ による射影の後のため必ず
+$x_k \in \mathbb{R}^n \times \mathcal{K}^\ast \times \mathcal{K} \times \mathbb{R}_+$ となっており、
 主・双対の錐の制約条件を満たしている。
 この状況のもと、終了基準は[参考文献](./reference.md)[1]と同等のものを適用する。
 
-## $$\hat \tau^k > \varepsilon_\mathrm{zero}$$ の場合
+## $\hat \tau^k > \varepsilon_\mathrm{zero}$ の場合
 
 ### 収束判定
 
@@ -31,9 +31,9 @@ $$
     \land& \frac{\|c^T \hat x_k / \hat\tau_k + b^T \hat y_k / \hat\tau_k\|}{1 + |c^T \hat x_k / \hat\tau_k| + |b^T \hat y_k / \hat\tau_k|} \le \varepsilon_\mathrm{acc}
     \end{array}
 $$
-を満たすとき、解 $$x^\star=\hat x_k / \hat\tau_k,\ y^\star=\hat y_k / \hat\tau_k$$ に収束したと判定し、終了する。
+を満たすとき、解 $x^\star=\hat x_k / \hat\tau_k,\ y^\star=\hat y_k / \hat\tau_k$ に収束したと判定し、終了する。
 
-## $$\hat \tau^k \le \varepsilon_\mathrm{zero}$$ の場合
+## $\hat \tau^k \le \varepsilon_\mathrm{zero}$ の場合
 
 ### 下限なし判定
 
