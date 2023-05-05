@@ -11,5 +11,5 @@ totsu_f64lapack = "0.1.1"
 utils = {path = "../utils2", package = "utils2"}
 env_logger = "0.10.0"
 plotters = "0.3.4"
-anyhow = "1.0.68"
+anyhow = "1.0.71"
 intel-mkl-src = {version = "0.8.1", features = ["mkl-static-lp64-iomp"]}

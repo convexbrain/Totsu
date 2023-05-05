@@ -10,8 +10,8 @@ totsu = "0.10.2"
 totsu_f64lapack = "0.1.1"
 utils = {path = "../utils2", package="utils2"}
 env_logger = "0.10.0"
-anyhow = "1.0.68"
-image = "0.24.5"
+anyhow = "1.0.71"
+image = "0.24.6"
 log = "0.4.17"
 cblas = "0.4.0"
 intel-mkl-src = {version = "0.8.1", features = ["mkl-static-lp64-iomp"]}

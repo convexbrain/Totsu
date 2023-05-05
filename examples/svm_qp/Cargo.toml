@@ -14,5 +14,5 @@ rand_xoshiro = "0.6.0"
 env_logger = "0.10.0"
 plotters = "0.3.4"
 num-traits = "0.2.15"
-anyhow = "1.0.68"
+anyhow = "1.0.71"
 intel-mkl-src = {version = "0.8.1", features = ["mkl-static-lp64-seq"]}
